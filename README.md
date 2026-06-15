@@ -12,6 +12,8 @@
 
 Прочее: задачи в отдельных подпапках (пока отсутствует)
 
-Как собрать: cl /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address hello.cpp
+Как собрать: 
+cd hello
+cl /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address hello.cpp
 
 Как прогнать тесты: тесты пока отсутствуют
