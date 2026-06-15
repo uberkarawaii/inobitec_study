@@ -1,0 +1,27 @@
+root = true
+
+[*]
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+
+[*.{c,h}]
+indent_style = space
+indent_size = 4
+# CP1251 — стандарт проекта для исходников с русскими литералами
+# EditorConfig не поддерживает cp1251 напрямую; latin1 — ближайший стандартный код,
+# большинство редакторов в этом режиме сохраняют байты без перекодировки.
+charset = latin1
+
+[*.{cpp,hpp}]
+indent_style = space
+indent_size = 4
+charset = latin1
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
