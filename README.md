@@ -37,9 +37,9 @@
 
   руками
   ##### тест на корректных данных
-  echo 5 | t1_dist_matrix\main.exe > main_out.txt
-  echo 5 | t1_dist_matrix\ref.exe > ref_out.txt
-  fc main_out.txt ref_out.txt
+  echo 5 | t1_dist_matrix\main.exe > t1_dist_matrix\main_out.txt
+  echo 5 | t1_dist_matrix\ref.exe > t1_dist_matrix\ref_out.txt
+  fc t1_dist_matrix\main_out.txt t1_dist_matrix\ref_out.txt
   ##### ожидаемый вывод: сравнение файлов... FC: различия не найдены
 
   ##### тест с некорректными данными 
@@ -59,3 +59,5 @@
   echo %ERRORLEVEL%
   ##### ожидамые выводы: 64
 
+2. для t1_dist_matrix_c\main.exe делается той же командой build_and_test.bat 
+   или руками теми же самыми тестами, но папка t1_dist_matrix_c\
