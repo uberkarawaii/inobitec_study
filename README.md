@@ -17,47 +17,60 @@
 
 ### Как собрать: 
 для hello/hello.cpp
-    cd hello
-    cl /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address hello.cpp
+```x64 Native Tools
+cd hello
+cl /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address hello.cpp
+```
 
-для /t1_dist_matrix/main.cpp:
-    одной командой + тесты: build_and_test.bat
+для /t1_dist_matrix/main.cpp и /t1_dist_matrix_c/main.c:
+одной командой + тесты: `t1_build_and_test.bat`
 
-    находимся в корне
-    chcp 1251
-    cl /c /Fo:t1_dist_matrix\objname.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
-    link /DEBUG /OUT:t1_dist_matrix\main.exe t1_dist_matrix\main.obj
-    t1_dist_matrix\main.exe
-
+находимся в корне
+```x64 Native Tools
+chcp 1251
+cl /c /Fo:t1_dist_matrix\objname.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
+link /DEBUG /OUT:t1_dist_matrix\main.exe t1_dist_matrix\main.obj
+t1_dist_matrix\main.exe
+```
 
 ### Как прогнать тесты:
 1. для t1_dist_matrix\main.exe
   одной командой
-  build_and_test.bat
+  ```bash
+  t1_build_and_test.bat
+  ```
 
-  руками
-  ##### тест на корректных данных
-  echo 5 | t1_dist_matrix\main.exe > t1_dist_matrix\main_out.txt
-  echo 5 | t1_dist_matrix\ref.exe > t1_dist_matrix\ref_out.txt
-  fc t1_dist_matrix\main_out.txt t1_dist_matrix\ref_out.txt
-  ##### ожидаемый вывод: сравнение файлов... FC: различия не найдены
+руками
+тест на корректных данных
+```bash
+echo 5 | t1_dist_matrix\main.exe > t1_dist_matrix\main_out.txt
+echo 5 | t1_dist_matrix\ref.exe > t1_dist_matrix\ref_out.txt
+fc t1_dist_matrix\main_out.txt t1_dist_matrix\ref_out.txt
+```
+ожидаемый вывод: сравнение файлов... FC: различия не найдены
 
-  ##### тест с некорректными данными 
-  echo abc | t1_dist_matrix\main.exe
-  echo %ERRORLEVEL%
-  ##### ожидаемый вывод: 65
+тест с некорректными данными 
+```bash
+echo abc | t1_dist_matrix\main.exe
+echo %ERRORLEVEL%
+```
+ожидаемый вывод: 65
 
-  ##### тест с пустой строкой
-  echo; | t1_dist_matrix\main.exe
-  echo %ERRORLEVEL%
-  ##### ожидаемый вывод: 66
+тест с пустой строкой
+```bash
+echo; | t1_dist_matrix\main.exe
+echo %ERRORLEVEL%
+```
+ожидаемый вывод: 66
 
-  ##### тест с данными за диапазоном
-  echo 2 | t1_dist_matrix\main.exe
-  echo %ERRORLEVEL%
-  echo 21 | t1_dist_matrix\main.exe
-  echo %ERRORLEVEL%
-  ##### ожидамые выводы: 64
+тест с данными за диапазоном
+```bash
+echo 2 | t1_dist_matrix\main.exe
+echo %ERRORLEVEL%
+echo 21 | t1_dist_matrix\main.exe
+echo %ERRORLEVEL%
+```
+ожидамые выводы: 64
 
-2. для t1_dist_matrix_c\main.exe делается той же командой build_and_test.bat 
+2. для t1_dist_matrix_c\main.exe делается той же командой `t1_build_and_test.bat` 
    или руками теми же самыми тестами, но папка t1_dist_matrix_c\
