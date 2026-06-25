@@ -34,6 +34,11 @@ cl /c /Fo:t1_dist_matrix\objname.obj /std:c++latest /W4 /permissive- /EHsc /Od /
 link /DEBUG /OUT:t1_dist_matrix\main.exe t1_dist_matrix\main.obj
 t1_dist_matrix\main.exe
 ```
+для /t2_passport_cpp/main.cpp:
+```
+t2_build_and_test.bat
+```
+
 
 ### Как прогнать тесты:
 1. для t1_dist_matrix\main.exe

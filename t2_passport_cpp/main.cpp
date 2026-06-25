@@ -1,25 +1,11 @@
 #include <charconv>
 #include <iostream>
 #include <string>
+#include <stringview>
 #include <system_error>
 
 #include "..\common\exit_codes.hpp"
-
-// убрать пробелы слева и справа
-void trim_str(std::string& s) {
-    // первый слева не пробельный или служебный символ
-    auto left = s.find_first_not_of(" \n\t\r");
-    // если он указывает на конец строки
-    if (left == std::string::npos) {
-        s.clear();
-        return;
-    }
-    s.erase(0, left);
-    auto right = s.find_last_not_of(" \n\t\r");
-    // если справа не было пробелов, то обрежется часть с индексом s.len(),
-    // а её не существует т.к. это за строкой. т.е. ничего не обрежется
-    s.erase(right + 1);
-}
+#include "..\common\string_utils.hpp"
 
 // форма слова "вершина" со склонением.
 // string_view т.к. это уже готовый объект, можно отдаль просто указатель + длину, а не копию
