@@ -39,4 +39,44 @@ if not errorlevel 65 echo FAIL: fractional_vertexes & exit /b 1
 (echo многоугольник & echo abc) | t2_passport_cpp\main.exe 2> nul
 if not errorlevel 65 echo FAIL: nan_vertexes & exit /b 1
 
-echo ALL TESTS PASSED
+echo ALL C++ TESTS PASSED
+
+:: форматирование
+clang-format -i t2_passport_c\main.c t2_passport_c\ref.c common\string_utils.h
+
+:: сборка
+cl -c /Fo:t2_passport_c\main.obj /std:c17 /W4 /permissive- /EHsc /Od /Zi /fsanitize=address t2_passport_c\main.c
+link /DEBUG /OUT:t2_passport_c\main.exe t2_passport_c\main.obj
+
+
+cl -c /Fo:t2_passport_c\ref.obj /std:c17 /W4 /permissive- /EHsc /Od /Zi /fsanitize=address t2_passport_c\ref.c
+link /DEBUG /OUT:t2_passport_c\ref.exe t2_passport_c\ref.obj
+
+:: тесты
+(echo звезда & echo 6) | t2_passport_c\main.exe > t2_passport_c\main_out.txt
+(echo звезда & echo 6) | t2_passport_c\ref.exe > t2_passport_c\ref_out.txt
+fc t2_passport_c\main_out.txt t2_passport_c\ref_out.txt > nul
+if errorlevel 1 echo FAIL: norm-case & exit /b 1
+
+type nul | t2_passport_c\main.exe 2> nul
+if not errorlevel 66 echo FAIL: eof_name & exit /b 1
+
+echo; | t2_passport_c\main.exe 2> nul
+if not errorlevel 65 echo FAIL: empty_name & exit /b 1
+
+(echo многоугольник & type nul) | t2_passport_c\main.exe 2> nul
+if not errorlevel 66 echo FAIL: eof_vertexes & exit /b 1
+
+(echo многоугольник & echo;) | t2_passport_c\main.exe 2> nul
+if not errorlevel 65 echo FAIL: empty_vertexes & exit /b 1
+
+(echo многоугольник & echo -5) | t2_passport_c\main.exe 2> nul
+if not errorlevel 64 echo FAIL: negative_vertexes & exit /b 1 
+
+(echo многоугольник & echo 3.3) |  t2_passport_c\main.exe 2> nul
+if not errorlevel 65 echo FAIL: fractional_vertexes & exit /b 1
+
+(echo многоугольник & echo abc) | t2_passport_c\main.exe 2> nul
+if not errorlevel 65 echo FAIL: nan_vertexes & exit /b 1
+
+echo ALL C TESTS PASSED

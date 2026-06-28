@@ -11,8 +11,9 @@
 ### Прочее: 
 - /hello каталог с начальной задачей. выводит hello, world
 - /t1_dist_matrix задача 1 из параграфа 6 на с++
-- /t1_dist_matrix_c задача 1 из параграфа 6 на с
-- /t2_passport_cpp задача 2 из параграфа 6, c++
+- /t1_dist_matrix_c задача 1 из параграфа 6, на языке Си
+- /t2_passport_cpp задача 2 из параграфа 6 на c++
+- /t2_passport_c задача 2 из параграфа 6, на языке Си
 - /dialog_logs: выгрузка диалогов с DeepSeek через агента OpenCode
 - /common - папка с файлами обшего назначения
 - /notes - заметки по темам; внутренний dialog_logs - логи бесед с агентом по темам
@@ -81,3 +82,17 @@ echo %ERRORLEVEL%
 
 2. для t1_dist_matrix_c\main.exe делается той же командой `t1_build_and_test.bat` 
    или руками теми же самыми тестами, но папка t1_dist_matrix_c\
+
+3. для t2_passport_c\main.c и t2_passport_cpp\main.cpp сборка и тесты делаются одной командой 
+```
+t2_build_and_test.bat
+```
+
+при желании собрать и запустить руками(на примере .c, с .cpp делается аналогично, но другая папка и расширение)
+```
+chcp 1251
+cl -c /Fo:t2_passport_c\main.obj /std:c17 /W4 /permissive- /EHsc /Od /Zi /fsanitize=address t2_passport_c\main.c
+link /DEBUG /OUT:t2_passport_c\main.exe t2_passport_c\main.obj
+cd t2_passport_c
+main.exe
+```

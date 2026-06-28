@@ -1,7 +1,7 @@
 #include <charconv>
 #include <iostream>
 #include <string>
-#include <stringview>
+#include <string_view>
 #include <system_error>
 
 #include "..\common\exit_codes.hpp"
@@ -19,6 +19,8 @@ std::string_view get_vertex_name(int N) {
 }
 
 int main() {
+    setlocale(LC_ALL, "Russian_Russia.1251");
+
     std::string name;
     if (!std::getline(std::cin, name)) {
         std::cerr << "EOF вместо имени фигуры\n";
