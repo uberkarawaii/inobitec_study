@@ -7,6 +7,8 @@
 - .clang-format - форматирование файлов на С / С++
 - .editorconfig - правила чтения файлов для редакторов
 - .gitignore - список типов файлов, которые не будут включаться в коммиты
+- t3_bbox_ref.ps1 - сценарий на power shell для 3 задачи
+- t1_build_and_test.bat ... и т.д. - batch файлы для тестов и сборки к каждой задаче
 
 ### Прочее: 
 - /hello каталог с начальной задачей. выводит hello, world
@@ -14,41 +16,67 @@
 - /t1_dist_matrix_c задача 1 из параграфа 6, на языке Си
 - /t2_passport_cpp задача 2 из параграфа 6 на c++
 - /t2_passport_c задача 2 из параграфа 6, на языке Си
+- /t3_bbox_cpp задача 3 из параграфа 6, на с++
 - /dialog_logs: выгрузка диалогов с DeepSeek через агента OpenCode
 - /common - папка с файлами обшего назначения
 - /notes - заметки по темам; внутренний dialog_logs - логи бесед с агентом по темам
 
-### Как собрать: 
-для hello/hello.cpp
+### Как собрать
+
+**hello/hello.cpp**
 ```x64 Native Tools
 cd hello
 cl /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address hello.cpp
 ```
 
-для /t1_dist_matrix/main.cpp и /t1_dist_matrix_c/main.c:
-одной командой + тесты: `t1_build_and_test.bat`
-
-находимся в корне
-```x64 Native Tools
-chcp 1251
-cl /c /Fo:t1_dist_matrix\objname.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
+**/t1_dist_matrix/main.cpp и /t1_dist_matrix_c/main.c**
+```
+cl /c /Fo:t1_dist_matrix\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
 link /DEBUG /OUT:t1_dist_matrix\main.exe t1_dist_matrix\main.obj
-t1_dist_matrix\main.exe
+
+cl /c /Fo:t1_dist_matrix\ref.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\ref.cpp
+link /DEBUG /OUT:t1_dist_matrix\ref.exe t1_dist_matrix\ref.obj
 ```
-для /t2_passport_cpp/main.cpp:
+
+**/t2_passport_cpp/main.cpp и /t2_passport_c/main.c**
 ```
+cl -c /Fo:t2_passport_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t2_passport_cpp\main.cpp
+link /DEBUG /OUT:t2_passport_cpp\main.exe t2_passport_cpp\main.obj
+
+cl -c /Fo:t2_passport_cpp\ref.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t2_passport_cpp\ref.cpp
+link /DEBUG /OUT:t2_passport_cpp\ref.exe t2_passport_cpp\ref.obj
+```
+
+**t3_bbox_cpp\main.cpp**
+```
+cl -c /Fo:t3_bbox_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t3_bbox_cpp\main.cpp
+link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj 
+```
+
+### Как прогнать тесты
+#### Через .bat файлы
+**t1_dist_matrix\main.exe и t1_dist_matrix_c\main.exe**
+```bash
+t1_build_and_test.bat
+```
+
+**t2_passport_cpp\main.exe и t1_passport_c\main.exe**
+```bash
 t2_build_and_test.bat
 ```
 
+**t3_bbox_cpp\main.exe**
+```bash
+t3_build_and_test.bat
+```
 
-### Как прогнать тесты:
-1. для t1_dist_matrix\main.exe
-  одной командой
-  ```bash
-  t1_build_and_test.bat
-  ```
+При успешном проходе тестов в будет выводиться:
+...
+ALL CPP TESTS PASSED
+...
+ALL C TESTS PASSES
 
-руками
+#### Руками (на примере первой задачи на с++)
 тест на корректных данных
 ```bash
 echo 5 | t1_dist_matrix\main.exe > t1_dist_matrix\main_out.txt
@@ -79,20 +107,3 @@ echo 21 | t1_dist_matrix\main.exe
 echo %ERRORLEVEL%
 ```
 ожидамые выводы: 64
-
-2. для t1_dist_matrix_c\main.exe делается той же командой `t1_build_and_test.bat` 
-   или руками теми же самыми тестами, но папка t1_dist_matrix_c\
-
-3. для t2_passport_c\main.c и t2_passport_cpp\main.cpp сборка и тесты делаются одной командой 
-```
-t2_build_and_test.bat
-```
-
-при желании собрать и запустить руками(на примере .c, с .cpp делается аналогично, но другая папка и расширение)
-```
-chcp 1251
-cl -c /Fo:t2_passport_c\main.obj /std:c17 /W4 /permissive- /EHsc /Od /Zi /fsanitize=address t2_passport_c\main.c
-link /DEBUG /OUT:t2_passport_c\main.exe t2_passport_c\main.obj
-cd t2_passport_c
-main.exe
-```
