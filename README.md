@@ -35,8 +35,8 @@ cl /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address hello.c
 cl /c /Fo:t1_dist_matrix\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
 link /DEBUG /OUT:t1_dist_matrix\main.exe t1_dist_matrix\main.obj
 
-cl /c /Fo:t1_dist_matrix\ref.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\ref.cpp
-link /DEBUG /OUT:t1_dist_matrix\ref.exe t1_dist_matrix\ref.obj
+cl /c /Fo:t1_dist_matrix_c\main.obj /std:c++latest /W4 /permissive- /Od /Zi /MDd /fsanitize=address t1_dist_matrix_c\main.c
+link /DEBUG /OUT:t1_dist_matrix_c\main.exe t1_dist_matrix_c\main.obj
 ```
 
 **/t2_passport_cpp/main.cpp и /t2_passport_c/main.c**
@@ -44,14 +44,17 @@ link /DEBUG /OUT:t1_dist_matrix\ref.exe t1_dist_matrix\ref.obj
 cl -c /Fo:t2_passport_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t2_passport_cpp\main.cpp
 link /DEBUG /OUT:t2_passport_cpp\main.exe t2_passport_cpp\main.obj
 
-cl -c /Fo:t2_passport_cpp\ref.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t2_passport_cpp\ref.cpp
-link /DEBUG /OUT:t2_passport_cpp\ref.exe t2_passport_cpp\ref.obj
+cl -c /Fo:t2_passport_c\main.obj /std:c++latest /W4 /permissive- /Od /Zi /MDd /fsanitize=address t2_passport_c\main.c
+link /DEBUG /OUT:t2_passport_c\main.exe t2_passport_c\main.obj
 ```
 
-**t3_bbox_cpp\main.cpp**
+**t3_bbox_cpp\main.cpp и t3_bbox_c\main.exe**
 ```
 cl -c /Fo:t3_bbox_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t3_bbox_cpp\main.cpp
 link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj 
+
+cl -c /Fo:t3_bbox_c\main.obj /std:c++latest /W4 /permissive- /Od /Zi /MDd /fsanitize=address t3_bbox_c\main.c
+link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj 
 ```
 
 ### Как прогнать тесты
