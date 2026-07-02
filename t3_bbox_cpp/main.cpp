@@ -119,7 +119,7 @@ int main(void) {
     std::print("Количество точек: {}\n", points.size());
 
     std::print(
-        "Координаты огранич. паралеллепипеда x: [ {:.3f}; {:.3f} ]  y: [ {:.3f}; {:.3f} ]  z: [ {:.3f}; {:.3f} ]\n",
+        "Координаты огранич. паралеллепипеда x: [ {:.3f}; {:.3f} ] y: [ {:.3f}; {:.3f} ] z: [ {:.3f}; {:.3f} ]\n",
         min_border.x, max_border.x, min_border.y, max_border.y, min_border.z, max_border.z);
 
     std::print("Координаты центроида x: {:.3f}, y: {:.3f}, z: {:.3f}\n", center.x, center.y, center.z);

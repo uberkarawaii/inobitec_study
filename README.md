@@ -17,6 +17,7 @@
 - /t2_passport_cpp задача 2 из параграфа 6 на c++
 - /t2_passport_c задача 2 из параграфа 6, на языке Си
 - /t3_bbox_cpp задача 3 из параграфа 6, на с++
+- /t3_bbox_c задача 3 из параграфа 6, на Си
 - /dialog_logs: выгрузка диалогов с DeepSeek через агента OpenCode
 - /common - папка с файлами обшего назначения
 - /notes - заметки по темам; внутренний dialog_logs - логи бесед с агентом по темам
@@ -65,7 +66,7 @@ t1_build_and_test.bat
 t2_build_and_test.bat
 ```
 
-**t3_bbox_cpp\main.exe**
+**t3_bbox_cpp\main.exe и t3_bbox_c\main.exe**
 ```bash
 t3_build_and_test.bat
 ```
@@ -74,7 +75,7 @@ t3_build_and_test.bat
 ...
 ALL CPP TESTS PASSED
 ...
-ALL C TESTS PASSES
+ALL C TESTS PASSED
 
 #### Руками (на примере первой задачи на с++)
 тест на корректных данных

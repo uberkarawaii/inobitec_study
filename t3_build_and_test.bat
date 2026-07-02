@@ -77,3 +77,59 @@ if errorlevel 1 echo FAIL: norm_case_1000_42 & exit /b 1
 :: if errorlevel 1 echo FAIL: norm_case_1000000_42 & exit /b 1
 
 ECHO ALL CPP TESTS PASSED
+
+:: C тесты
+:: форматирование 
+clang-format -i t3_bbox_c\main.c
+
+:: сборка и линковка main.c 
+cl -c /Fo:t3_bbox_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t3_bbox_c\main.c
+link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj
+:: проверка на ошибки сборки / линковки
+if errorlevel 1 echo FAIL: compilation & exit /b 1
+
+:: тесты с кодами ошибок
+type nul | t3_bbox_c\main.exe > nul 2> build\err.txt
+if not errorlevel 66 echo FAIL: empty_case & exit /b 1
+findstr /C:" " build\err.txt > nul
+if errorlevel 1 echo FAIL: no stderr in empty_case & exit /b 1
+
+:: не число в потоке
+echo 2 3 bam | t3_bbox_c\main.exe > nul 2> build\err.txt
+if not errorlevel 65 echo FAIL: wrong code not_number_case & exit /b 1
+if errorlevel 66 echo FAIL: wrong code not_number_case & exit /b 1
+findstr /C:" 1." build\err.txt > nul
+if errorlevel 1 echo FAIL: no string number in not_number_case & exit /b 1
+findstr /C:"2 3 bam" build\err.txt > nul
+if errorlevel 1 echo FAIL: no input string in not_number_case & exit /b 1
+
+
+:: недостаточное кол-во аргументов
+echo 4 5 | t3_bbox_c\main.exe > nul 2> build\err.txt
+if not errorlevel 65 echo FAIL: wrong code too_few_args_case & exit /b 1
+if errorlevel 66 echo FAIL: wrong code too_few_args_case & exit /b 1
+findstr /C:" 1." build\err.txt > nul
+if errorlevel 1 echo FAIL: no string number in too_few_args_case & exit /b 1
+findstr /C:"4 5" build\err.txt > nul
+if errorlevel 1 echo FAIL: no input string in too_few_args_case & exit /b 1
+
+:: тесты с t3_bbox_ref.ps1 с разным кол-вом точек
+gen_cloud\gen_cloud --size 10 --seed 42 | t3_bbox_c\main.exe > build\main_out.txt
+if errorlevel 1 echo FAIL: norm_case_10_42: main exit code & exit /b 1
+gen_cloud\gen_cloud --size 10 --seed 42 | powershell -ExecutionPolicy Bypass -File t3_bbox_ref.ps1 > build\ref_out.txt
+fc build\main_out.txt build\ref_out.txt > nul
+if errorlevel 1 echo FAIL: normal_case_10_42 & exit /b 1
+
+gen_cloud\gen_cloud --size 100 --seed 42 | t3_bbox_c\main.exe > build\main_out.txt
+if errorlevel 1 echo FAIL: norm_case_100_42: main exit code & exit /b 1
+gen_cloud\gen_cloud --size 100 --seed 42 | powershell -ExecutionPolicy Bypass -File t3_bbox_ref.ps1 > build\ref_out.txt
+fc build\main_out.txt build\ref_out.txt > nul
+if errorlevel 1 echo FAIL: normal_case_100_42 & exit /b 1
+
+gen_cloud\gen_cloud --size 1000 --seed 42 | t3_bbox_c\main.exe > build\main_out.txt
+if errorlevel 1 echo FAIL: norm_case_1000_42: main exit code & exit /b 1
+gen_cloud\gen_cloud --size 1000 --seed 42 | powershell -ExecutionPolicy Bypass -File t3_bbox_ref.ps1 > build\ref_out.txt
+fc build\main_out.txt build\ref_out.txt > nul
+if errorlevel 1 echo FAIL: normal_case_1000_42 & exit /b 1
+
+ECHO ALL C TESTS PASSED 
