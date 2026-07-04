@@ -52,7 +52,7 @@ int main() {
         // значит между ними есть три элемента, которые можно попробовать распознать
         // иначе - там не достаточно элементов
         if (strchr(clean_s, ' ') == strrchr(clean_s, ' ')) {
-            fprintf(stderr, "Строка %d. Недостаточно значений X Y Z, получено: %s\n", i, clean_s);
+            fprintf(stderr, "Строка %d. Ожидались координаты X Y Z. Получено: %s\n", i, clean_s);
             free(s);
             s = NULL;
             return data;
@@ -65,7 +65,7 @@ int main() {
         while (j < 3) {
             d[j] = strtod(start_ptr, &end_ptr);
             if (end_ptr == start_ptr || (*end_ptr != ' ' && *end_ptr != '\0')) {
-                fprintf(stderr, "Строка %d. Нечисловое значение: %s\n", i, clean_s);
+                fprintf(stderr, "Строка %d. Нечисловые данные: %s\n", i, clean_s);
                 free(s);
                 s = NULL;
                 return data;

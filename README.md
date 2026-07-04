@@ -18,6 +18,7 @@
 - /t2_passport_c задача 2 из параграфа 6, на языке Си
 - /t3_bbox_cpp задача 3 из параграфа 6, на с++
 - /t3_bbox_c задача 3 из параграфа 6, на Си
+- /t4_filter_cpp задача 4 из параграфа 6, на с++
 - /dialog_logs: выгрузка диалогов с DeepSeek через агента OpenCode
 - /common - папка с файлами обшего назначения
 - /notes - заметки по темам; внутренний dialog_logs - логи бесед с агентом по темам
@@ -48,7 +49,7 @@ cl -c /Fo:t2_passport_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsaniti
 link /DEBUG /OUT:t2_passport_c\main.exe t2_passport_c\main.obj
 ```
 
-**t3_bbox_cpp\main.cpp и t3_bbox_c\main.exe**
+**t3_bbox_cpp\main.cpp и t3_bbox_c\main.с**
 ```
 cl -c /Fo:t3_bbox_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t3_bbox_cpp\main.cpp
 link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj 
@@ -57,21 +58,33 @@ cl -c /Fo:t3_bbox_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=a
 link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj 
 ```
 
+**t4_filter_cpp\main.cpp**
+```
+cl -c /Fo:t4_filter_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t4_filter_cpp\main.cpp
+link /DEBUG /OUT:t4_filter_cpp\main.exe t4_filter_cpp\main.obj
+
+```
+
 ### Как прогнать тесты
 #### Через .bat файлы
-**t1_dist_matrix\main.exe и t1_dist_matrix_c\main.exe**
+**t1_dist_matrix\main.cpp и t1_dist_matrix_c\main.c**
 ```bash
 t1_build_and_test.bat
 ```
 
-**t2_passport_cpp\main.exe и t1_passport_c\main.exe**
+**t2_passport_cpp\main.cpp и t1_passport_c\main.c**
 ```bash
 t2_build_and_test.bat
 ```
 
-**t3_bbox_cpp\main.exe и t3_bbox_c\main.exe**
+**t3_bbox_cpp\main.cpp и t3_bbox_c\main.c**
 ```bash
 t3_build_and_test.bat
+```
+
+**t4_filter_cpp\main.cpp**
+```bash
+t4_build_and_test.bat
 ```
 
 При успешном проходе тестов в будет выводиться:
