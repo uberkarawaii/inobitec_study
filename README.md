@@ -20,6 +20,7 @@
 - /t3_bbox_cpp задача 3 из параграфа 6, на с++
 - /t3_bbox_c задача 3 из параграфа 6, на Си
 - /t4_filter_cpp задача 4 из параграфа 6, на с++
+- /t4_filter_c задача 4 из параграфа 6, на Си
 - /dialog_logs: выгрузка диалогов с DeepSeek через агента OpenCode
 - /common - папка с файлами обшего назначения
 - /notes - заметки по темам; внутренний dialog_logs - логи бесед с агентом по темам
@@ -59,11 +60,13 @@ cl -c /Fo:t3_bbox_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=a
 link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj 
 ```
 
-**t4_filter_cpp\main.cpp**
+**t4_filter_cpp\main.cpp t4_filter_c\main.c**
 ```
 cl -c /Fo:t4_filter_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t4_filter_cpp\main.cpp
 link /DEBUG /OUT:t4_filter_cpp\main.exe t4_filter_cpp\main.obj
 
+cl -c /Fo:t4_filter_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t4_filter_c\main.c
+link /DEBUG /OUT:t4_filter_c\main.exe t4_filter_c\main.obj
 ```
 
 ### Как прогнать тесты
@@ -83,7 +86,7 @@ t2_build_and_test.bat
 t3_build_and_test.bat
 ```
 
-**t4_filter_cpp\main.cpp**
+**t4_filter_cpp\main.cpp и t4_filter_c\main.c**
 ```bash
 t4_build_and_test.bat
 ```

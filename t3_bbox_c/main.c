@@ -19,15 +19,20 @@ int main() {
     int len;
     char* s = NULL;
 
-    // массив точек
+    // массив точек и проверка выделения памяти
     int points_size = 0, points_capacity = 1;
     struct Point* points = malloc(sizeof(struct Point));
+    if (!points) {
+        fprintf(stderr, "Не удалось выделить память\n");
+        return io_fail;
+    }
+
     // центроид
     struct Point center = {.x = 0, .y = 0, .z = 0};
 
     // счётчик для вывода ошибок
     int i = 0;
-    while (!feof(stdin)) {
+    while (1) {
         // текущая строка
         s = get_string(&len);
         ++i;
@@ -37,6 +42,12 @@ int main() {
             free(s);
             s = NULL;
             return io_fail;
+        }
+
+        if (len == -1) {
+            free(s);
+            s = NULL;
+            break;
         }
 
         // обрезка пробелов по краям
@@ -89,7 +100,7 @@ int main() {
             if (!tmp) {
                 fprintf(stderr, "Ошибка при выделении памяти\n");
                 free(s);
-                exit(EXIT_FAILURE);
+                exit(io_fail);
             }
             points = tmp;
         }

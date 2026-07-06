@@ -17,7 +17,7 @@ struct Point {
 };
 
 int main(int argc, char* argv[]) {
-    // проверки: что был введён один аргумент - радиус 
+    // проверки: что был введён один аргумент - радиус
     if (argc < 2) {
         std::cerr << "Ожидался радиус; его значение не было введено\n";
         return exit_code::usage;
@@ -35,6 +35,13 @@ int main(int argc, char* argv[]) {
     auto [ptr, ec] = std::from_chars(r_line.data(), r_line.data() + r_line.size(), R);
     if (ec != std::errc() || ptr != r_line.data() + r_line.size()) {
         std::cerr << "Радиус должен быть числом. Получено: " << r_line << "\n";
+        return exit_code::usage;
+    }
+
+    // deepseek посоветовал сделать провеку на конечность числа
+    // т.к. fromchars читает nan и бесконечность без проблем, как число
+    if (!std::isfinite(R)) {
+        std::cerr << "Радиус должен быть конечным числом. Получено: " << r_line << "\n";
         return exit_code::usage;
     }
 
