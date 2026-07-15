@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
     // размер и вместимость динамич. массива
     int sz = 0, capacity = 1;
     // выделение памяти под массив и проверка того, что удалось её выделить
-    struct Point* points = malloc(sizeof(points*));
+    struct Point* points = malloc(sizeof(*points));
     if (!points) {
         fprintf(stderr, "Не удалось выделить память\n");
         return io_fail;
@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
                 free(s);
                 s = NULL;
                 free(points);
-                return usage;
+                return data;
             }
 
             // пропуск пустых символов
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
         // как только размер == вместимость, надо расширить вместимость
         if (sz >= capacity) {
             capacity *= 2;
-            struct Point* p = realloc(points, capacity * sizeof(points*));
+            struct Point* p = realloc(points, capacity * sizeof(*p));
             if (!p) {
                 fprintf(stderr, "Ошибка при выделении памяти\n");
                 free(s);

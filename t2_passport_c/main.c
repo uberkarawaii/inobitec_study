@@ -1,7 +1,8 @@
 #include <ctype.h>
+#include <locale.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "..\common\exit_codes.h"
 #include "..\common\string_utils.h"
@@ -17,7 +18,6 @@ const char* get_vertex_name(int N) {
 
 int main() {
     setlocale(LC_ALL, "Russian_Russia.1251");
-
     // считывание строки полностью
     int len_name;
     char* s = get_string(&len_name);
@@ -43,7 +43,7 @@ int main() {
     char* s_num = get_string(&len_num);
     // также, если длина = -1, то это полностью пуста€ строка
     if (len_num == -1) {
-	free(s);
+        free(s);
         free(s_num);
         fprintf(stderr, "EOF вместо числа вершин\n");
         return no_input;
@@ -52,7 +52,7 @@ int main() {
     char* clean_s_num = trim_string(s_num, &len_num);
     // если после очистки от пробелов длина = 0, то получаетс€ вс€ строка была из пробелов
     if (len_num == 0) {
-	free(s);
+        free(s);
         free(s_num);
         fprintf(stderr, "ѕустой ввод вместо кол-ва вершин\n");
         return data;
@@ -63,15 +63,15 @@ int main() {
     // если этот указатель на что-то указывает (а пробелов к этому моменту уже нет)
     // то значит в строке есть недопустимые дл€ целого числа символы
     if (*end_ptr != 0) {
-        free(s);
-	free(s_num);
         fprintf(stderr, " ол-во вершин должно быть целым числом. ѕолучено: %s\n", clean_s_num);
+        free(s);
+        free(s_num);
         return data;
     }
     // число вершин не м.б. менее 1, провер€ем это
     if (N < 1) {
         free(s);
-	free(s_num);
+        free(s_num);
         fprintf(stderr, " ол-во вершин не может быть менее 1. ѕолучено: %ld\n", N);
         return usage;
     }

@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
             // это означает что аргументов не 3 шт.
             if (j != 2 && ptr1 == end_ptr) {
                 std::cerr << "—трока " << i << ". ќжидалось X Y Z, получено: " << temp << "\n";
-                return exit_code::usage;
+                return exit_code::data;
             }
 
             // сдвиг переднего указател€ пока между числами пробелы

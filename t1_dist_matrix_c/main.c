@@ -50,9 +50,9 @@ int main(void) {
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
             if (i == j)
-                printf("%8.3f ", 0.0);
+                printf("%8.3f", 0.0);
             else
-                printf("%8.3f ", sqrt(pow(x[i] - x[j], 2) + pow(y[i] - y[j], 2)));
+                printf("%8.3f", sqrt(pow(x[i] - x[j], 2) + pow(y[i] - y[j], 2)));
         }
         printf("\n");
     }
