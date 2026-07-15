@@ -1,23 +1,15 @@
-#include <charconv>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <print>
 #include <string>
-#include <system_error>
 #include <vector>
 
 #include "..\common\exit_codes.hpp"
+#include "..\common\geometry.hpp"
 #include "..\common\string_utils.hpp"
 
-// структура дл€ точек
-struct Point {
-    double x;
-    double y;
-    double z;
-};
-
-int main(void) {
+int main() {
     setlocale(LC_ALL, "Russian_Russia.1251");
     // считывание начальных x y z в массив; сначала строка, потом число
     // при возникновении ошибки вывод с номером битой строки
@@ -35,36 +27,27 @@ int main(void) {
         }
 
         // абсолютно пустые строки просто пропускаютс€
-        trim_str(temp);
-        if (temp.empty())
+        if (is_empty(temp))
             continue;
 
-        // чтение double чисел из строки
-        std::vector<double> dots(3);
-        const char* ptr_start = temp.data();
-        const char* ptr_end = temp.data() + temp.size();
+        // чтение double чисел из строки функцией parse_point
+        Point p{};
+        int ex_code = parse_point(temp, p);
 
-        for (int j = 0; j < 3; ++j) {
-            const auto [ptr, ec] = std::from_chars(ptr_start, ptr_end, dots[j]);
-            // если указатель на конец, а 3 числа не было прочитано, то это неверный ввод какой-то точки, нет полного X
-            // Y Z
-            if (ptr == ptr_end && j != 2) {
-                std::cerr << "—трока " << i << ". ќжидались координаты X Y Z. ѕолучено: " << temp << "\n";
-                return exit_code::data;
-            }
-            // если ec с ошибкой или распознавание слетело не на пробеле и не на /0 в конце, то это ошибка в данных
-            if (ec != std::errc{} || (*ptr != ' ' && *ptr != '\0')) {
-                std::cerr << "—трока " << i << ". Ќечисловые данные: " << temp << "\n";
-                return exit_code::data;
-            }
-            // сдвиг начального указател€ на следующий не пробельный символ
-            ptr_start = ptr;
-            while (ptr_start != ptr_end && *ptr_start == ' ')
-                ++ptr_start;
+        // мало аргументов
+        if (ex_code == 1) {
+            std::cerr << "—трока " << i << ". ќжидались координаты X Y Z. ѕолучено: " << temp << "\n";
+            return exit_code::data;
         }
 
-        // если всЄ распознано нормально, можно сложить в общий массив
-        points.push_back({dots[0], dots[1], dots[2]});
+        // нечисловые данные в строке
+        if (ex_code == 2) {
+            std::cerr << "—трока " << i << ". Ќечисловые данные: " << temp << "\n";
+            return exit_code::data;
+        }
+
+        // если дошли до этого момента, значит ex_code == 0 и можно сложить точку в массив
+        points.push_back(p);
     }
 
     // если по итогу чтени€ массив точек пустой, то входных данных не было
@@ -75,10 +58,12 @@ int main(void) {
 
     // поиск минимальных и максимальных x y z. и суммы точек дл€ среднего арифм. - центроида
     // точки min и max, проинициализированные на + и - границы double.
-    double minimum = std::numeric_limits<double>::lowest();
-    double maximum = std::numeric_limits<double>::max();
-    Point max_border{minimum, minimum, minimum};
-    Point min_border{maximum, maximum, maximum};
+    Point max_border{std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest(),
+                     std::numeric_limits<double>::lowest()};
+
+    Point min_border{std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
+                     std::numeric_limits<double>::max()};
+
     // и точка центроида
     Point center{};
 

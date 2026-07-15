@@ -188,8 +188,8 @@ echo 2 3 | t4_filter_c\main.exe 23 > nul 2> build\err.txt
 if not errorlevel 65 echo FAIL: too few coords: wrong code & exit /b 1
 if errorlevel 66 echo FAIL: too few coords: wrong code & exit /b 1
 %DEFtoOEM%
-findstr /C:"Строка 1. Ожидалось X Y Z, получено: 2 3" build\err.txt > nul
-if errorlevel 1 echo FAIL:  too few coords: wrong info in stderr & %OEMtoDEF% & exit /b 1
+findstr /C:"Строка 1. Ожидалось X Y Z, получено: 2 3 " build\err.txt > nul
+if errorlevel 1 echo FAIL: too few coords: wrong info in stderr & %OEMtoDEF% & exit /b 1
 
 :: отсутствие аргументов
 type nul | t4_filter_c\main.exe 23 > nul 2> build\err.txt

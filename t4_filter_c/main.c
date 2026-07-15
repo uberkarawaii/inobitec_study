@@ -1,17 +1,10 @@
-#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "..\common\exit_codes.h"
+#include "..\common\geometry.h"
 #include "..\common\string_utils.h"
-
-struct Point {
-    double x;
-    double y;
-    double z;
-};
 
 int main(int argc, char* argv[]) {
     // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
@@ -60,78 +53,66 @@ int main(int argc, char* argv[]) {
     while (1) {
         s = get_string(&len);
         ++i;
-        // проверка ошибки в IO
-        if (len == -1 && ferror(stdin)) {
-            fprintf(stderr, "Ошибка в IO\n");
-            free(s);
-            s = NULL;
-            return io_fail;
-        }
 
-        // проверка конца ввода
+        // сразу после прочтения проверка на проблему с IO или конец вход. потока
         if (len == -1) {
-            free(s);
-            break;
+            if (ferror(stdin)) {
+                fprintf(stderr, "Ошибка в IO\n");
+                free(s);
+                s = NULL;
+                return io_fail;
+            }
+            // если len == -1 без проблем с потоком ошибок, то был достигнут EOF
+            else {
+                free(s);
+                s = NULL;
+                break;
+            }
         }
 
-        // очистка от пробелов по краям, проверка на пустоту
-        char* clean_s = trim_string(s, &len);
-        if (len == 0) {
+        // проверка на пустоту; если пусто, пропускаем
+        if (is_empty(s)) {
             free(s);
             s = NULL;
             continue;
         }
 
-        // распознвание чисел в строке
-        int j = 0;
-        double point[3];
-        char* start = clean_s;
-        char* end;
+        // распознвание чисел в строке через parse_point
+        struct Point p;
+        int ex_code = parse_point(s, &p);
 
-        while (j < 3) {
-
-            point[j] = strtod(start, &end);
-
-            // если остановка не на пробеле и не в конце, то в строке есть нечисловой символ
-            if ((*end != ' ' && *end != '\0')) {
-                fprintf(stderr, "Строка %d. Нечисловое значение: %s\n", i, clean_s);
-                free(s);
-                s = NULL;
-                free(points);
-                return data;
-            }
-
-            // если указатель остановки уже на конце, а при этом аргументов не 3шт, то их меньше нужного
-            if (*end == '\0' && j != 2) {
-                fprintf(stderr, "Строка %d. Ожидалось X Y Z, получено: %s\n", i, clean_s);
-                free(s);
-                s = NULL;
-                free(points);
-                return data;
-            }
-
-            // пропуск пустых символов
-            start = end;
-            while (start != clean_s + len && *start == ' ')
-                ++start;
-            ++j;
+        // если мало аргументов
+        if (ex_code == 1) {
+            fprintf(stderr, "Строка %d. Ожидалось X Y Z, получено: %s\n", i, s);
+            free(s);
+            s = NULL;
+            free(points);
+            return data;
+        }
+        // если значение нечисловое
+        if (ex_code == 2) {
+            fprintf(stderr, "Строка %d. Нечисловое значение: %s\n", i, s);
+            free(s);
+            s = NULL;
+            free(points);
+            return data;
         }
 
-        // после удачного распознавания можно положить значения в массив точек
-        points[sz] = (struct Point){.x = point[0], .y = point[1], .z = point[2]};
+        // если дошли сюда, то код возврата из parse_points == 0 - распознавание удачно
+        points[sz] = p;
         ++sz;
 
         // как только размер == вместимость, надо расширить вместимость
         if (sz >= capacity) {
             capacity *= 2;
-            struct Point* p = realloc(points, capacity * sizeof(*p));
-            if (!p) {
+            struct Point* temp_points = realloc(points, capacity * sizeof(*temp_points));
+            if (!temp_points) {
                 fprintf(stderr, "Ошибка при выделении памяти\n");
                 free(s);
                 free(points);
                 exit(io_fail);
             }
-            points = p;
+            points = temp_points;
         }
 
         // освободить s т.к. в неё положится новая строка
@@ -142,6 +123,8 @@ int main(int argc, char* argv[]) {
     // если после чтения массив точек пуст, то значения точек не были введены
     if (sz == 0) {
         fprintf(stderr, "Точки отсутствуют\n");
+        free(s);
+        free(points);
         return no_input;
     }
 

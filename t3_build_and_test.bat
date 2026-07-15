@@ -147,7 +147,7 @@ echo 2 3 | t3_bbox_c\main.exe > nul 2> build\err.txt
 if not errorlevel 65 echo FAIL: wrong code too_few_args_case & exit /b 1
 if errorlevel 66 echo FAIL: wrong code too_few_args_case & exit /b 1
 %DEFtoOEM%
-findstr /C:"Строка 1. Ожидались координаты X Y Z. Получено: 2 3" build\err.txt > nul
+findstr /C:"Строка 1. Ожидались координаты X Y Z. Получено: 2 3 " build\err.txt > nul
 if errorlevel 1 echo FAIL: too_few_args_case: not found info in cerr & %OEMtoDEF% & exit /b 1
 
 :: если всё удачно, пересохранить err.txt в 1251

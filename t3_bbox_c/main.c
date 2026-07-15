@@ -1,18 +1,11 @@
-#include <ctype.h>
 #include <locale.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "..\common\exit_codes.h"
+#include "..\common\geometry.h"
 #include "..\common\string_utils.h"
-
-struct Point {
-    double x;
-    double y;
-    double z;
-};
 
 int main() {
 
@@ -36,74 +29,70 @@ int main() {
         // текуща€ строка
         s = get_string(&len);
         ++i;
+
         // сразу после прочтени€ проверка на проблему с IO
-        if (len == -1 && ferror(stdin)) {
-            fprintf(stderr, "ќшибка в IO\n");
-            free(s);
-            s = NULL;
-            return io_fail;
-        }
-
         if (len == -1) {
-            free(s);
-            s = NULL;
-            break;
+            if (ferror(stdin)) {
+                fprintf(stderr, "ќшибка в IO\n");
+                free(s);
+                s = NULL;
+                return io_fail;
+            }
+            // если len == -1 без проблем с потоком ошибок, то был достигнут EOF
+            else {
+                free(s);
+                s = NULL;
+                break;
+            }
         }
 
-        // обрезка пробелов по кра€м
-        char* clean_s = trim_string(s, &len);
-        // если после обрезки строка пуста, пропуск, идЄм к след. строке
-        if (strlen(clean_s) == 0) {
+        // проверка на пустоту. если пусто, пропуск
+        if (is_empty(s)) {
             free(s);
             s = NULL;
             continue;
         }
 
-        // нахождение символов пробелов слева и справа в очищенной строке. если они не совпадают,
-        // значит между ними есть три элемента, которые можно попробовать распознать
-        // иначе - там не достаточно элементов
-        if (strchr(clean_s, ' ') == strrchr(clean_s, ' ')) {
-            fprintf(stderr, "—трока %d. ќжидались координаты X Y Z. ѕолучено: %s\n", i, clean_s);
+        // распознавание X Y Z через parse_point
+        struct Point p;
+        int ex_code = parse_point(s, &p);
+        // при ненулевом коде ошибки - его обработка
+        // недостаточно данных
+        if (ex_code == 1) {
+            fprintf(stderr, "—трока %d. ќжидались координаты X Y Z. ѕолучено: %s\n", i, s);
             free(s);
             s = NULL;
             return data;
         }
-        // распознавание чисел в очищенной строке
-        char* start_ptr = clean_s;
-        char* end_ptr;
-        double d[3];
-        int j = 0;
-        while (j < 3) {
-            d[j] = strtod(start_ptr, &end_ptr);
-            if (end_ptr == start_ptr || (*end_ptr != ' ' && *end_ptr != '\0')) {
-                fprintf(stderr, "—трока %d. Ќечисловые данные: %s\n", i, clean_s);
-                free(s);
-                s = NULL;
-                return data;
-            }
-            start_ptr = end_ptr;
-            ++j;
+        // нечисловые данные
+        if (ex_code == 2) {
+            fprintf(stderr, "—трока %d. Ќечисловые данные: %s\n", i, s);
+            free(s);
+            s = NULL;
+            return data;
         }
-
-        // суммаирование в центроид
-        center.x += d[0];
-        center.y += d[1];
-        center.z += d[2];
-
-        // текущие x y z кладутс€ в общий массив
-        points[points_size] = (struct Point){.x = d[0], .y = d[1], .z = d[2]};
+        // если дошли до сюда, код выхода == 0 и распознавание произошло
+        points[points_size] = p;
         points_size++;
+
         // если размер >= вместимость то надо увеличить вместимость
         if (points_size >= points_capacity) {
             points_capacity *= 2;
             struct Point* tmp = realloc(points, points_capacity * sizeof(*tmp));
+            // если не удалось выделить пам€ть
             if (!tmp) {
                 fprintf(stderr, "ќшибка при выделении пам€ти\n");
                 free(s);
+                free(points);
                 exit(io_fail);
             }
             points = tmp;
         }
+
+        // суммирование точек в центроид
+        center.x += p.x;
+        center.y += p.y;
+        center.z += p.z;
 
         // освобождение s т.к. в неЄ положитс€ нова€ строка
         free(s);
@@ -114,6 +103,7 @@ int main() {
     if (points_size == 0) {
         fprintf(stderr, "¬ходные данные отсутствуют\n");
         free(s);
+        free(points);
         return no_input;
     }
 
