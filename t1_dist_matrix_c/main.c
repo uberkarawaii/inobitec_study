@@ -1,13 +1,14 @@
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "../common/exit_codes.h"
+#include "../common/geometry.h"
 
 #define MAX_SIZE 20
 #define MIN_SIZE 3
-#define IRINA_PI 3.14159265358979323846
 
 int main(void) {
     char lineN[32];
@@ -41,10 +42,10 @@ int main(void) {
     }
 
     // вершины. Х и У это косинусы и синусы от углов
-    double x[MAX_SIZE], y[MAX_SIZE];
+    struct Point points[MAX_SIZE];
     for (int i = 0; i < N; ++i) {
-        x[i] = cos(i * 2 * IRINA_PI / N);
-        y[i] = sin(i * 2 * IRINA_PI / N);
+        points[i].x = cos(i * 2 * M_PI / N);
+        points[i].y = sin(i * 2 * M_PI / N);
     }
 
     for (int i = 0; i < N; ++i) {
@@ -52,7 +53,7 @@ int main(void) {
             if (i == j)
                 printf("%8.3f", 0.0);
             else
-                printf("%8.3f", sqrt(pow(x[i] - x[j], 2) + pow(y[i] - y[j], 2)));
+                printf("%8.3f", sqrt(pow(points[i].x - points[j].x, 2) + pow(points[i].y - points[j].y, 2)));
         }
         printf("\n");
     }

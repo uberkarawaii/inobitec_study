@@ -18,6 +18,9 @@ if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
 :: link /DEBUG /OUT:t1_dist_matrix\ref.exe t1_dist_matrix\ref.obj
 :: if errorlevel 1 echo FAIL: ref_cpp_link_error & exit /b 1
 
+:: папка build если её ещё не было
+if not exist build mkdir build
+
 echo C++ TESTS
 :: 3. Acceptance-тесты                                             	
 echo 3 | t1_dist_matrix\main.exe > build\main_out.txt

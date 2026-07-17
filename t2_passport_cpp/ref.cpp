@@ -1,6 +1,7 @@
 #include <charconv>
 #include <iostream>
 #include <string>
+#include <array>
 #include <string_view>
 
 #include "..\common\string_utils.hpp"
@@ -10,16 +11,16 @@ std::string_view get_vertex_name(int N) {
     int r10 = N % 10;
     int r100 = N % 100;
     if (r100 >= 11 && r100 <= 14)
-        return "вершин";
+        return 2;
     switch (r10) {
     case 1:
-        return "вершина";
+        return 0;
     case 2:
     case 3:
     case 4:
-        return "вершины";
+        return 1;
     default:
-        return "вершин";
+        return 2;
     }
 }
 
@@ -35,8 +36,10 @@ int main() {
     trim_str(vertexes);
     int N;
     std::from_chars(vertexes.data(), vertexes.data() + vertexes.size(), N);
+    
+    std::array words {"вершина", "вершины", "вершин"};
 
-    std::cout << "Фигура «" << name << "»: " << N << " " << get_vertex_name(N) << ".\n";
+    std::cout << "Фигура «" << name << "»: " << N << " " << words[get_vertex_name(N)] << ".\n";
 
     return 0;
 }

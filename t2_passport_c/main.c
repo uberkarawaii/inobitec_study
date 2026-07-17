@@ -2,18 +2,17 @@
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "..\common\exit_codes.h"
 #include "..\common\string_utils.h"
 
-const char* get_vertex_name(int N) {
+int get_vertex_name(int N) {
     if ((N / 10) % 10 != 1 && N % 10 == 1)
-        return "вершина";
+        return 0;
     else if ((N / 10) % 10 != 1 && N % 10 >= 2 && N % 10 <= 4)
-        return "вершины";
+        return 1;
     else
-        return "вершин";
+        return 2;
 }
 
 int main() {
@@ -75,10 +74,10 @@ int main() {
         fprintf(stderr, "Кол-во вершин не может быть менее 1. Получено: %ld\n", N);
         return usage;
     }
-    // слово вершины со склонением
-    const char* vertex_name_ptr = get_vertex_name(N);
+    // массив словоформ со склонением
+    const char* words[] = {"вершина", "вершины", "вершин"};
     // форматный вывод со склонением
-    printf("Фигура «%s»: %ld %s.\n", clean_s, N, vertex_name_ptr);
+    printf("Фигура «%s»: %ld %s.\n", clean_s, N, words[get_vertex_name(N)]);
     free(s);
     free(s_num);
     return 0;

@@ -12,6 +12,9 @@ if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
 link /DEBUG /OUT:t2_passport_cpp\main.exe t2_passport_cpp\main.obj
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
 
+:: папка build если её ещё не было
+if not exist build mkdir build
+
 :: cl -c /Fo:t2_passport_cpp\ref.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t2_passport_cpp\ref.cpp
 :: if errorlevel 1 echo FAIL: ref_cpp_compilation_error & exit /b 1
 :: link /DEBUG /OUT:t2_passport_cpp\ref.exe t2_passport_cpp\ref.obj
@@ -69,7 +72,6 @@ if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
 :: if errorlevel 1 echo FAIL: ref_c_compilation_error & exit /b 1
 :: link /DEBUG /OUT:t2_passport_c\ref.exe t2_passport_c\ref.obj
 :: if errorlevel 1 echo FAIL: ref_c_link_error & exit /b 1
-
 
 :: тесты
 echo C TESTS

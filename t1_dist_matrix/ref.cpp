@@ -7,17 +7,11 @@
 int main() {
     int N;
     std::cin >> N;
-
-    std::vector<double> xs(N), ys(N);
-    for (int i = 0; i < N; ++i) {
-        double angle = 2.0 * std::numbers::pi * i / N;
-        xs[i] = std::cos(angle);
-        ys[i] = std::sin(angle);
-    }
-
+    
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            double d = (i == j) ? 0.0 : std::hypot(xs[i] - xs[j], ys[i] - ys[j]);
+            int k = std::abs(i - j);
+            double d = (k == 0) ? 0.0 : 2.0 * std::sin(std::numbers::pi * k / N);
             std::print("{:8.3f}", d);
         }
         std::println();

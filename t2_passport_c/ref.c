@@ -6,25 +6,13 @@
 #include "..\common\string_utils.h"
 
 // метод от deepseek для сравнения
-const char* get_vertex_name(int N) {
+int get_vertex_name(int N) {
     int r10 = N % 10;
     int r100 = N % 100;
     if (r100 >= 11 && r100 <= 14)
-        return "вершин";
-
-    static const char* kForms[] = {
-        "вершин",  // 0
-        "вершина", // 1
-        "вершины", // 2
-        "вершины", // 3
-        "вершины", // 4
-        "вершин",  // 5
-        "вершин",  // 6
-        "вершин",  // 7
-        "вершин",  // 8
-        "вершин"   // 9
-    };
-    return kForms[r10];
+        r10 = 0;
+              
+    return r10;
 }
 
 int main() {
@@ -40,9 +28,24 @@ int main() {
     int N = strtol(ptr_N1, &end_ptr, 10);
 
     const char* vertex_name = get_vertex_name(N);
-    printf("Фигура «%s»: %ld %s.\n", name, N, vertex_name);
+
+    static const char* kForms[] = {
+        "вершин",  // 0
+        "вершина", // 1
+        "вершины", // 2
+        "вершины", // 3
+        "вершины", // 4
+        "вершин",  // 5
+        "вершин",  // 6
+        "вершин",  // 7
+        "вершин",  // 8
+        "вершин"   // 9
+    };
+
+    printf("Фигура «%s»: %ld %s.\n", name, N, kForms[get_vertex_name(N)]);
 
     free(name_ptr);
     free(ptr_N0);
     return 0;
 }
+

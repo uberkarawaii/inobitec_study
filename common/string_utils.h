@@ -3,6 +3,9 @@
 
 #include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "geometry.h"
 
 // static - локальная копия для файлов, где будет ф-ция
 // inline - прописать функцию в файле
@@ -36,33 +39,37 @@ static inline char* get_string(int* len) {
 }
 
 // проверка на пустоту
-static inline int is_empty(const char * s){
-while (isspace((unsigned char)*s)) ++s;
-return *s == '\0';
+static inline int is_empty(const char* s) {
+    while (isspace((unsigned char)*s))
+        ++s;
+    return *s == '\0';
 }
 
 // распознавание точки
 // 0 - точка распознана
-// 1 - мало координат 
+// 1 - мало координат
 // 2 - нечисловые данные
-static inline int parse_point(char * str, struct Point * p){
+static inline int parse_point(char* str, struct Point* p) {
 
-        char* start_ptr = str;
-        char* end_ptr;
-        double d[3];
-        int j = 0;
-        while (j < 3) {
-	    // срез пробелов в начале
-	    while (isspace((unsigned char)* start_ptr)) ++start_ptr;
-	    // если уже конец на указателе начала - хотя start_ptr должен остновиться на числовом символе минимум 3 раза
-	    // - то это значит, что чисел меньше трёх
-	    if (*start_ptr == '\0') return 1;
-	    d[j] = strtod(start_ptr, &end_ptr);
-	    // распознавание не началось или остановилось на не пробельном / не конечном символе
-            if (!isspace((unsigned char) * end_ptr) && *end_ptr != '\0') return 2;
-            start_ptr = end_ptr;
-            ++j;
-        }
+    char* start_ptr = str;
+    char* end_ptr;
+    double d[3];
+    int j = 0;
+    while (j < 3) {
+        // срез пробелов в начале
+        while (isspace((unsigned char)*start_ptr))
+            ++start_ptr;
+        // если уже конец на указателе начала - хотя start_ptr должен остновиться на числовом символе минимум 3 раза
+        // - то это значит, что чисел меньше трёх
+        if (*start_ptr == '\0')
+            return 1;
+        d[j] = strtod(start_ptr, &end_ptr);
+        // распознавание не началось или остановилось на не пробельном / не конечном символе
+        if (!isspace((unsigned char)*end_ptr) && *end_ptr != '\0')
+            return 2;
+        start_ptr = end_ptr;
+        ++j;
+    }
 
     *p = (struct Point){.x = d[0], .y = d[1], .z = d[2]};
 
@@ -70,36 +77,19 @@ static inline int parse_point(char * str, struct Point * p){
 }
 
 // срез пробелов по бокам
-/*static inline char* trim_string(char* s, int* len) {
-    // срезать пробелы в начале
-    int i = 0;
-    // пока i не за границей и текущий символ - пробельный
-    while (i < *len && isspace((unsigned char)s[i])) {
-        // если след. не пробельный или конец строки - можно сдвинуть начало строки и изменить длину
-        if (!isspace((unsigned char)s[i + 1]) || s[i + 1] == '\0') {
-            s = s + i + 1;
-            *len = *len - i - 1;
-            break;
-        }
-        ++i;
+static inline char* trim_string(char* s, int* len) {
+    // пропуск начальных пробелов
+    while (*len > 0 && isspace((unsigned char)*s)) {
+        ++s;
+        --(*len);
     }
-
-    // строка пустая, можно её уже вернуть
-    if (*len == 0)
-        return s;
-
-    // и пробелы с конца
-    i = *len - 1;
-    while (i > 0 && isspace((unsigned char)s[i])) {
-        if (!isspace((unsigned char)s[i - 1])) {
-            s[i] = '\0';
-            *len = *len - (*len - i);
-            break;
-        }
-        --i;
+    // конец строки
+    while (*len > 0 && isspace((unsigned char)s[*len - 1])) {
+        --(*len);
+        s[*len] = '\0';
     }
 
     return s;
-}*/
+}
 
 #endif

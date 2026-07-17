@@ -1,3 +1,4 @@
+#include <array>
 #include <charconv>
 #include <iostream>
 #include <string>
@@ -9,13 +10,13 @@
 
 // форма слова "вершина" со склонением.
 // string_view т.к. это уже готовый объект, можно отдаль просто указатель + длину, а не копию
-std::string_view get_vertex_name(int N) {
+int get_vertex_name(int N) {
     if (N % 10 == 1 && N % 100 / 10 != 1)
-        return "вершина";
+        return 0;
     else if (N % 10 >= 2 && N % 10 <= 4 && N % 100 / 10 != 1)
-        return "вершины";
+        return 1;
     else
-        return "вершин";
+        return 2;
 }
 
 int main() {
@@ -58,10 +59,10 @@ int main() {
         std::cerr << "Кол-во вершин должно быть положительным. Получено: " << V << "\n";
         return exit_code::usage;
     }
+    // массив словоформ . через get_vertex_name(V) будет индекс для верной формы из этого массива
+    std::array words{"вершина", "вершины", "вершин"};
 
-    std::string_view vertex_name = get_vertex_name(V);
-
-    std::cout << "Фигура «" << name << "»: " << V << " " << vertex_name << ".\n";
+    std::cout << "Фигура «" << name << "»: " << V << " " << words[get_vertex_name(V)] << ".\n";
 
     return 0;
 }

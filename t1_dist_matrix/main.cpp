@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../common/exit_codes.hpp"
+#include "../common/geometry.hpp"
 
 int main() {
     std::string lineN;
@@ -36,13 +37,12 @@ int main() {
         return exit_code::usage;
     }
 
-    std::vector<double> x(N);
-    std::vector<double> y(N);
+    std::vector<Point> points(N);
     double perm_angle;
     for (int i = 0; i < N; ++i) {
         perm_angle = 2 * std::numbers::pi * i / N;
-        x[i] = std::cos(perm_angle);
-        y[i] = std::sin(perm_angle);
+        points[i].x = std::cos(perm_angle);
+        points[i].y = std::sin(perm_angle);
     }
 
     for (int i = 0; i < N; ++i) {
@@ -50,7 +50,7 @@ int main() {
             if (i == j)
                 std::print("{:8.3f}", 0.0);
             else
-                std::print("{:8.3f}", std::hypot(x[i] - x[j], y[i] - y[j]));
+                std::print("{:8.3f}", std::hypot(points[i].x - points[j].x, points[i].y - points[j].y));
         }
         std::print("\n");
     }
