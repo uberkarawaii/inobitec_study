@@ -32,11 +32,7 @@ std::expected<double, int> get_radius(std::string_view r_line) {
     return R;
 }
 
-// отдаёт вектор с точками
-// 1 - мало аргументов
-// 2 - нечисловое значение
-// 3 - сбой в потоке IO
-// 4 - массив точек пустой
+// отдаёт вектор с точками; при ошибке печатает сообщение и возвращает его код
 std::expected<std::vector<Point>, int> get_points() {
     std::vector<Point> points;
     // строка для считывания
