@@ -6,9 +6,84 @@
 #include "..\common\geometry.h"
 #include "..\common\string_utils.h"
 
-int main(int argc, char* argv[]) {
-    // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
+int get_points(double r) {
+    // счётчик для вывода ошибок и длина текущей строки
+    int i = 0, len = 0;
+    // счётчик удачно прочитанных строк
+    int ctr = 0;
+    // указатель на динамич. массив в последующем
+    char* s;
 
+    // считывание строк с точками
+    while (1) {
+        s = get_string(&len);
+        ++i;
+
+        // сразу после прочтения проверка на проблему с IO или конец вход. потока
+        if (len == -1) {
+            free(s);
+            s = NULL;
+
+            if (ferror(stdin)) {
+                fprintf(stderr, "Ошибка в IO\n");
+                return io_fail;
+            }
+            // если len == -1 без проблем с потоком ошибок, то был достигнут EOF
+            else
+                break;
+        }
+
+        // проверка на пустоту; если пусто, пропускаем
+        if (is_empty(s)) {
+            free(s);
+            s = NULL;
+            continue;
+        }
+
+        // распознвание чисел в строке через parse_point
+        struct Point p;
+        int ex_code = parse_point(s, &p);
+
+        if (ex_code != 0) {
+            // если мало аргументов
+            if (ex_code == 1)
+                fprintf(stderr, "Строка %d. Ожидалось X Y Z, получено: %s\n", i, s);
+            // если значение нечисловое
+            else
+                fprintf(stderr, "Строка %d. Нечисловое значение: %s\n", i, s);
+            free(s);
+            s = NULL;
+            return data;
+        }
+
+        // если дошли сюда, то код возврата из parse_points == 0 - распознавание удачно
+        // + 1 прочитанная точка
+        ++ctr;
+
+        // вывод точек, у которых расст. до центра < r
+        if (sqrt(p.x * p.x + p.y * p.y + p.z * p.z) < r)
+            printf("%.3f %.3f %.3f\n", p.x, p.y, p.z);
+
+        // освободить s т.к. в неё положится новая строка
+        free(s);
+        s = NULL;
+    }
+
+    if (ctr == 0) {
+        fprintf(stderr, "Точки отсутствуют\n");
+        free(s);
+        return no_input;
+    }
+
+    return 0;
+}
+
+int main(int argc, char* argv[]) {
+    // для отложенного вывода буфера stdout
+    // освобождение произойдёт в момент return
+    setvbuf(stdout, NULL, _IOFBF, 4096);
+
+    // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
     if (argc < 2) {
         fprintf(stderr, "Ожидался радиус; его значение не было введено\n");
         return usage;
@@ -36,104 +111,11 @@ int main(int argc, char* argv[]) {
         return usage;
     }
 
-    // счётчик для вывода ошибок и длина текущей строки
-    int i = 0, len = 0;
-    // указатель на динамич. массив в последующем
-    char* s;
-    // размер и вместимость динамич. массива
-    int sz = 0, capacity = 1;
-    // выделение памяти под массив и проверка того, что удалось её выделить
-    struct Point* points = malloc(sizeof(*points));
-    if (!points) {
-        fprintf(stderr, "Не удалось выделить память\n");
-        return io_fail;
-    }
+    // вызов вспомогат. ф-ции.если код возвр. != 0, она уже что-то напечатала
+    // и можно вернуть этот же код
+    int status = get_points(r);
+    if (status != 0)
+        return status;
 
-    // считывание строк с точками
-    while (1) {
-        s = get_string(&len);
-        ++i;
-
-        // сразу после прочтения проверка на проблему с IO или конец вход. потока
-        if (len == -1) {
-            if (ferror(stdin)) {
-                fprintf(stderr, "Ошибка в IO\n");
-                free(s);
-                s = NULL;
-                return io_fail;
-            }
-            // если len == -1 без проблем с потоком ошибок, то был достигнут EOF
-            else {
-                free(s);
-                s = NULL;
-                break;
-            }
-        }
-
-        // проверка на пустоту; если пусто, пропускаем
-        if (is_empty(s)) {
-            free(s);
-            s = NULL;
-            continue;
-        }
-
-        // распознвание чисел в строке через parse_point
-        struct Point p;
-        int ex_code = parse_point(s, &p);
-
-        // если мало аргументов
-        if (ex_code == 1) {
-            fprintf(stderr, "Строка %d. Ожидалось X Y Z, получено: %s\n", i, s);
-            free(s);
-            s = NULL;
-            free(points);
-            return data;
-        }
-        // если значение нечисловое
-        if (ex_code == 2) {
-            fprintf(stderr, "Строка %d. Нечисловое значение: %s\n", i, s);
-            free(s);
-            s = NULL;
-            free(points);
-            return data;
-        }
-
-        // если дошли сюда, то код возврата из parse_points == 0 - распознавание удачно
-        points[sz] = p;
-        ++sz;
-
-        // как только размер == вместимость, надо расширить вместимость
-        if (sz >= capacity) {
-            capacity *= 2;
-            struct Point* temp_points = realloc(points, capacity * sizeof(*temp_points));
-            if (!temp_points) {
-                fprintf(stderr, "Ошибка при выделении памяти\n");
-                free(s);
-                free(points);
-                exit(io_fail);
-            }
-            points = temp_points;
-        }
-
-        // освободить s т.к. в неё положится новая строка
-        free(s);
-        s = NULL;
-    }
-
-    // если после чтения массив точек пуст, то значения точек не были введены
-    if (sz == 0) {
-        fprintf(stderr, "Точки отсутствуют\n");
-        free(s);
-        free(points);
-        return no_input;
-    }
-
-    // вывод точек, у которых расст. до центра < r
-    for (int k = 0; k < sz; ++k) {
-        if (sqrt(points[k].x * points[k].x + points[k].y * points[k].y + points[k].z * points[k].z) < r)
-            printf("%.3f %.3f %.3f\n", points[k].x, points[k].y, points[k].z);
-    }
-
-    free(points);
     return 0;
 }

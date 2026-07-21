@@ -1,7 +1,9 @@
+#include <algorithm>
 #include <cmath>
 #include <iostream>
-#include <limits>
+#include <numeric>
 #include <print>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -30,24 +32,20 @@ int main() {
         if (is_empty(temp))
             continue;
 
-        // чтение double чисел из строки функцией parse_point
-        Point p{};
-        int ex_code = parse_point(temp, p);
-
-        // мало аргументов
-        if (ex_code == 1) {
-            std::cerr << "—трока " << i << ". ќжидались координаты X Y Z. ѕолучено: " << temp << "\n";
-            return exit_code::data;
-        }
-
-        // нечисловые данные в строке
-        if (ex_code == 2) {
-            std::cerr << "—трока " << i << ". Ќечисловые данные: " << temp << "\n";
+        // чтение точки через parse_point
+        auto result = parse_point(temp);
+        if (!result) {
+            // мало аргументов
+            if (result.error() == 1)
+                std::cerr << "—трока " << i << ". ќжидались координаты X Y Z. ѕолучено: " << temp << "\n";
+            // нечисловые данные
+            else
+                std::cerr << "—трока " << i << ". Ќечисловые данные: " << temp << "\n";
             return exit_code::data;
         }
 
         // если дошли до этого момента, значит ex_code == 0 и можно сложить точку в массив
-        points.push_back(p);
+        points.push_back(*result);
     }
 
     // если по итогу чтени€ массив точек пустой, то входных данных не было
@@ -56,42 +54,18 @@ int main() {
         return exit_code::no_in;
     }
 
-    // поиск минимальных и максимальных x y z. и суммы точек дл€ среднего арифм. - центроида
-    // точки min и max, проинициализированные на + и - границы double.
-    Point max_border{std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest(),
-                     std::numeric_limits<double>::lowest()};
+    // векторы <double> отдельно со всеми x, y, z дл€ дальнейших вычислений
+    auto xs = points | std::views::transform([](const Point& p) { return p.x; });
+    auto ys = points | std::views::transform([](const Point& p) { return p.y; });
+    auto zs = points | std::views::transform([](const Point& p) { return p.z; });
 
-    Point min_border{std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
-                     std::numeric_limits<double>::max()};
+    // поиск минимумов и максимумов по ос€м
+    Point max_border{std::ranges::max(xs), std::ranges::max(ys), std::ranges::max(zs)};
+    Point min_border{std::ranges::min(xs), std::ranges::min(ys), std::ranges::min(zs)};
 
-    // и точка центроида
-    Point center{};
-
-    for (const auto& p : points) {
-
-        if (p.x > max_border.x)
-            max_border.x = p.x;
-        if (p.y > max_border.y)
-            max_border.y = p.y;
-        if (p.z > max_border.z)
-            max_border.z = p.z;
-
-        if (p.x < min_border.x)
-            min_border.x = p.x;
-        if (p.y < min_border.y)
-            min_border.y = p.y;
-        if (p.z < min_border.z)
-            min_border.z = p.z;
-
-        center.x += p.x;
-        center.y += p.y;
-        center.z += p.z;
-    }
-
-    // деление суммы координат на кол-во дл€ центроида и вывод
-    center.x = center.x / points.size();
-    center.y = center.y / points.size();
-    center.z = center.z / points.size();
+    // центр - сумма по всем ос€м делЄнна€ на кол-во точек
+    Point center{std::reduce(xs.begin(), xs.end()) / points.size(), std::reduce(ys.begin(), ys.end()) / points.size(),
+                 std::reduce(zs.begin(), zs.end()) / points.size()};
 
     // вычисление среднего рассто€ни€ от точек до центроида
     double dist = 0;

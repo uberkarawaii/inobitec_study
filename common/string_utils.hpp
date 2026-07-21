@@ -5,6 +5,7 @@
 #include <charconv>
 #include <string>
 #include <system_error>
+#include <expected>
 
 #include "geometry.hpp"
 
@@ -34,7 +35,7 @@ inline int is_empty(const std::string& s) {
 }
 
 // распознавание x y z
-inline int parse_point(const std::string& s, Point& p) {
+inline std::expected<Point, int> parse_point(std::string_view s){
     // чтение double чисел из строки
     std::array<double, 3> dots{};
     const char* ptr_start = s.data();
@@ -48,23 +49,22 @@ inline int parse_point(const std::string& s, Point& p) {
         // если указатель начала указывает на конец - а при чтении 3 точек этого не должно произойти
         // т.к. их 3 штуки, то значит нет полного X Y Z
         if (ptr_start == ptr_end)
-            return 1;
+            return std::unexpected(1);
 
         const auto [ptr, ec] = std::from_chars(ptr_start, ptr_end, dots[j]);
         // указатель на конце, хотя 3 шт не было прочитано
         if (ptr == ptr_end && j < 2)
-            return 1;
+            return std::unexpected(1);
 
         // если ec с ошибкой или распознавание слетело не на пробеле и не на /0 в конце, то это ошибка в данных
         if (ec != std::errc{} || (!std::isspace(static_cast<unsigned char>(*ptr)) && *ptr != '\0')) {
-            return 2;
+            return std::unexpected(2);
         }
         // начальный указатель для след.итерац. становится туда, где остановилось распознавание в этой итерации
         ptr_start = ptr;
 
         ++j;
     }
-    p = Point{dots[0], dots[1], dots[2]};
 
-    return 0;
+    return Point{dots[0], dots[1], dots[2]};
 }
