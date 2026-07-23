@@ -72,7 +72,7 @@ type nul | t1_dist_matrix_c\main.exe 2> nul
 if not errorlevel 66 echo FAIL: empty & exit /b 1
 
 echo abc | t1_dist_matrix_c\main.exe 2> nul
-if not errorlevel 65 echo FAIL: non-number & exit /b 1
+if not errorlevel 66 echo FAIL: non-number & exit /b 1
 
 echo 2.3 | t1_dist_matrix_c\main.exe 2> nul
 if not errorlevel 65 echo FAIL: not-integer & exit /b 1
@@ -81,6 +81,6 @@ echo 1 | t1_dist_matrix_c\main.exe 2> nul
 if not errorlevel 64 echo FAIL: range-low & exit /b 1
 
 echo 100 | t1_dist_matrix_c\main.exe 2> nul
-if not errorlevel 64 echo FAIL: range-high & exit /b 1
+if not errorlevel 64 echo FAIL: range-high & exit /b 1  
 
-echo ALL TESTS PASSED   
+echo ALL TESTS PASSED

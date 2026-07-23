@@ -3,9 +3,9 @@
 #include <array>
 #include <cctype>
 #include <charconv>
+#include <expected>
 #include <string>
 #include <system_error>
-#include <expected>
 
 #include "geometry.hpp"
 
@@ -35,7 +35,7 @@ inline int is_empty(const std::string& s) {
 }
 
 // распознавание x y z
-inline std::expected<Point, int> parse_point(std::string_view s){
+inline std::expected<Point, int> parse_point(std::string_view s) {
     // чтение double чисел из строки
     std::array<double, 3> dots{};
     const char* ptr_start = s.data();
