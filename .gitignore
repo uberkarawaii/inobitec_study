@@ -5,4 +5,10 @@
 *.dll
 *.pch
 *.txt
+t1_dist_matrix\ref.cpp
+t1_dist_matrix_c\ref.c
+t2_passport_cpp\ref.cpp
+t2_passport_c\ref.c
+t3_bbox_ref.ps1
+t4_filter_ref.ps1
 build/
