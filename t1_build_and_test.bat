@@ -47,14 +47,24 @@ if not errorlevel 64 echo FAIL: range-high & exit /b 1
 echo ALL TESTS PASSED
 
 :: ===== C (t1_dist_matrix_c) =====
-:: формат
-clang-format -i t1_dist_matrix_c\main.c common\exit_codes.h
+:: формат - main, codes, geometry, string_utils
+clang-format -i t1_dist_matrix_c\main.c common\exit_codes.h 
+clang-format -i common\string_utils.c common\string_utils.h
+clang-format -i common\geometry.c common\geometry.h
 :: clang-format -i t1_dist_matrix_c\ref.c
 
 :: сборка
+:: compil. main
 cl -c /Fo:t1_dist_matrix_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t1_dist_matrix_c\main.c
 if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
-link /DEBUG /OUT:t1_dist_matrix_c\main.exe t1_dist_matrix_c\main.obj
+:: compil. string_utils
+cl -c /Fo:common\string_utils.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
+if errorlevel 1 echo FAIL: str_utils_c_compilation_error & exit /b 1
+:: compil. geom
+cl -c /Fo:common\geometry.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
+if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
+:: Link
+link /DEBUG /OUT:t1_dist_matrix_c\main.exe t1_dist_matrix_c\main.obj common\string_utils.obj common\geometry.obj
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
 :: cl -c /Fo:t1_dist_matrix_c\ref.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t1_dist_matrix_c\ref.c
 :: if errorlevel 1 echo FAIL: ref_c_compilation_error & exit /b 1

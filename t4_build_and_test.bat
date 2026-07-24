@@ -122,12 +122,23 @@ ECHO ALL CPP TESTS PASSED
 :: тесты программы на Си
 
 ::формат
-clang-format -i t4_filter_c\main.c 
+clang-format -i t4_filter_c\main.c common\exit_codes.h
+clang-format -i common\string_utils.c common\string_utils.h
+clang-format -i common\geometry.c common\geometry.h
 
-:: сборка и линковка main.c
+:: сборка
+:: compil main
 cl -c /Fo:t4_filter_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t4_filter_c\main.c
 if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
-link /DEBUG /OUT:t4_filter_c\main.exe t4_filter_c\main.obj
+:: compil string_utils
+cl -c /Fo:common\string_utils.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
+if errorlevel 1 echo FAIL: string_utils_c_compilation_error & exit /b 1
+:: compil geometry
+cl -c /Fo:common\geometry.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
+if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
+
+:: Link
+link /DEBUG /OUT:t4_filter_c\main.exe t4_filter_c\main.obj common\string_utils.obj common\geometry.obj
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
 
 :: тесты с ошибочными значениями радиуса

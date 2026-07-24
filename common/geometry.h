@@ -7,4 +7,10 @@ struct Point {
     double z;
 };
 
+// распознавание точки. возвращает код:
+// 0 - точка распознана
+// 1 - мало координат
+// 2 - нечисловые данные
+int parse_point(char* str, struct Point* p);
+
 #endif
