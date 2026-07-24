@@ -9,7 +9,7 @@
 #include "..\common\string_utils.hpp"
 
 // форма слова "вершина" со склонением.
-// string_view т.к. это уже готовый объект, можно отдаль просто указатель + длину, а не копию
+// функция отдаёт индекс, по которому в массиве лежит нужная форма слова
 int get_vertex_name(int N) {
     if (N % 10 == 1 && N % 100 / 10 != 1)
         return 0;
@@ -20,7 +20,7 @@ int get_vertex_name(int N) {
 }
 
 int main() {
-    setlocale(LC_ALL, "Russian_Russia.1251");
+    //setlocale(LC_ALL, "Russian_Russia.1251");
 
     std::string name;
     if (!std::getline(std::cin, name)) {

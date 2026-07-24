@@ -12,7 +12,7 @@
 #include "..\common\string_utils.hpp"
 
 int main() {
-    setlocale(LC_ALL, "Russian_Russia.1251");
+    // setlocale(LC_ALL, "Russian_Russia.1251");
     // считывание начальных x y z в массив; сначала строка, потом число
     // при возникновении ошибки вывод с номером битой строки
     std::string temp;
