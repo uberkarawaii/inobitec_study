@@ -17,8 +17,12 @@ if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
 cl -c /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
 if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
 
+:: Lib
+lib /OUT:common\lib_cpp.lib common\string_utils_cpp.obj common\geometry_cpp.obj
+if errorlevel 1 echo FAIL: lib_cpp_error & exit /b 1
+
 :: Link
-link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj common\string_utils_cpp.obj common\geometry_cpp.obj
+link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj common\lib_cpp.lib
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
  
 :: сборка + линковка генератора облака чисел
@@ -138,8 +142,12 @@ if errorlevel 1 echo FAIL: string_utils_c_compilation_error & exit /b 1
 cl -c /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
 if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
 
+:: Lib 
+lib /OUT:common\lib_c.lib common\string_utils_c.obj common\geometry_c.obj
+if errorlevel 1 echo FAIL: lib_c_error & exit /b 1
+
 :: Link
-link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj common\string_utils_c.obj common\geometry_c.obj
+link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj common\lib_c.lib
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
                                                             
 :: тесты с кодами ошибок
