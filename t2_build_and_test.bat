@@ -3,13 +3,24 @@
 chcp 1251 > nul
 
 :: форматирование 
-clang-format -i t2_passport_cpp\main.cpp common\string_utils.hpp
+clang-format -i t2_passport_cpp\main.cpp
+clang-format -i common\string_utils.cpp common\string_utils.hpp
+clang-format -i common\geometry.cpp common\geometry.hpp
 :: clang-format -i t2_passport_cpp\ref.cpp
 
 :: сборка
+:: compile main
 cl -c /Fo:t2_passport_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t2_passport_cpp\main.cpp
 if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
-link /DEBUG /OUT:t2_passport_cpp\main.exe t2_passport_cpp\main.obj
+:: compile string_utils
+cl -c /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
+if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
+::compile geometry
+cl -c /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
+if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
+
+:: Link
+link /DEBUG /OUT:t2_passport_cpp\main.exe t2_passport_cpp\main.obj common\geometry_cpp.obj common\string_utils_cpp.obj
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
 
 :: папка build если её ещё не было
@@ -69,13 +80,13 @@ clang-format -i common\geometry.c common\geometry.h
 cl -c /Fo:t2_passport_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t2_passport_c\main.c
 if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
 :: compil. string_utils
-cl -c /Fo:common\string_utils.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
+cl -c /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
 if errorlevel 1 echo FAIL: string_utils_c_compilation_error & exit /b 1
 :: compil. geometry
-cl -c /Fo:common\geometry.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
+cl -c /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
 if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
 :: Link
-link /DEBUG /OUT:t2_passport_c\main.exe t2_passport_c\main.obj common\geometry.obj common\string_utils.obj
+link /DEBUG /OUT:t2_passport_c\main.exe t2_passport_c\main.obj common\geometry_c.obj common\string_utils_c.obj
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
 
 :: cl -c /Fo:t2_passport_c\ref.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t2_passport_c\ref.c

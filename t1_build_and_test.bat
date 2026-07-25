@@ -6,12 +6,23 @@ chcp 1251 > nul
 :: ===== C++ (t1_dist_matrix) =====
 :: 1. ‘ормат
 clang-format -i t1_dist_matrix\main.cpp common\exit_codes.hpp
+clang-format -i common\string_utils.hpp common\string_utils.cpp
+clang-format -i common\geometry.hpp common\geometry.cpp
 :: clang-format -i t1_dist_matrix\ref.cpp
 
 :: 2. —борка
-cl /c /Fo:t1_dist_matrix\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
+:: compil. main
+cl -c /Fo:t1_dist_matrix\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
 if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
-link /DEBUG /OUT:t1_dist_matrix\main.exe t1_dist_matrix\main.obj
+:: compil. string_utils
+cl -c /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
+if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
+:: compil. geometry 
+cl -c /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
+if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
+
+:: Link
+link /DEBUG /OUT:t1_dist_matrix\main.exe t1_dist_matrix\main.obj common\string_utils_cpp.obj common\geometry_cpp.obj
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
 :: cl /c /Fo:t1_dist_matrix\ref.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\ref.cpp
 :: if errorlevel 1 echo FAIL: ref_cpp_compilation_error & exit /b 1
@@ -58,13 +69,13 @@ clang-format -i common\geometry.c common\geometry.h
 cl -c /Fo:t1_dist_matrix_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t1_dist_matrix_c\main.c
 if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
 :: compil. string_utils
-cl -c /Fo:common\string_utils.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
+cl -c /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
 if errorlevel 1 echo FAIL: str_utils_c_compilation_error & exit /b 1
 :: compil. geom
-cl -c /Fo:common\geometry.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
+cl -c /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
 if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
 :: Link
-link /DEBUG /OUT:t1_dist_matrix_c\main.exe t1_dist_matrix_c\main.obj common\string_utils.obj common\geometry.obj
+link /DEBUG /OUT:t1_dist_matrix_c\main.exe t1_dist_matrix_c\main.obj common\string_utils_c.obj common\geometry_c.obj
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
 :: cl -c /Fo:t1_dist_matrix_c\ref.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t1_dist_matrix_c\ref.c
 :: if errorlevel 1 echo FAIL: ref_c_compilation_error & exit /b 1
