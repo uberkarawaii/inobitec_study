@@ -7,22 +7,23 @@ clang-format -i t3_bbox_cpp\main.cpp gen_cloud\main.cpp
 clang-format -i common\string_utils.cpp common\string_utils.hpp
 clang-format -i common\geometry.cpp common\geometry.hpp
 
-:: сборка
+:: сборка (с define DCOMMON_EXPORTS) и линковка динамической библиотеки 
+:: при link-е .dll уходит в t3_bbox_cpp, потому что .exe изначально будет его искать в своей же папке
+cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
+if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
+
+cl -c /DCOMMON_EXPORTS /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
+if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
+:: вместе с .dll в t3_bbox_cpp уйдут и .exp и .lib, а также и .pdb
+link /DEBUG /DLL /OUT:t3_bbox_cpp\common.dll common\string_utils_cpp.obj common\geometry_cpp.obj
+if errorlevel 1 echo FAIL: dll_cpp_link_error & exit /b 1
+
+
+:: сборка main и линковка с common.lib 
 cl -c /Fo:t3_bbox_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t3_bbox_cpp\main.cpp
 if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
-:: compil string_utils
-cl -c /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
-if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
-:: compil geometry
-cl -c /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
-if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
 
-:: Lib
-lib /OUT:common\lib_cpp.lib common\string_utils_cpp.obj common\geometry_cpp.obj
-if errorlevel 1 echo FAIL: lib_cpp_error & exit /b 1
-
-:: Link
-link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj common\lib_cpp.lib
+link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj t3_bbox_cpp\common.lib
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
  
 :: сборка + линковка генератора облака чисел

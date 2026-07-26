@@ -6,23 +6,23 @@ clang-format -i t4_filter_cpp\main.cpp gen_cloud\main.cpp
 clang-format -i common\string_utils.hpp common\string_utils.cpp
 clang-format -i common\geometry.hpp common\geometry.cpp
 
-:: сборка
-:: compil main
-cl -c /Fo:t4_filter_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t4_filter_cpp\main.cpp
-if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
-:: compil string_utils
-cl -c /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
+:: сборка и линковка динамической библиотеки define COMMON_EXPORTS 
+:: выходные файлы - в папку с .exe чтобы .exe могла сразу найти .dll
+cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
 if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
-:: compil geometry
-cl -c /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
+
+cl -c /DCOMMON_EXPORTS /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
 if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
 
-:: Lib
-lib /OUT:common\lib_cpp.lib common\string_utils_cpp.obj common\geometry_cpp.obj
-if errorlevel 1 echo FAIL: lib_cpp_error & exit /b 1
+link /DEBUG /DLL /OUT:t4_filter_cpp\common.dll common\string_utils_cpp.obj common\geometry_cpp.obj
+if errorlevel 1 echo FAIL: dll_cpp_link_error & exit /b 1
 
-:: Link
-link /DEBUG /OUT:t4_filter_cpp\main.exe t4_filter_cpp\main.obj common\lib_cpp.lib
+
+:: сборка и линковка main с common.lib
+cl -c /Fo:t4_filter_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t4_filter_cpp\main.cpp
+if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
+
+link /DEBUG /OUT:t4_filter_cpp\main.exe t4_filter_cpp\main.obj t4_filter_cpp\common.lib
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
 :: сборка + линковка генератора облака чисел
 :: cl -c /Fo:gen_cloud\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address gen_cloud\main.cpp
