@@ -3,16 +3,16 @@
 chcp 1251 > nul
 
 :: форматирование 
-clang-format -i t2_passport_cpp\main.cpp
+clang-format -i t2_passport_cpp\main.cpp common\exit_codes.hpp
 clang-format -i common\string_utils.cpp common\string_utils.hpp
 :: clang-format -i t2_passport_cpp\ref.cpp
 
 :: сборка
 :: compile main
-cl -c /Fo:t2_passport_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t2_passport_cpp\main.cpp
+cl -c /DCOMMON_STATIC /Fo:t2_passport_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t2_passport_cpp\main.cpp
 if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
 :: compile string_utils
-cl -c /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
+cl -c /DCOMMON_STATIC /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
 if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
 
 :: Link
@@ -72,10 +72,10 @@ clang-format -i common\string_utils.c common\string_utils.h
 
 :: сборка
 :: compil. main
-cl -c /Fo:t2_passport_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t2_passport_c\main.c
+cl -c /DCOMMON_STATIC /Fo:t2_passport_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t2_passport_c\main.c
 if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
 :: compil. string_utils
-cl -c /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
+cl -c /DCOMMON_STATIC /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
 if errorlevel 1 echo FAIL: string_utils_c_compilation_error & exit /b 1
 
 :: Link

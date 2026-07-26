@@ -1,8 +1,12 @@
 #ifndef IRINA_GEOMETRY_H
 #define IRINA_GEOMETRY_H
 
-#ifdef COMMON_EXPORTS
+#ifdef COMMON_STATIC
+#define COMMON_API
+
+#elif defined(COMMON_EXPORTS)
 #define COMMON_API __declspec(dllexport)
+
 #else
 #define COMMON_API __declspec(dllimport)
 #endif

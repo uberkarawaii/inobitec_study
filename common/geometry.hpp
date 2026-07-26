@@ -9,8 +9,13 @@
 // при сборке main же надо указать, что эта ф-ция будет взята из .dll, будет импортирована - линкер
 // поставит ссылку на неё в .dll
 // т.е. для управления поведением заголовочника - условная компиляция
-#ifdef COMMON_EXPORTS
+// и чтобы не было проблем при статической линковке - пустой COMMON_API для соотв. константы
+#ifdef COMMON_STATIC
+#define COMMON_API
+
+#elif defined(COMMON_EXPORTS)
 #define COMMON_API __declspec(dllexport)
+
 #else
 #define COMMON_API __declspec(dllimport)
 #endif

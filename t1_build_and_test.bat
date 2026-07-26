@@ -11,10 +11,10 @@ clang-format -i common\geometry.hpp common\geometry.cpp
 
 :: 2. —борка
 :: compil. main
-cl -c /Fo:t1_dist_matrix\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
+cl -c /DCOMMON_STATIC /Fo:t1_dist_matrix\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
 if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
 :: compil. geometry 
-cl -c /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
+cl -c /DCOMMON_STATIC /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
 if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
 
 :: Link
@@ -61,10 +61,10 @@ clang-format -i common\geometry.c common\geometry.h
 
 :: сборка
 :: compil. main
-cl -c /Fo:t1_dist_matrix_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t1_dist_matrix_c\main.c
+cl -c /DCOMMON_STATIC /Fo:t1_dist_matrix_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t1_dist_matrix_c\main.c
 if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
 :: compil. geom
-cl -c /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
+cl -c /DCOMMON_STATIC /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
 if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
 :: Link
 link /DEBUG /OUT:t1_dist_matrix_c\main.exe t1_dist_matrix_c\main.obj common\geometry_c.obj
