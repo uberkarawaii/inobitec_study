@@ -7,7 +7,7 @@ clang-format -i t3_bbox_cpp\main.cpp gen_cloud\main.cpp
 clang-format -i common\string_utils.cpp common\string_utils.hpp
 clang-format -i common\geometry.cpp common\geometry.hpp
 
-:: сборка (с define DCOMMON_EXPORTS) и линковка динамической библиотеки 
+:: сборка (с define COMMON_EXPORTS) и линковка динамической библиотеки 
 :: при link-е .dll уходит в t3_bbox_cpp, потому что .exe изначально будет его искать в своей же папке
 cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
 if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
@@ -135,20 +135,22 @@ clang-format -i t3_bbox_c\main.c common\exit_codes.h
 clang-format -i common\geometry.c common\geometry.h
 clang-format -i common\string_utils.c common\string_utils.h
 
-:: сборка 
-cl -c /Fo:t3_bbox_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t3_bbox_c\main.c
-if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
-cl -c /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
+:: сборка и линковка динамич. библиотеки с define COMMON_EXPORTS
+:: итоговый файл уходит в папку с .exe, чтобы .exe сразу находила его
+cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
 if errorlevel 1 echo FAIL: string_utils_c_compilation_error & exit /b 1
-cl -c /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
+
+cl -c /DCOMMON_EXPORTS /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
 if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
 
-:: Lib 
-lib /OUT:common\lib_c.lib common\string_utils_c.obj common\geometry_c.obj
-if errorlevel 1 echo FAIL: lib_c_error & exit /b 1
+link /DEBUG /DLL /OUT:t3_bbox_c\common.dll common\string_utils_c.obj common\geometry_c.obj
+if errorlevel 1 echo FAIL: dll_c_link_error & exit /b 1
 
-:: Link
-link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj common\lib_c.lib
+:: сборка и линковка main с common.lib 
+cl -c /Fo:t3_bbox_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t3_bbox_c\main.c
+if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
+
+link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj t3_bbox_c\common.lib
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
                                                             
 :: тесты с кодами ошибок

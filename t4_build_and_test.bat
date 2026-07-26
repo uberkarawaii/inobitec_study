@@ -141,23 +141,21 @@ clang-format -i t4_filter_c\main.c common\exit_codes.h
 clang-format -i common\string_utils.c common\string_utils.h
 clang-format -i common\geometry.c common\geometry.h
 
-:: сборка
-:: compil main
-cl -c /Fo:t4_filter_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t4_filter_c\main.c
-if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
-:: compil string_utils
-cl -c /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
+:: сборка (с define COMMON_EXPORTS) и линковка динамиеской библиотеки
+:: выходные файлы - в папку к .exe чтобы .exe сразу находила .dll
+cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
 if errorlevel 1 echo FAIL: string_utils_c_compilation_error & exit /b 1
-:: compil geometry
-cl -c /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
+cl -c /DCOMMON_EXPORTS /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
 if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
 
-:: Lib
-lib /OUT:common\lib_c.lib common\string_utils_c.obj common\geometry_c.obj
-if errorlevel 1 echo FAIL: lib_c_error & exit /b 1 
+link /DEBUG /DLL /OUT:t4_filter_c\common.dll common\string_utils_c.obj common\geometry_c.obj
+if errorlevel 1 echo FAIL: dll_c_link_error & exit /b 1
 
-:: Link
-link /DEBUG /OUT:t4_filter_c\main.exe t4_filter_c\main.obj common\lib_c.lib
+:: сборка и линковка main с common.lib
+cl -c /Fo:t4_filter_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t4_filter_c\main.c
+if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
+
+link /DEBUG /OUT:t4_filter_c\main.exe t4_filter_c\main.obj t4_filter_c\common.lib
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
 
 :: тесты с ошибочными значениями радиуса
