@@ -6,7 +6,7 @@
 *.pch
 *.exp
 *.txt
-t1_dist_matrix/ref.cpp
+t1_dist_matrix_cpp/ref.cpp
 t1_dist_matrix_c/ref.c
 t2_passport_cpp/ref.cpp
 t2_passport_c/ref.c

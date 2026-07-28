@@ -5,24 +5,24 @@ chcp 1251 > nul
 
 :: ===== C++ (t1_dist_matrix) =====
 :: 1. ‘ормат
-clang-format -i t1_dist_matrix\main.cpp common\exit_codes.hpp
+clang-format -i t1_dist_matrix_cpp\main.cpp common\exit_codes.hpp
 clang-format -i common\geometry.hpp common\geometry.cpp
 :: clang-format -i t1_dist_matrix\ref.cpp
 
 :: 2. —борка
 :: compil. main
-cl -c /DCOMMON_STATIC /Fo:t1_dist_matrix\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\main.cpp
+cl -c /DCOMMON_STATIC /Fo:t1_dist_matrix_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix_cpp\main.cpp
 if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
 :: compil. geometry 
 cl -c /DCOMMON_STATIC /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
 if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
 
 :: Link
-link /DEBUG /OUT:t1_dist_matrix\main.exe t1_dist_matrix\main.obj common\geometry_cpp.obj
+link /DEBUG /OUT:t1_dist_matrix_cpp\main.exe t1_dist_matrix_cpp\main.obj common\geometry_cpp.obj
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
-:: cl /c /Fo:t1_dist_matrix\ref.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix\ref.cpp
+:: cl /c /Fo:t1_dist_matrix_cpp\ref.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t1_dist_matrix_cpp\ref.cpp
 :: if errorlevel 1 echo FAIL: ref_cpp_compilation_error & exit /b 1
-:: link /DEBUG /OUT:t1_dist_matrix\ref.exe t1_dist_matrix\ref.obj
+:: link /DEBUG /OUT:t1_dist_matrix_cpp\ref.exe t1_dist_matrix_cpp\ref.obj
 :: if errorlevel 1 echo FAIL: ref_cpp_link_error & exit /b 1
 
 :: папка build если еЄ ещЄ не было
@@ -30,25 +30,25 @@ if not exist build mkdir build
 
 echo C++ TESTS
 :: 3. Acceptance-тесты                                             	
-echo 3 | t1_dist_matrix\main.exe > build\main_out.txt
+echo 3 | t1_dist_matrix_cpp\main.exe > build\main_out.txt
 if errorlevel 1 echo FAIL: norm-case main exit code & exit /b 1
 findstr /C:"   0.000   1.732   1.732" build\main_out.txt > nul
 if errorlevel 1 echo FAIL: norm-case & exit /b 1
 
 :: перенаправить сообщение об ошибке "вникуда". 2 - это номер потока stderr
-echo abc | t1_dist_matrix\main.exe 2> nul
+echo abc | t1_dist_matrix_cpp\main.exe 2> nul
 if not errorlevel 65 echo FAIL: non-number & exit /b 1
 
-type nul | t1_dist_matrix\main.exe 2> nul
+type nul | t1_dist_matrix_cpp\main.exe 2> nul
 if not errorlevel 66 echo FAIL: empty & exit /b 1
 
-echo 2.3 | t1_dist_matrix\main.exe 2> nul
+echo 2.3 | t1_dist_matrix_cpp\main.exe 2> nul
 if not errorlevel 65 echo FAIL: not-integer & exit /b 1
 
-echo 2 | t1_dist_matrix\main.exe 2> nul
+echo 2 | t1_dist_matrix_cpp\main.exe 2> nul
 if not errorlevel 64 echo FAIL: range-low & exit /b 1
 
-echo 21 | t1_dist_matrix\main.exe 2> nul
+echo 21 | t1_dist_matrix_cpp\main.exe 2> nul
 if not errorlevel 64 echo FAIL: range-high & exit /b 1
 
 echo ALL TESTS PASSED
