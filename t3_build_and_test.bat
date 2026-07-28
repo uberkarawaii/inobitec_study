@@ -7,6 +7,8 @@ clang-format -i t3_bbox_cpp\main.cpp gen_cloud\main.cpp
 clang-format -i common\string_utils.cpp common\string_utils.hpp
 clang-format -i common\geometry.cpp common\geometry.hpp
 
+:: папка build если её ещё не было
+if not exist build mkdir build
 :: назначение переменной PATH - чтобы потом main.exe искала .dll по этому пути
 set "PATH=%~dp0/build;%PATH%"
 
@@ -33,9 +35,6 @@ if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
 :: if errorlevel 1 echo FAIL: gen_cpp_compilation_error & exit /b 1
 :: link /DEBUG /OUT:gen_cloud\gen_cloud.exe gen_cloud\main.obj
 :: if errorlevel 1 echo FAIL: gen_cpp_link_error & exit /b 1
-
-:: папка build если её ещё не было
-if not exist build mkdir build
 
 :: переменные для смены кодировки, чтобы findstr находила то, что ей передают
 :: а консоль передаёт ей в OEM 
