@@ -20,8 +20,6 @@ int get_vertex_name(int N) {
 }
 
 int main() {
-    // setlocale(LC_ALL, "Russian_Russia.1251");
-
     std::string name;
     if (!std::getline(std::cin, name)) {
         std::cerr << "EOF вместо имени фигуры\n";

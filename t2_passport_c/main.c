@@ -16,7 +16,6 @@ int get_vertex_name(int N) {
 }
 
 int main() {
-    setlocale(LC_ALL, "Russian_Russia.1251");
     //  считывание строки полностью
     int len_name;
     char* s = get_string(&len_name);
