@@ -225,3 +225,4 @@ if errorlevel 1 echo FAIL: test3_wrong_avg_dist & %OEMtoDEFmain% & exit /b 1
 %OEMtoDEFmain%
 
 ECHO ALL C TESTS PASSED 
+exit /b 0

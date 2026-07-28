@@ -97,3 +97,4 @@ echo 100 | t1_dist_matrix_c\main.exe 2> nul
 if not errorlevel 64 echo FAIL: range-high & exit /b 1  
 
 echo ALL TESTS PASSED
+exit /b 0

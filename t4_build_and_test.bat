@@ -266,3 +266,4 @@ if not errorlevel 1 echo FAIL: test3_not_empty_output & exit /b 1
 
 
 ECHO ALL C TESTS PASSED	
+exit /b 0

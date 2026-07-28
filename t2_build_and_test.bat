@@ -119,3 +119,4 @@ if not errorlevel 65 echo FAIL: fractional_vertexes & exit /b 1
 if not errorlevel 65 echo FAIL: nan_vertexes & exit /b 1
 
 echo ALL C TESTS PASSED
+exit /b 0
