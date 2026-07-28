@@ -6,23 +6,25 @@ clang-format -i t4_filter_cpp\main.cpp gen_cloud\main.cpp
 clang-format -i common\string_utils.hpp common\string_utils.cpp
 clang-format -i common\geometry.hpp common\geometry.cpp
 
+:: установка пути, по которому main.exe будет искать .dll
+set "PATH=%~dp0/build;%PATH%"
+
 :: сборка и линковка динамической библиотеки define COMMON_EXPORTS 
-:: выходные файлы - в папку с .exe чтобы .exe могла сразу найти .dll
+:: выходные файлы - в build - по PATH найдётся
 cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
 if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
 
 cl -c /DCOMMON_EXPORTS /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
 if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
 
-link /DEBUG /DLL /OUT:t4_filter_cpp\common.dll common\string_utils_cpp.obj common\geometry_cpp.obj
+link /DEBUG /DLL /OUT:build\common.dll common\string_utils_cpp.obj common\geometry_cpp.obj
 if errorlevel 1 echo FAIL: dll_cpp_link_error & exit /b 1
-
 
 :: сборка и линковка main с common.lib
 cl -c /Fo:t4_filter_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t4_filter_cpp\main.cpp
 if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
 
-link /DEBUG /OUT:t4_filter_cpp\main.exe t4_filter_cpp\main.obj t4_filter_cpp\common.lib
+link /DEBUG /OUT:t4_filter_cpp\main.exe t4_filter_cpp\main.obj build\common.lib
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
 :: сборка + линковка генератора облака чисел
 :: cl -c /Fo:gen_cloud\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address gen_cloud\main.cpp
@@ -119,7 +121,7 @@ if errorlevel 1 echo FAIL: test1_wrong_out & exit /b 1
 
 :: здесь проверяется что все строки в файле 4.000 5.000 5.000 
 :: т.к. на входе только одна такая точка, то это будет проверкой, 
-:: что никаких строк кроме 4.000 5.000 5.000 в файле нет
+:: что никаких строк кроме 4.000 5.000 5.000 в файле нет; /V - отдай то, что не соотв. шаблону после /C:
 (echo 4 5 5 & echo 5 11 0 & echo 0 0 11) | t4_filter_cpp\main.exe 10 > build\main_out.txt 
 if errorlevel 1 echo FAIL: test2_main_exit_code & exit /b 1
 findstr /C:"4.000 5.000 5.000" build\main_out.txt > nul
@@ -127,6 +129,7 @@ if errorlevel 1 echo FAIL: test2_wrong_out & exit /b 1
 findstr /V /C:"4.000 5.000 5.000" build\main_out.txt > nul
 if not errorlevel 1 echo FAIL: test2_extra_info_in_out & exit /b 1
 
+:: единств. точка, не проходит. /R "." - regex, любой символ. найди строки с любым символом
 echo 3 4 0 | t4_filter_cpp\main.exe 5 > build\main_out.txt 
 if errorlevel 1 echo FAIL: test3_main_exit_code & exit /b 1
 findstr /R "." build\main_out.txt > nul
@@ -142,20 +145,20 @@ clang-format -i common\string_utils.c common\string_utils.h
 clang-format -i common\geometry.c common\geometry.h
 
 :: сборка (с define COMMON_EXPORTS) и линковка динамиеской библиотеки
-:: выходные файлы - в папку к .exe чтобы .exe сразу находила .dll
+:: выходные файлы - в build, и он уже находится в PATH
 cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
 if errorlevel 1 echo FAIL: string_utils_c_compilation_error & exit /b 1
 cl -c /DCOMMON_EXPORTS /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
 if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
 
-link /DEBUG /DLL /OUT:t4_filter_c\common.dll common\string_utils_c.obj common\geometry_c.obj
+link /DEBUG /DLL /OUT:build\common.dll common\string_utils_c.obj common\geometry_c.obj
 if errorlevel 1 echo FAIL: dll_c_link_error & exit /b 1
 
 :: сборка и линковка main с common.lib
 cl -c /Fo:t4_filter_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t4_filter_c\main.c
 if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
 
-link /DEBUG /OUT:t4_filter_c\main.exe t4_filter_c\main.obj t4_filter_c\common.lib
+link /DEBUG /OUT:t4_filter_c\main.exe t4_filter_c\main.obj build\common.lib
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
 
 :: тесты с ошибочными значениями радиуса
@@ -231,20 +234,25 @@ if errorlevel 1 echo FAIL: empty coords: wrong info in stderr & %OEMtoDEF% & exi
 
 :: тесты на визуально понятных данных
 
+:: единств. точка и она проходит
 echo 3 4 5 | t4_filter_c\main.exe 8 > build\main_out.txt 
 if errorlevel 1 echo FAIL: test1_main_exit_code & exit /b 1
 findstr /C:"3.000 4.000 5.000" build\main_out.txt > nul
 if errorlevel 1 echo FAIL: test1_wrong_out & exit /b 1
 
+:: много точек, одна проходит
 (echo 4 5 5 & echo 5 11 0 & echo 0 0 11) | t4_filter_c\main.exe 10 > build\main_out.txt 
 if errorlevel 1 echo FAIL: test2_main_exit_code & exit /b 1
 findstr /C:"4.000 5.000 5.000" build\main_out.txt > nul
 if errorlevel 1 echo FAIL: test2_wrong_out & exit /b 1
+:: /V - строки, не подходящие под шаблон после /С: - и если такие найдутся, findstr вернёт 0. если таких строк нет - 1
 findstr /V /C:"4.000 5.000 5.000" build\main_out.txt > nul
 if not errorlevel 1 echo FAIL: test2_extra_info_in_out & exit /b 1
 
+:: единств. точка не проходит
 echo 3 4 0 | t4_filter_c\main.exe 5 > build\main_out.txt 
 if errorlevel 1 echo FAIL: test3_main_exit_code & exit /b 1
+:: /R = regex, "." - один любой символ. т.е. если найдётся строка с любым символом, - вернётся 0. если файл пустой - 1
 findstr /R "." build\main_out.txt > nul
 if not errorlevel 1 echo FAIL: test3_not_empty_output & exit /b 1
 

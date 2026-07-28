@@ -7,23 +7,25 @@ clang-format -i t3_bbox_cpp\main.cpp gen_cloud\main.cpp
 clang-format -i common\string_utils.cpp common\string_utils.hpp
 clang-format -i common\geometry.cpp common\geometry.hpp
 
+:: назначение переменной PATH - чтобы потом main.exe искала .dll по этому пути
+set "PATH=%~dp0/build;%PATH%"
+
 :: сборка (с define COMMON_EXPORTS) и линковка динамической библиотеки 
-:: при link-е .dll уходит в t3_bbox_cpp, потому что .exe изначально будет его искать в своей же папке
+:: при link-е .dll уходит в build чтобы была перезапись, а не копирование. и PATH уже есть для этого
 cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\string_utils.cpp
 if errorlevel 1 echo FAIL: string_utils_cpp_compilation_error & exit /b 1
 
 cl -c /DCOMMON_EXPORTS /Fo:common\geometry_cpp.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address common\geometry.cpp
 if errorlevel 1 echo FAIL: geometry_cpp_compilation_error & exit /b 1
-:: вместе с .dll в t3_bbox_cpp уйдут и .exp и .lib, а также и .pdb
-link /DEBUG /DLL /OUT:t3_bbox_cpp\common.dll common\string_utils_cpp.obj common\geometry_cpp.obj
+:: вместе с .dll в build уйдут и .exp и .lib, а также и .pdb
+link /DEBUG /DLL /OUT:build\common.dll common\string_utils_cpp.obj common\geometry_cpp.obj
 if errorlevel 1 echo FAIL: dll_cpp_link_error & exit /b 1
-
 
 :: сборка main и линковка с common.lib 
 cl -c /Fo:t3_bbox_cpp\main.obj /std:c++latest /W4 /permissive- /EHsc /Od /Zi /MDd /fsanitize=address t3_bbox_cpp\main.cpp
 if errorlevel 1 echo FAIL: main_cpp_compilation_error & exit /b 1
 
-link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj t3_bbox_cpp\common.lib
+link /DEBUG /OUT:t3_bbox_cpp\main.exe t3_bbox_cpp\main.obj build\common.lib
 if errorlevel 1 echo FAIL: main_cpp_link_error & exit /b 1
  
 :: сборка + линковка генератора облака чисел
@@ -136,21 +138,21 @@ clang-format -i common\geometry.c common\geometry.h
 clang-format -i common\string_utils.c common\string_utils.h
 
 :: сборка и линковка динамич. библиотеки с define COMMON_EXPORTS
-:: итоговый файл уходит в папку с .exe, чтобы .exe сразу находила его
+:: итоговый файл уходит в build, и main.exe найдёт его, т к PATH уже настроен для этого
 cl -c /DCOMMON_EXPORTS /Fo:common\string_utils_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\string_utils.c
 if errorlevel 1 echo FAIL: string_utils_c_compilation_error & exit /b 1
 
 cl -c /DCOMMON_EXPORTS /Fo:common\geometry_c.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address common\geometry.c
 if errorlevel 1 echo FAIL: geometry_c_compilation_error & exit /b 1
 
-link /DEBUG /DLL /OUT:t3_bbox_c\common.dll common\string_utils_c.obj common\geometry_c.obj
+link /DEBUG /DLL /OUT:build\common.dll common\string_utils_c.obj common\geometry_c.obj
 if errorlevel 1 echo FAIL: dll_c_link_error & exit /b 1
 
 :: сборка и линковка main с common.lib 
 cl -c /Fo:t3_bbox_c\main.obj /std:c17 /W4 /permissive- /Od /Zi /MDd /fsanitize=address t3_bbox_c\main.c
 if errorlevel 1 echo FAIL: main_c_compilation_error & exit /b 1
 
-link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj t3_bbox_c\common.lib
+link /DEBUG /OUT:t3_bbox_c\main.exe t3_bbox_c\main.obj build\common.lib
 if errorlevel 1 echo FAIL: main_c_link_error & exit /b 1
                                                             
 :: тесты с кодами ошибок
