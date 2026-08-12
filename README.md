@@ -7,13 +7,12 @@
 - .clang-format - форматирование файлов на С / С++
 - .editorconfig - правила чтения файлов для редакторов
 - .gitignore - список типов файлов, которые не будут включаться в коммиты
-- t3_bbox_ref.ps1 - сценарий на power shell для 3 задачи
-- t4_bbox_ref.ps1 - сценарий на power shell для 4 задачи
 - t1_build_and_test.bat ... и т.д. - batch файлы для тестов и сборки к каждой задаче
+- Makefile - для инкрементальной сборки
 
 ### Прочее: 
 - /hello каталог с начальной задачей. выводит hello, world
-- /t1_dist_matrix задача 1 из параграфа 6 на с++
+- /t1_dist_matrix_cpp задача 1 из параграфа 6 на с++
 - /t1_dist_matrix_c задача 1 из параграфа 6, на языке Си
 - /t2_passport_cpp задача 2 из параграфа 6 на c++
 - /t2_passport_c задача 2 из параграфа 6, на языке Си
@@ -24,8 +23,46 @@
 - /dialog_logs: выгрузка диалогов с DeepSeek через агента OpenCode
 - /common - папка с файлами обшего назначения
 - /notes - заметки по темам; внутренний dialog_logs - логи бесед с агентом по темам
+- /test - папка с run_case.cpp - выходной .exe сверяет итоговый код программы и подаваемый ему код на равенство
+
+  При тестировании будут создаваться папки со следующей иерархией:
+    ```
+    build/
+    ├── debug/
+    │   └── test/
+    │   │   └── t1_cpp_norm.ok
+    │   │   ├── t1_cpp_abc.ok
+    │   │   └── ...
+    │   ├── t1_dist_matrix_cpp/
+    │   ├── ...
+    │   ├── t4_filter_c/
+    │   ├── common/
+    │   │   └── geometry_cpp.obj
+    │   │   ├── ...
+    │   │   └── string_utils_c.pdb
+    │   └── tools/
+    │       ├── run_case.obj
+    │       ├── run_case.pdb
+    │       └── run_case.exe
+    │
+    └── release/
+        └── test/
+        ├── tools/
+        ├── common/
+        ├── t1_dist_matrix_cpp/
+        ├── ...
+        └── t4_filter_c/
+    ```
+    
 
 ### Как собрать
+
+#### upd: через make
+- `make all` - соберётся 1 задача на Си и С++
+- `make format` - отформатируются все .c .cpp .h .hpp
+- `make test` - прогонится один тест (на abc ввод) для первой задачи с++
+
+#### before make
 
 **hello/hello.cpp**
 ```x64 Native Tools
