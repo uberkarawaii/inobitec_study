@@ -63,13 +63,15 @@ T1_CPP_TESTS := $(TESTDIR)\t1_cpp_abc.ok \
 	    $(TESTDIR)\t1_cpp_float.ok \
 	    $(TESTDIR)\t1_cpp_low.ok \
 	    $(TESTDIR)\t1_cpp_high.ok \
-	    $(TESTDIR)\t1_cpp_nul.ok
+	    $(TESTDIR)\t1_cpp_nul.ok \
+            $(TESTDIR)\t1_cpp_norm.ok
 
 T1_C_TESTS := $(TESTDIR)\t1_c_abc.ok \
 	    $(TESTDIR)\t1_c_float.ok \
 	    $(TESTDIR)\t1_c_low.ok \
 	    $(TESTDIR)\t1_c_high.ok \
-	    $(TESTDIR)\t1_c_nul.ok
+	    $(TESTDIR)\t1_c_nul.ok \
+            $(TESTDIR)\t1_c_norm.ok
 
 # exit-коды
 USAGE := 64
@@ -133,6 +135,7 @@ $(BINDIR)\tools\run_case.exe: tests\run_case.cpp | $(BINDIR)\tools
 	$(CXX) /Fo:$(BINDIR)\tools\run_case.obj /Fe:$@ $(CXXFLAGS) $<
 
 # cpp tests
+# exit-code тесты
 # после && будет выполнение, только если до && код выхода == 0. работает и в shell, и в cmd 
 $(TESTDIR)\t1_cpp_abc.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
 	$(RUN_CASE) "echo abc | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
@@ -149,7 +152,13 @@ $(TESTDIR)\t1_cpp_high.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
 $(TESTDIR)\t1_cpp_nul.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
 	$(RUN_CASE) "type $(NULLDEV) | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && $(TOUCH) $@
 
+# тест с корретными данными. проверка на норм. выходные данные
+$(TESTDIR)\t1_cpp_norm.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo 3 | $(T1_CPP_EXE) > $(BINDIR)\t1_dist_matrix_cpp\main_out.txt 2> $(NULLDEV)" 0 && \
+        $(GREP) /C:"   0.000   1.732   1.732" $(BINDIR)\t1_dist_matrix_cpp\main_out.txt && $(TOUCH) $@
+
 # C tests
+# exit-code тесты
 $(TESTDIR)\t1_c_abc.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
 	$(RUN_CASE) "echo abc | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
 
@@ -165,6 +174,10 @@ $(TESTDIR)\t1_c_high.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
 $(TESTDIR)\t1_c_nul.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
 	$(RUN_CASE) "type $(NULLDEV) | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && $(TOUCH) $@
 
+# нормальные входные данные. проверка выходных данных
+$(TESTDIR)\t1_c_norm.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo 3 | $(T1_C_EXE) > $(BINDIR)\t1_dist_matrix_c\main_out.txt 2> $(NULLDEV)" 0 && \
+        $(GREP) /C:"   0.000   1.732   1.732" $(BINDIR)\t1_dist_matrix_c\main_out.txt && $(TOUCH) $@ 
 
 # ---------- ‘» “»¬Ќџ≈ ÷≈Ћ» (PHONY TARGETS) ---------- 
 # фиктивные, т.к. по итогу их выполнени€ не будет итоговой цели как файла. они нужны дл€ побочного результата - дерева пререквизитов
