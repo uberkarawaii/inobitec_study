@@ -1,4 +1,4 @@
-# ПАПКИ В /build
+# ---------- ПАПКИ В /build ---------- 
 # папка с учётом режима сборки. если не было передано иного, будет /debug
 CONFIG ?= debug
 # директория для бинарных файлов. внутри неё будут и debug, и release
@@ -6,7 +6,8 @@ BINDIR := build\$(CONFIG)
 # для бинарников тестовых программ. по умолчанию будет build/debug/test
 TESTDIR := $(BINDIR)\test
 
-# ПЛАТФОРМОЗАВИСИМОЕ: ИНСТРУМЕНТЫ ДЛЯ СБОРКИ И ФЛАГИ, ЗАВИСЯЩИЕ ОТ РЕЖИМА (для cl, link)
+
+# ---------- ПЛАТФОРМОЗАВИСИМОЕ: ИНСТРУМЕНТЫ ДЛЯ СБОРКИ И ФЛАГИ, ЗАВИСЯЩИЕ ОТ РЕЖИМА (для cl, link) ---------- 
 ifeq ($(OS), Windows_NT)
   # версия для MSVC
   CC := cl
@@ -47,7 +48,7 @@ else
 endif
 
 
-# ПЕРЕМЕННЫЕ ДЛЯ ЦЕЛЕЙ (ЭТО ОБЪЕКТНИКИ, ИСПОЛНЯЕМЫЕ ФАЙЛЫ, ТЕСТОВЫЕ ФАЙЛЫ)
+# ---------- ПЕРЕМЕННЫЕ ДЛЯ ЦЕЛЕЙ (ЭТО ОБЪЕКТНИКИ, ИСПОЛНЯЕМЫЕ ФАЙЛЫ, ТЕСТОВЫЕ ФАЙЛЫ) ---------- 
 # объектники и исполняемые
 T1_CPP_OBJ := $(BINDIR)\t1_dist_matrix_cpp\main.obj $(BINDIR)\common\geometry_cpp.obj
 T1_C_OBJ := $(BINDIR)\t1_dist_matrix_c\main.obj $(BINDIR)\common\geometry_c.obj
@@ -58,23 +59,30 @@ T1_C_EXE := $(BINDIR)\t1_dist_matrix_c\main.exe
 # тут нельзя через wildcard: если так сделать, то при построении дерева make будет сверяться с файловой системой
 # и не увидит там ни одного из .ok файлов - прогона тестов ещё не было. тогда ни для одного .ok файла рецепт для неё не выполнится
 # поэтом с абсолютными путями
-T1_TESTS := $(TESTDIR)\t1_cpp_abc.ok \
+T1_CPP_TESTS := $(TESTDIR)\t1_cpp_abc.ok \
 	    $(TESTDIR)\t1_cpp_float.ok \
 	    $(TESTDIR)\t1_cpp_low.ok \
 	    $(TESTDIR)\t1_cpp_high.ok \
-	    $(TESTDIR)\t1_cpp_nul.ok\
-            $(TESTDIR)\t1_c_abc.ok \
+	    $(TESTDIR)\t1_cpp_nul.ok
+
+T1_C_TESTS := $(TESTDIR)\t1_c_abc.ok \
 	    $(TESTDIR)\t1_c_float.ok \
 	    $(TESTDIR)\t1_c_low.ok \
 	    $(TESTDIR)\t1_c_high.ok \
-	    $(TESTDIR)\t1_c_nul.ok\
+	    $(TESTDIR)\t1_c_nul.ok
+
+# exit-коды
+USAGE := 64
+DATA := 65
+NO_INPUT := 66
+IO_FAIL := 74
 
 # отдельно вынесенные имена каталогов - визуально сократить order-only (абс. пути), т.к. % паттерн не м.б. в связке с order-only
 CPP_DIRS := $(BINDIR)\t1_dist_matrix_cpp
 C_DIRS := $(BINDIR)\t1_dist_matrix_c
 
 
-# ПОДКАТАЛОГИ (ORDER-ONLY, ВАЖНО ТОЛЬКО ИХ НАЛИЧИЕ)
+# ---------- ПОДКАТАЛОГИ (ORDER-ONLY, ВАЖНО ТОЛЬКО ИХ НАЛИЧИЕ) ---------- 
 
 # /tools существует только для run_case.exe
 # в итоге эта цепочка будет разложена на 5 правил вида "$(BINDIR)/t1_dist_matrix_cpp: $(MKDIR) $@"
@@ -85,7 +93,7 @@ $(CPP_DIRS) $(C_DIRS) $(BINDIR)\common $(BINDIR)\tools $(TESTDIR):
 	$(MKDIR) $@
 
 
-# ЗАВИСИМОСТИ - (ПЕРЕ)СОБРАТЬ ЦЕЛЬ ЕСЛИ: ПРЕРЕКВИЗИТ БЫЛ ИЗМЕНЁН ПОЗЖЕ ЦЕЛИ ИЛИ ЦЕЛЬ ЕЩЁ НЕ СУЩЕСТВУЕТ
+# ---------- ЗАВИСИМОСТИ - (ПЕРЕ)СОБРАТЬ ЦЕЛЬ ЕСЛИ: ПРЕРЕКВИЗИТ БЫЛ ИЗМЕНЁН ПОЗЖЕ ЦЕЛИ ИЛИ ЦЕЛЬ ЕЩЁ НЕ СУЩЕСТВУЕТ ---------- 
 # цель: пререкв.1 пререкв.2 ...
 # $@ - цель
 # $< - первый пререквизит
@@ -116,20 +124,49 @@ $(BINDIR)\t1_dist_matrix_c\main.exe: $(T1_C_OBJ) | $(BINDIR)\t1_dist_matrix_c
 	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
 
 
-# ТЕСТЫ - при успешном выполнеии появляются .ok маркеры с соотв. именами
+# ---------- ТЕСТЫ ---------- 
+# (при успешном выполнеии появляются .ok маркеры с соотв. именами в build/.../test)
 # небольшой .exe, который будет проверять, что код выхода программы совпадает с заданным кодом
 # Fo - file output (obj) Fe - file executable (exe)
 RUN_CASE := $(BINDIR)\tools\run_case.exe
 $(BINDIR)\tools\run_case.exe: tests\run_case.cpp | $(BINDIR)\tools
 	$(CXX) /Fo:$(BINDIR)\tools\run_case.obj /Fe:$@ $(CXXFLAGS) $<
 
-# случай неверных входных данных - текст
-# после && будет выполнение, только если до && код выхода == 0. работает и в shell и в cmd 
+# cpp tests
+# после && будет выполнение, только если до && код выхода == 0. работает и в shell, и в cmd 
 $(TESTDIR)\t1_cpp_abc.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo abc | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" 65 && $(TOUCH) $@
+	$(RUN_CASE) "echo abc | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
+
+$(TESTDIR)\t1_cpp_float.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo 2.3 | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
+
+$(TESTDIR)\t1_cpp_low.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo 2 | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && $(TOUCH) $@
+
+$(TESTDIR)\t1_cpp_high.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo 21 | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && $(TOUCH) $@
+
+$(TESTDIR)\t1_cpp_nul.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "type $(NULLDEV) | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && $(TOUCH) $@
+
+# C tests
+$(TESTDIR)\t1_c_abc.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo abc | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
+
+$(TESTDIR)\t1_c_float.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo 2.3 | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
+
+$(TESTDIR)\t1_c_low.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo 2 | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && $(TOUCH) $@
+
+$(TESTDIR)\t1_c_high.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "echo 21 | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && $(TOUCH) $@
+
+$(TESTDIR)\t1_c_nul.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
+	$(RUN_CASE) "type $(NULLDEV) | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && $(TOUCH) $@
 
 
-# ФИКТИВНЫЕ ЦЕЛИ (PHONY TARGETS)
+# ---------- ФИКТИВНЫЕ ЦЕЛИ (PHONY TARGETS) ---------- 
 # фиктивные, т.к. по итогу их выполнения не будет итоговой цели как файла. они нужны для побочного результата - дерева пререквизитов
 # а т.к. файла от такой phony target никогда не будет, то make каждый раз будет видеть:
 # цели нет, значит строим пререквизиты - побоч. цель выполняется. (или выполняем рецепт, смотря что после цели)
@@ -141,7 +178,7 @@ $(TESTDIR)\t1_cpp_abc.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
 # phony-s для получения файлов
 all: t1
 t1: $(T1_CPP_EXE) $(T1_C_EXE)
-test: format-check $(TESTDIR)\t1_cpp_abc.ok # $(T1_TESTS)
+test: format-check $(T1_CPP_TESTS) $(T1_C_TESTS)
 
 # phony-s для работы над файлами  
 format: 
@@ -151,3 +188,15 @@ format-check:
 	clang-format --dry-run -Werror $(wildcard **/*.cpp **/*.c **/*.h **/*.hpp)
 clean: 
 	$(RMDIR) build
+
+
+
+
+
+
+
+
+
+
+
+
