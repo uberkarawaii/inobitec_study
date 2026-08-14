@@ -49,13 +49,24 @@ endif
 
 
 # ---------- ПЕРЕМЕННЫЕ ДЛЯ ЦЕЛЕЙ (ЭТО ОБЪЕКТНИКИ, ИСПОЛНЯЕМЫЕ ФАЙЛЫ, ТЕСТОВЫЕ ФАЙЛЫ) ---------- 
-# объектники и исполняемые
+# объектники и исполняемые (цели и под-цели)
+RUN_CASE := $(BINDIR)\tools\run_case.exe
+FIND_SUBSTR := $(BINDIR)\tools\check_contains.exe
+
 T1_CPP_OBJ := $(BINDIR)\t1_dist_matrix_cpp\main.obj $(BINDIR)\common\geometry_cpp.obj
 T1_C_OBJ := $(BINDIR)\t1_dist_matrix_c\main.obj $(BINDIR)\common\geometry_c.obj
 T1_CPP_EXE := $(BINDIR)\t1_dist_matrix_cpp\main.exe
 T1_C_EXE := $(BINDIR)\t1_dist_matrix_c\main.exe
 
-# тестовые
+T2_CPP_OBJ := $(BINDIR)\t2_passport_cpp\main.obj $(BINDIR)\common\string_utils_cpp.obj
+T2_C_OBJ := $(BINDIR)\t2_passport_c\main.obj $(BINDIR)\common\string_utils_c.obj
+T2_CPP_EXE := $(BINDIR)\t2_passport_cpp\main.exe
+T2_C_EXE := $(BINDIR)\t2_passport_c\main.exe
+
+# target-specific переменные - для определения линковки на этапе компиляции - статическая / динамическая
+$(T1_CPP_EXE) $(T1_C_EXE) $(T2_CPP_EXE) $(T2_C_EXE): COMMON_FLAG := /DCOMMON_STATIC
+
+# цели (тестовые)
 # тут нельзя через wildcard: если так сделать, то при построении дерева make будет сверяться с файловой системой
 # и не увидит там ни одного из .ok файлов - прогона тестов ещё не было. тогда ни для одного .ok файла рецепт для неё не выполнится
 # поэтом с абсолютными путями
@@ -73,6 +84,8 @@ T1_C_TESTS := $(TESTDIR)\t1_c_abc.ok \
 	    $(TESTDIR)\t1_c_nul.ok \
             $(TESTDIR)\t1_c_norm.ok
 
+T2_CPP_TESTS := $(TESTDIR)\t2_cpp_norm.ok
+
 # exit-коды
 USAGE := 64
 DATA := 65
@@ -80,8 +93,8 @@ NO_INPUT := 66
 IO_FAIL := 74
 
 # отдельно вынесенные имена каталогов - визуально сократить order-only (абс. пути), т.к. % паттерн не м.б. в связке с order-only
-CPP_DIRS := $(BINDIR)\t1_dist_matrix_cpp
-C_DIRS := $(BINDIR)\t1_dist_matrix_c
+CPP_DIRS := $(BINDIR)\t1_dist_matrix_cpp $(BINDIR)\t2_passport_cpp
+C_DIRS := $(BINDIR)\t1_dist_matrix_c $(BINDIR)\t2_passport_c
 
 
 # ---------- ПОДКАТАЛОГИ (ORDER-ONLY, ВАЖНО ТОЛЬКО ИХ НАЛИЧИЕ) ---------- 
@@ -101,39 +114,79 @@ $(CPP_DIRS) $(C_DIRS) $(BINDIR)\common $(BINDIR)\tools $(TESTDIR):
 # $< - первый пререквизит
 # $^ - все пререквизиты	
 
-# это правило захватит все .obj в подкаталогах /bin/..., 
+# СБОРКИ
+# правила для всеx .obj в подкаталогах /bin/..., 
 # для которых есть зеркальные .cpp/.c (лежат в такой же папке, но она в корне проекта)
-# и mkdir т.к. при первой сборке нужная папка в bindir не будет существовать 
+# флаг COMMON_FLAG - target-specific переменная. влияет на вид последущей линковки - статич. / динамич. 
+# и order-only - чтобы папка для объектника существовала, если сборок ещё не было
 $(BINDIR)\\%.obj: %.cpp | $(CPP_DIRS)
-	$(CXX) /c /Fo:$@ $(CXXFLAGS) $<   
+	$(CXX) /c $(COMMON_FLAG) /Fo:$@ $(CXXFLAGS) $<   
 
 # аналогичное для Си
 $(BINDIR)\\%.obj: %.c | $(C_DIRS) 
-	$(CC) /c /Fo:$@ $(CFLAGS) $<
+	$(CC) /c $(COMMON_FLAG) /Fo:$@ $(CFLAGS) $<
 
-# правила для geometry, т.к. имена его объектников не совпадают с именами .src
+# STATIC (t1-t2) правила для geometry + string_utils, т.к. их имена объектников не совпадают с именами .src
 $(BINDIR)\common\geometry_cpp.obj: common\geometry.cpp common\geometry.hpp | $(BINDIR)\common
 	$(CXX) /c /DCOMMON_STATIC /Fo:$@ $(CXXFLAGS) $< 
 
 $(BINDIR)\common\geometry_c.obj: common\geometry.c common\geometry.h | $(BINDIR)\common
 	$(CC) /c /DCOMMON_STATIC /Fo:$@ $(CFLAGS) $<
 
-# линковка. для первой задачи и модуля geometry линковка статическая, тк тут один geometry без string_utils
+$(BINDIR)\common\string_utils_cpp.obj: common\string_utils.cpp common\string_utils.hpp | $(BINDIR)\common
+	$(CXX) /c /DCOMMON_STATIC /Fo:$@ $(CXXFLAGS) $<
+
+$(BINDIR)\common\string_utils_c.obj: common\string_utils.c common\string_utils.h | $(BINDIR)\common
+	$(CC) /c /DCOMMON_STATIC /Fo:$@ $(CFLAGS) $<
+
+# DYNAMIC (t3-t4)
+$(BINDIR)\common\geometry_cpp_dll.obj: common\geometry.cpp | $(BINDIR)\common
+	$(CXX) /c /DCOMMON_EXPORTS /Fo:$@ $(CXXFLAGS) $<
+
+$(BINDIR)\common\geometry_c_dll.obj: common\geometry.c | $(BINDIR)\common
+	$(CC) /c /DCOMMON_EXPORTS /Fo:$@ $(CFLAGS) $<
+
+$(BINDIR)\common\string_utils_cpp_dll.obj: common\string_utils.cpp | $(BINDIR)\common
+	$(CXX) /c /DCOMMON_EXPORTS /Fo:$@ $(CXXFLAGS) $<
+
+$(BINDIR)\common\string_utils_c_dll.obj: common\string_utils.c | $(BINDIR)\common
+	$(C) /c /DCOMMON_EXPORTS /Fo:$@ $(CFLAGS) $<
+
+# TODO: написать сборку common_cpp.dll common_c.dll; 
+# TODO: как связать exe + dll? exe хочет lib, но lib - побочный продукт dll. Тогда пререкв. для exe - dll, раз он обеспечит lib 
+
+# ЛИНКОВКИ
+# линковка для 1 задачи и модуля geometry. линковка статическая, тк тут один geometry без string_utils
 $(BINDIR)\t1_dist_matrix_cpp\main.exe: $(T1_CPP_OBJ) | $(BINDIR)\t1_dist_matrix_cpp
 	$(LINK) $(LINK_FLAGS) /OUT:$@ $^ 
 
 $(BINDIR)\t1_dist_matrix_c\main.exe: $(T1_C_OBJ) | $(BINDIR)\t1_dist_matrix_c 
 	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
 
+# линковка для 2 задачи. также статич., с одним модулем string_utils
+$(BINDIR)\t2_passport_cpp\main.exe: $(T2_CPP_OBJ) | $(BINDIR)\t2_passport_cpp
+	$(LINK) $(LINK_FLAGS) /OUT:$@ $^	
 
-# ---------- ТЕСТЫ ---------- 
-# (при успешном выполнеии появляются .ok маркеры с соотв. именами в build/.../test)
+$(BINDIR)\t2_passport_c\main.exe: $(T2_C_OBJ) | $(BINDIR)\t2_passport_c
+	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
+
+
+# ----- СБОРКА ПРИКЛАДНЫХ ПРОГРАММ (ДЛЯ ТЕСТИРОВАНИЯ) -----
+# RUN_CASE - правило + рецепт
 # небольшой .exe, который будет проверять, что код выхода программы совпадает с заданным кодом
 # Fo - file output (obj) Fe - file executable (exe)
-RUN_CASE := $(BINDIR)\tools\run_case.exe
 $(BINDIR)\tools\run_case.exe: tests\run_case.cpp | $(BINDIR)\tools
 	$(CXX) /Fo:$(BINDIR)\tools\run_case.obj /Fe:$@ $(CXXFLAGS) $<
 
+# FIND_SUBSTR - правило + рецепт
+# берёт file1 file2 и ищёт подстроку file2 в file1; сравнивает побайтово
+$(BINDIR)\tools\check_contains.exe: tests\check_contains.cpp | $(BINDIR)\tools
+	$(CXX) /Fo:$(BINDIR)\tools\check_contain.obj /Fe:$@ $(CXXFLAGS) $<
+
+
+# ---------- ТЕСТЫ ---------- 
+# (при успешном выполнеии появляются .ok маркеры с соотв. именами в build/.../test)
+# TASK 1
 # cpp tests
 # exit-code тесты
 # после && будет выполнение, только если до && код выхода == 0. работает и в shell, и в cmd 
@@ -177,21 +230,29 @@ $(TESTDIR)\t1_c_nul.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
 # нормальные входные данные. проверка выходных данных
 $(TESTDIR)\t1_c_norm.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
 	$(RUN_CASE) "echo 3 | $(T1_C_EXE) > $(BINDIR)\t1_dist_matrix_c\main_out.txt 2> $(NULLDEV)" 0 && \
-        $(GREP) /C:"   0.000   1.732   1.732" $(BINDIR)\t1_dist_matrix_c\main_out.txt && $(TOUCH) $@ 
+        $(GREP) /C:"   0.000   1.732   1.732" $(BINDIR)\t1_dist_matrix_c\main_out.txt && $(TOUCH) $@
+
+# TASK 2
+# cpp tests
+$(TESTDIR)\t2_cpp_norm.ok: $(T2_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_input > $(BINDIR)\t2_passport_cpp\t2_res 2> $(NULLDEV)" 0 && \
+        $(FIND_SUBSTR) $(BINDIR)\t2_passport_cpp\t2_res tests\expect\t2_norm && $(TOUCH) $@
+
 
 # ---------- ФИКТИВНЫЕ ЦЕЛИ (PHONY TARGETS) ---------- 
 # фиктивные, т.к. по итогу их выполнения не будет итоговой цели как файла. они нужны для побочного результата - дерева пререквизитов
 # а т.к. файла от такой phony target никогда не будет, то make каждый раз будет видеть:
 # цели нет, значит строим пререквизиты - побоч. цель выполняется. (или выполняем рецепт, смотря что после цели)
 # чтобы make не запутался (т.к. может быть, что появится файл с имененм phony target), делается спец. раздел: .PHONY: ... в помощь make
-# не может иметь рецепта, т.к. просто помечает цели как фиктивные
+# не может иметь рецепта, т.к. просто помечает цели как фиктивные 
 
 .PHONY: all t1 test format format-check
 
 # phony-s для получения файлов
-all: t1
+all: t1 t2
 t1: $(T1_CPP_EXE) $(T1_C_EXE)
-test: format-check $(T1_CPP_TESTS) $(T1_C_TESTS)
+t2: $(T2_CPP_EXE)
+test: format-check $(T1_CPP_TESTS) $(T1_C_TESTS) $(T2_CPP_TESTS) 
 
 # phony-s для работы над файлами  
 format: 
