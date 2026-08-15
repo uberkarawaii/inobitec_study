@@ -29,7 +29,7 @@ char* get_string(int* len) {
         }
     }
     s[*len] = '\0';
-    if (ch == EOF)
+    if (ch == EOF && *len == 0)
         *len = -1;
 
     return s;

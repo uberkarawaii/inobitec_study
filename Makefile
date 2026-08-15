@@ -84,7 +84,23 @@ T1_C_TESTS := $(TESTDIR)\t1_c_abc.ok \
 	    $(TESTDIR)\t1_c_nul.ok \
             $(TESTDIR)\t1_c_norm.ok
 
-T2_CPP_TESTS := $(TESTDIR)\t2_cpp_norm.ok
+T2_CPP_TESTS := $(TESTDIR)\t2_cpp_norm.ok \
+                $(TESTDIR)\t2_cpp_eof_name.ok \
+                $(TESTDIR)\t2_cpp_empty_name.ok \
+                $(TESTDIR)\t2_cpp_eof_vertexes.ok \
+                $(TESTDIR)\t2_cpp_empty_vertexes.ok \
+                $(TESTDIR)\t2_cpp_negative_vertexes.ok \
+                $(TESTDIR)\t2_cpp_fractional_vertexes.ok \
+                $(TESTDIR)\t2_cpp_nan_vertexes.ok
+
+T2_C_TESTS := $(TESTDIR)\t2_c_norm.ok \
+                $(TESTDIR)\t2_c_eof_name.ok \
+                $(TESTDIR)\t2_c_empty_name.ok \
+                $(TESTDIR)\t2_c_eof_vertexes.ok \
+                $(TESTDIR)\t2_c_empty_vertexes.ok \
+                $(TESTDIR)\t2_c_negative_vertexes.ok \
+                $(TESTDIR)\t2_c_fractional_vertexes.ok \
+                $(TESTDIR)\t2_c_nan_vertexes.ok
 
 # exit-коды
 USAGE := 64
@@ -150,7 +166,7 @@ $(BINDIR)\common\string_utils_cpp_dll.obj: common\string_utils.cpp | $(BINDIR)\c
 	$(CXX) /c /DCOMMON_EXPORTS /Fo:$@ $(CXXFLAGS) $<
 
 $(BINDIR)\common\string_utils_c_dll.obj: common\string_utils.c | $(BINDIR)\common
-	$(C) /c /DCOMMON_EXPORTS /Fo:$@ $(CFLAGS) $<
+	$(CC) /c /DCOMMON_EXPORTS /Fo:$@ $(CFLAGS) $<
 
 # TODO: написать сборку common_cpp.dll common_c.dll; 
 # TODO: как связать exe + dll? exe хочет lib, но lib - побочный продукт dll. Тогда пререкв. для exe - dll, раз он обеспечит lib 
@@ -232,11 +248,71 @@ $(TESTDIR)\t1_c_norm.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
 	$(RUN_CASE) "echo 3 | $(T1_C_EXE) > $(BINDIR)\t1_dist_matrix_c\main_out.txt 2> $(NULLDEV)" 0 && \
         $(GREP) /C:"   0.000   1.732   1.732" $(BINDIR)\t1_dist_matrix_c\main_out.txt && $(TOUCH) $@
 
-# TASK 2
-# cpp tests
-$(TESTDIR)\t2_cpp_norm.ok: $(T2_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_input > $(BINDIR)\t2_passport_cpp\t2_res 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t2_passport_cpp\t2_res tests\expect\t2_norm && $(TOUCH) $@
+# TASK 2 cpp tests
+$(TESTDIR)\t2_cpp_norm.ok: $(T2_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t2_input tests\expect\t2_norm | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_input > $(BINDIR)\t2_passport_cpp\t2_norm 2> $(NULLDEV)" 0 && \
+        $(FIND_SUBSTR) $(BINDIR)\t2_passport_cpp\t2_norm tests\expect\t2_norm && $(TOUCH) $@
+
+$(TESTDIR)\t2_cpp_eof_name.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_eof_name | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_eof_name > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && \
+        $(TOUCH) $@ 
+
+$(TESTDIR)\t2_cpp_empty_name.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_empty_name | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_empty_name > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+        $(TOUCH) $@ 
+
+$(TESTDIR)\t2_cpp_eof_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_eof_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_eof_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && \
+        $(TOUCH) $@
+
+$(TESTDIR)\t2_cpp_empty_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_empty_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_empty_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+        $(TOUCH) $@
+
+$(TESTDIR)\t2_cpp_negative_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_negative_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_negative_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && \
+        $(TOUCH) $@ 
+
+$(TESTDIR)\t2_cpp_fractional_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_fractional_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_fractional_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+        $(TOUCH) $@
+
+$(TESTDIR)\t2_cpp_nan_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_nan_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_nan_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+        $(TOUCH) $@
+
+# TASK 2 c tests
+$(TESTDIR)\t2_c_norm.ok: $(T2_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t2_input tests\expect\t2_norm | $(TESTDIR)
+	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_input > $(BINDIR)\t2_passport_c\t2_norm 2> $(NULLDEV)" 0 && \
+        $(FIND_SUBSTR) $(BINDIR)\t2_passport_c\t2_norm tests\expect\t2_norm && $(TOUCH) $@
+
+$(TESTDIR)\t2_c_eof_name.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_eof_name | $(TESTDIR)
+	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_eof_name > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && \
+        $(TOUCH) $@ 
+
+$(TESTDIR)\t2_c_empty_name.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_empty_name | $(TESTDIR)
+	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_empty_name > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+        $(TOUCH) $@
+
+$(TESTDIR)\t2_c_eof_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_eof_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_eof_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && \
+        $(TOUCH) $@
+
+$(TESTDIR)\t2_c_empty_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_empty_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_empty_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+        $(TOUCH) $@
+
+$(TESTDIR)\t2_c_negative_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_negative_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_negative_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && \
+        $(TOUCH) $@
+
+$(TESTDIR)\t2_c_fractional_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_fractional_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_fractional_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+        $(TOUCH) $@
+
+$(TESTDIR)\t2_c_nan_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_nan_vertexes | $(TESTDIR)
+	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_nan_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+        $(TOUCH) $@
 
 
 # ---------- ФИКТИВНЫЕ ЦЕЛИ (PHONY TARGETS) ---------- 
@@ -246,13 +322,19 @@ $(TESTDIR)\t2_cpp_norm.ok: $(T2_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) | $(TESTDIR)
 # чтобы make не запутался (т.к. может быть, что появится файл с имененм phony target), делается спец. раздел: .PHONY: ... в помощь make
 # не может иметь рецепта, т.к. просто помечает цели как фиктивные 
 
-.PHONY: all t1 test format format-check
+.PHONY: all t1 t2 test format format-check clean
 
 # phony-s для получения файлов
 all: t1 t2
+
 t1: $(T1_CPP_EXE) $(T1_C_EXE)
-t2: $(T2_CPP_EXE)
-test: format-check $(T1_CPP_TESTS) $(T1_C_TESTS) $(T2_CPP_TESTS) 
+	@echo T1_CPP T1_C COMPILED
+
+t2: $(T2_CPP_EXE) $(T2_C_EXE)
+	@echo T2_CPP T2_C COMPILED
+
+test: format-check $(T1_CPP_TESTS) $(T1_C_TESTS) $(T2_CPP_TESTS) $(T2_C_TESTS)
+	@echo T1_CPP T1_C T2_CPP T2_C: ALL TESTS PASSED 
 
 # phony-s для работы над файлами  
 format: 
@@ -261,16 +343,5 @@ format:
 format-check: 
 	clang-format --dry-run -Werror $(wildcard **/*.cpp **/*.c **/*.h **/*.hpp)
 clean: 
-	$(RMDIR) build
-
-
-
-
-
-
-
-
-
-
-
-
+	$(RMDIR) build 
+	@echo BUILD DIR REMOVED
