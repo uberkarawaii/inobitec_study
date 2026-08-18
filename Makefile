@@ -22,6 +22,7 @@ ifeq ($(OS), Windows_NT)
   TOUCH := type nul > 
   # /s - всё содержимое; /q - quietly
   RMDIR := rmdir /s /q
+  FC := fc
   ifeq ($(CONFIG), debug)
     CONFIG_FLAGS := /Od /Zi /MDd /fsanitize=address
     LINK_FLAGS := /DEBUG 
@@ -67,11 +68,14 @@ T2_C_EXE := $(BINDIR)\t2_passport_c\main.exe
 T3_CPP_EXE := $(BINDIR)\t3_bbox_cpp\main.exe
 T3_C_EXE := $(BINDIR)\t3_bbox_c\main.exe
 
+T4_CPP_EXE := $(BINDIR)\t4_filter_cpp\main.exe
+T4_C_EXE := $(BINDIR)\t4_filter_c\main.exe
+
 # target-specific переменные - для определения линковки на этапе компиляции - статическая / динамическая
 $(T1_CPP_EXE) $(T1_C_EXE) $(T2_CPP_EXE) $(T2_C_EXE): COMMON_FLAG := /DCOMMON_STATIC
 # для t3 - t4 этот флаг пустой - так функции будут помечаться, как импортируемые из dll
 # и инструкция set PATH чтобы .exe находил .dll
-$(T3_CPP_EXE) $(T3_C_EXE): COMMON_FLAG :=
+$(T3_CPP_EXE) $(T3_C_EXE) $(T4_CPP_EXE) $(T4_C_EXE): COMMON_FLAG :=
 
 # цели (тестовые)
 # тут нельзя через wildcard: если так сделать, то при построении дерева make будет сверяться с файловой системой
@@ -123,6 +127,30 @@ T3_C_TESTS := $(TESTDIR)\t3_c_empty_case.ok \
                 $(TESTDIR)\t3_c_test2.ok \
                 $(TESTDIR)\t3_c_test3.ok 
 
+T4_CPP_TESTS := $(TESTDIR)\t4_cpp_radius_empty.ok \
+                $(TESTDIR)\t4_cpp_radius_too_much.ok \
+                $(TESTDIR)\t4_cpp_radius_symbol.ok \
+                $(TESTDIR)\t4_cpp_radius_inf.ok \
+                $(TESTDIR)\t4_cpp_radius_negative.ok \
+                $(TESTDIR)\t4_cpp_symbol_coords.ok \
+                $(TESTDIR)\t4_cpp_too_few_coords.ok \
+                $(TESTDIR)\t4_cpp_empty_coords.ok \
+                $(TESTDIR)\t4_cpp_test1.ok \
+                $(TESTDIR)\t4_cpp_test2.ok \
+                $(TESTDIR)\t4_cpp_test3.ok 
+
+T4_C_TESTS := $(TESTDIR)\t4_c_radius_empty.ok \
+                $(TESTDIR)\t4_c_radius_too_much.ok \
+                $(TESTDIR)\t4_c_radius_symbol.ok \
+                $(TESTDIR)\t4_c_radius_inf.ok \
+                $(TESTDIR)\t4_c_radius_negative.ok \
+                $(TESTDIR)\t4_c_symbol_coords.ok \
+                $(TESTDIR)\t4_c_too_few_coords.ok \
+                $(TESTDIR)\t4_c_empty_coords.ok \
+                $(TESTDIR)\t4_c_test1.ok \
+                $(TESTDIR)\t4_c_test2.ok \
+                $(TESTDIR)\t4_c_test3.ok
+
 # exit-коды
 USAGE := 64
 DATA := 65
@@ -130,8 +158,8 @@ NO_INPUT := 66
 IO_FAIL := 74
 
 # отдельно вынесенные имена каталогов - визуально сократить order-only (абс. пути), т.к. % паттерн не м.б. в связке с order-only
-CPP_DIRS := $(BINDIR)\t1_dist_matrix_cpp $(BINDIR)\t2_passport_cpp $(BINDIR)\t3_bbox_cpp
-C_DIRS := $(BINDIR)\t1_dist_matrix_c $(BINDIR)\t2_passport_c $(BINDIR)\t3_bbox_c
+CPP_DIRS := $(BINDIR)\t1_dist_matrix_cpp $(BINDIR)\t2_passport_cpp $(BINDIR)\t3_bbox_cpp $(BINDIR)\t4_filter_cpp
+C_DIRS := $(BINDIR)\t1_dist_matrix_c $(BINDIR)\t2_passport_c $(BINDIR)\t3_bbox_c $(BINDIR)\t4_filter_c
 
 
 # ---------- ПОДКАТАЛОГИ (ORDER-ONLY, ВАЖНО ТОЛЬКО ИХ НАЛИЧИЕ) ---------- 
@@ -222,6 +250,12 @@ $(BINDIR)\t3_bbox_cpp\main.exe: $(BINDIR)\t3_bbox_cpp\main.obj $(BINDIR)\common\
 
 $(BINDIR)\t3_bbox_c\main.exe: $(BINDIR)\t3_bbox_c\main.obj $(BINDIR)\common\common_c.lib | $(BINDIR)\t3_bbox_c
 	$(LINK) $(LINK_FLAGS) /OUT:$@ $^ 
+
+$(BINDIR)\t4_filter_cpp\main.exe: $(BINDIR)\t4_filter_cpp\main.obj $(BINDIR)\common\common_cpp.lib | $(BINDIR)\t4_filter_cpp
+	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
+
+$(BINDIR)\t4_filter_c\main.exe: $(BINDIR)\t4_filter_c\main.obj $(BINDIR)\common\common_c.lib | $(BINDIR)\t4_filter_c
+	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
 
 # ----- СБОРКА ПРИКЛАДНЫХ ПРОГРАММ (ДЛЯ ТЕСТИРОВАНИЯ) -----
 # RUN_CASE - правило + рецепт
@@ -418,6 +452,147 @@ $(TESTDIR)\t3_c_test3.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_dat
         $(RUN_CASE) "$(T3_C_EXE) < tests\input_data\t3_test3 > $(BINDIR)\t3_bbox_c\t3_test3 2> $(NULLDEV)" 0 && \
         $(FIND_SUBSTR) $(BINDIR)\t3_bbox_c\t3_test3 tests\expect\t3_test3 && $(TOUCH) $@
 
+# T4 cpp tests
+# неверные значения радиуса. подаётся числом, т.к. это аргумент командной строки
+# пустой радиус
+$(TESTDIR)\t4_cpp_radius_empty.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_empty | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_empty" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_empty tests\expect\t4_radius_empty && $(TOUCH) $@ 
+
+# два аргумента, хотя нужно ввести только один
+$(TESTDIR)\t4_cpp_radius_too_much.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_too_much | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) 2 3 > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_too_much" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_too_much tests\expect\t4_radius_too_much && $(TOUCH) $@
+
+# нечисловые символы в радиусе
+$(TESTDIR)\t4_cpp_radius_symbol.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_symbol | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) 4ch > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_symbol" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_symbol tests\expect\t4_radius_symbol && $(TOUCH) $@ 
+
+# бесконечность, хотя радиус должен быть конечным числом
+$(TESTDIR)\t4_cpp_radius_inf.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_inf | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) inf > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_inf" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_inf tests\expect\t4_radius_inf && $(TOUCH) $@ 
+
+# отрицат. значение радиуса
+$(TESTDIR)\t4_cpp_radius_negative.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_negative | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) -10 > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_negative" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_negative tests\expect\t4_radius_negative && $(TOUCH) $@  
+
+# тесты с ошибочными значениями точек. точки уже из файла
+# буквы среди чисел
+$(TESTDIR)\t4_cpp_symbol_coords.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_symbol_coords tests\input_data\t4_symbol_coords | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) 1 < tests\input_data\t4_symbol_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_symbol_coords" $(DATA) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_symbol_coords tests\expect\t4_symbol_coords && $(TOUCH) $@
+
+# меньше трёх координат
+$(TESTDIR)\t4_cpp_too_few_coords.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_too_few_coords tests\input_data\t4_too_few_coords | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) 1 < tests\input_data\t4_too_few_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_too_few_coords" $(DATA) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_too_few_coords tests\expect\t4_too_few_coords && $(TOUCH) $@  
+
+# отсутствие координат
+$(TESTDIR)\t4_cpp_empty_coords.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_empty_coords tests\input_data\t4_empty_coords | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) 1 < tests\input_data\t4_empty_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_empty_coords" $(NO_INPUT) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_empty_coords tests\expect\t4_empty_coords && $(TOUCH) $@ 
+
+# тесты на визуально понятных данных; сравнение через file compare т.к. надо явно проверить, что не прошло ничего лишнего;
+# для более строгого байт-в-байт сравнение добавить флаг /b к fc.
+# единственная точка и она проходит
+$(TESTDIR)\t4_cpp_test1.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test1 tests\input_data\t4_test1 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) 8 < tests\input_data\t4_test1 > $(BINDIR)\t4_filter_cpp\t4_test1 2> $(NULLDEV)" 0 && \
+        $(FC) $(BINDIR)\t4_filter_cpp\t4_test1 tests\expect\t4_test1 > $(NULLDEV) && $(TOUCH) $@
+
+# много точек и только одна проходит
+$(TESTDIR)\t4_cpp_test2.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test2 tests\input_data\t4_test2 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) 10 < tests\input_data\t4_test2 > $(BINDIR)\t4_filter_cpp\t4_test2 2> $(NULLDEV)" 0 && \
+        $(FC) $(BINDIR)\t4_filter_cpp\t4_test2 tests\expect\t4_test2 > $(NULLDEV) && $(TOUCH) $@
+
+# одна точка, но она не проходит 
+$(TESTDIR)\t4_cpp_test3.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test3 tests\input_data\t4_test3 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_CPP_EXE) 5 < tests\input_data\t4_test3 > $(BINDIR)\t4_filter_cpp\t4_test3 2> $(NULLDEV)" 0 && \
+        $(FC) $(BINDIR)\t4_filter_cpp\t4_test3 tests\expect\t4_test3 > $(NULLDEV) && $(TOUCH) $@
+
+# T4 c tests
+# неверные значения радиуса. подаётся числом, т.к. это аргумент командной строки
+# пустой радиус
+$(TESTDIR)\t4_c_radius_empty.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_empty | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_empty" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_empty tests\expect\t4_radius_empty && $(TOUCH) $@ 
+
+# два аргумента, хотя нужно ввести только один
+$(TESTDIR)\t4_c_radius_too_much.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_too_much | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) 2 3 > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_too_much" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_too_much tests\expect\t4_radius_too_much && $(TOUCH) $@
+
+# нечисловые символы в радиусе
+$(TESTDIR)\t4_c_radius_symbol.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_symbol | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) 4ch > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_symbol" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_symbol tests\expect\t4_radius_symbol && $(TOUCH) $@ 
+
+# бесконечность, хотя радиус должен быть конечным числом
+$(TESTDIR)\t4_c_radius_inf.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_inf | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) inf > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_inf" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_inf tests\expect\t4_radius_inf && $(TOUCH) $@ 
+
+# отрицат. значение радиуса
+$(TESTDIR)\t4_c_radius_negative.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_negative | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) -10 > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_negative" $(USAGE) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_negative tests\expect\t4_radius_negative && $(TOUCH) $@ 
+
+# тесты с ошибочными значениями точек. точки уже из файла
+# буквы среди чисел
+$(TESTDIR)\t4_c_symbol_coords.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_symbol_coords tests\input_data\t4_symbol_coords | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) 1 < tests\input_data\t4_symbol_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_symbol_coords" $(DATA) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_symbol_coords tests\expect\t4_symbol_coords && $(TOUCH) $@
+
+# меньше трёх координат
+$(TESTDIR)\t4_c_too_few_coords.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_too_few_coords tests\input_data\t4_too_few_coords | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) 1 < tests\input_data\t4_too_few_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_too_few_coords" $(DATA) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_too_few_coords tests\expect\t4_too_few_coords && $(TOUCH) $@  
+
+# отсутствие координат
+$(TESTDIR)\t4_c_empty_coords.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_empty_coords tests\input_data\t4_empty_coords | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) 1 < tests\input_data\t4_empty_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_empty_coords" $(NO_INPUT) && \
+        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_empty_coords tests\expect\t4_empty_coords && $(TOUCH) $@ 
+
+# тесты на визуально понятных данных; сравнение через file compare т.к. надо явно проверить, что не прошло ничего лишнего;
+# для более строгого байт-в-байт сравнение добавить флаг /b к fc.
+# единственная точка и она проходит
+$(TESTDIR)\t4_c_test1.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test1 tests\input_data\t4_test1 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) 8 < tests\input_data\t4_test1 > $(BINDIR)\t4_filter_c\t4_test1 2> $(NULLDEV)" 0 && \
+        $(FC) $(BINDIR)\t4_filter_c\t4_test1 tests\expect\t4_test1 > $(NULLDEV) && $(TOUCH) $@
+
+# много точек и только одна проходит
+$(TESTDIR)\t4_c_test2.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test2 tests\input_data\t4_test2 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) 10 < tests\input_data\t4_test2 > $(BINDIR)\t4_filter_c\t4_test2 2> $(NULLDEV)" 0 && \
+        $(FC) $(BINDIR)\t4_filter_c\t4_test2 tests\expect\t4_test2 > $(NULLDEV) && $(TOUCH) $@
+
+# одна точка, но она не проходит 
+$(TESTDIR)\t4_c_test3.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test3 tests\input_data\t4_test3 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE) "$(T4_C_EXE) 5 < tests\input_data\t4_test3 > $(BINDIR)\t4_filter_c\t4_test3 2> $(NULLDEV)" 0 && \
+        $(FC) $(BINDIR)\t4_filter_c\t4_test3 tests\expect\t4_test3 > $(NULLDEV) && $(TOUCH) $@
 
 # ---------- ФИКТИВНЫЕ ЦЕЛИ (PHONY TARGETS) ---------- 
 # фиктивные, т.к. по итогу их выполнения не будет итоговой цели как файла. они нужны для побочного результата - дерева пререквизитов
@@ -426,11 +601,11 @@ $(TESTDIR)\t3_c_test3.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_dat
 # чтобы make не запутался (т.к. может быть, что появится файл с имененм phony target), делается спец. раздел: .PHONY: ... в помощь make
 # этот раздел не может иметь рецепта, т.к. просто помечает цели как фиктивные 
 
-.PHONY: all t1 t2 t3 test format format-check clean
+.PHONY: all t1 t2 t3 t4 test format format-check clean
 
 # phony-s для получения файлов
-all: t1 t2 t3
-	@echo T1-T3 C and CPP COMPILED
+all: t1 t2 t3 t4
+	@echo T1-T4 C and CPP COMPILED
 
 t1: $(T1_CPP_EXE) $(T1_C_EXE)
 	@echo T1_CPP T1_C COMPILED
@@ -441,8 +616,11 @@ t2: $(T2_CPP_EXE) $(T2_C_EXE)
 t3: $(T3_CPP_EXE) $(T3_C_EXE)
 	@echo T3_CPP T3_C COMPILED
 
-test: format-check $(T1_CPP_TESTS) $(T1_C_TESTS) $(T2_CPP_TESTS) $(T2_C_TESTS) $(T3_CPP_TESTS) $(T3_C_TESTS)
-	@echo T1_CPP T1_C T2_CPP T2_C T3_CPP T3_C: ALL TESTS PASSED 
+t4: $(T4_CPP_EXE) $(T4_C_EXE)
+	@echo T4_CPP T4_C COMPILED 
+
+test: format-check $(T1_CPP_TESTS) $(T1_C_TESTS) $(T2_CPP_TESTS) $(T2_C_TESTS) $(T3_CPP_TESTS) $(T3_C_TESTS) $(T4_CPP_TESTS) $(T4_C_TESTS)
+	@echo T1_CPP T1_C T2_CPP T2_C T3_CPP T3_C T4_CPP T4_C: ALL TESTS PASSED 
 
 # phony-s для работы над файлами  
 format: 

@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (r <= 0) {
-        fprintf(stderr, "Радиус должен быть положительным. Получено: %.3f\n", r);
+        fprintf(stderr, "Радиус должен быть положительным. Получено: %s\n", argv[1]);
         return usage;
     }
 
