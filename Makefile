@@ -2,9 +2,9 @@
 # папка с учётом режима сборки. если не было передано иного, будет /debug
 CONFIG ?= debug
 # директория для бинарных файлов. внутри неё будут и debug, и release
-BINDIR := build\$(CONFIG)
+BINDIR := build/$(CONFIG)
 # для бинарников тестовых программ. по умолчанию будет build/debug/test
-TESTDIR := $(BINDIR)\test
+TESTDIR := $(BINDIR)/test
 
 
 # ---------- ПЛАТФОРМОЗАВИСИМОЕ: ИНСТРУМЕНТЫ ДЛЯ СБОРКИ И ФЛАГИ, ЗАВИСЯЩИЕ ОТ РЕЖИМА (для cl, link) ---------- 
@@ -12,17 +12,25 @@ ifeq ($(OS), Windows_NT)
   # версия для MSVC
   CC := cl
   CXX := cl
+  COMPILE_ONLY := /c
   LINK := link
   CSTD := /std:c17
   CXXSTD := /std:c++latest
   WARN := /W4 /permissive-
+  OBJ_OUT := /Fo:
+  EXE_OUT := /Fe:
+  LINK_OUT := /OUT:
+  DEFINE := /D
+  DLL := /DLL
   GREP := findstr
   NULLDEV := nul
   MKDIR := mkdir
-  TOUCH := type nul > 
+  TOUCH := type nul >
   # /s - всё содержимое; /q - quietly
   RMDIR := rmdir /s /q
   FC := fc
+  # изменение слешей в путях для виндоус. = а не := чтобы раскрывалось при каждом вызове, а не единств. раз
+  WCMD = $(subst /,\,$1)
   ifeq ($(CONFIG), debug)
     CONFIG_FLAGS := /Od /Zi /MDd /fsanitize=address
     LINK_FLAGS := /DEBUG 
@@ -44,112 +52,144 @@ ifeq ($(OS), Windows_NT)
   CXXFLAGS := $(CXXSTD) $(WARN) /EHsc $(CONFIG_FLAGS)  
   CFLAGS := $(CSTD) $(WARN) $(CONFIG_FLAGS)
 else
-  # флаги под линукс - пока нереализовано
-  # TODO : написать флаги под линукс
+  # флаги под линукс
+  CC := gcc
+  CXX := g++
+  COMPILE_ONLY := -c
+  LINK := g++
+  CSTD := -std=c17
+  CXXSTD := -std=c++23
+  WARN := -Wall -Wextra
+  OBJ_OUT := -o
+  EXE_OUT := -o
+  LINK_OUT := -o
+  DEFINE := -D
+  DLL := -shared
+  GREP := grep
+  NULLDEV := /dev/null
+  MKDIR := mkdir -p
+  TOUCH := touch
+  # -rf: -r recursive -f force. необратимо, т.к. нет "корзины"
+  RMDIR := rm -rf
+  FC := diff
+  # изменение слешей в путях для виндоус. = а не := чтобы раскрывалось при каждом вызове, а не единств. раз
+  WCMD = $1
+  ifeq ($(CONFIG), debug)
+  # TODO
+  else
+  # TODO
+  endif
 endif
 
 
 # ---------- ПЕРЕМЕННЫЕ ДЛЯ ЦЕЛЕЙ (ЭТО ОБЪЕКТНИКИ, ИСПОЛНЯЕМЫЕ ФАЙЛЫ, ТЕСТОВЫЕ ФАЙЛЫ) ---------- 
 # исполняемые файлы прикладных программ
-RUN_CASE := $(BINDIR)\tools\run_case.exe
-FIND_SUBSTR := $(BINDIR)\tools\check_contains.exe
+RUN_CASE := $(BINDIR)/tools/run_case.exe
+FIND_SUBSTR := $(BINDIR)/tools/check_contains.exe
+# для слешей под виндоус. объявить RUN_CASE_CMD в верхнем блоке нельзя, т.к. это до объявления самой RUN_CASE. то же с FIND_SUBSTR
+ifeq ($(OS), Windows_NT)
+  RUN_CASE_CMD := $(subst /,\,$(RUN_CASE))
+  FIND_SUBSTR_CMD := $(subst /,\,$(FIND_SUBSTR))
+else
+  RUN_CASE_CMD := $(RUN_CASE)
+  FIND_SUBSTR_CMD := $(FIND_SUBSTR)
+endif
 
 # объектники и исполняемые (цели и под-цели)
-T1_CPP_OBJ := $(BINDIR)\t1_dist_matrix_cpp\main.obj $(BINDIR)\common\geometry_cpp.obj
-T1_C_OBJ := $(BINDIR)\t1_dist_matrix_c\main.obj $(BINDIR)\common\geometry_c.obj
-T1_CPP_EXE := $(BINDIR)\t1_dist_matrix_cpp\main.exe
-T1_C_EXE := $(BINDIR)\t1_dist_matrix_c\main.exe
+T1_CPP_OBJ := $(BINDIR)/t1_dist_matrix_cpp/main.obj $(BINDIR)/common/geometry_cpp.obj
+T1_C_OBJ := $(BINDIR)/t1_dist_matrix_c/main.obj $(BINDIR)/common/geometry_c.obj
+T1_CPP_EXE := $(BINDIR)/t1_dist_matrix_cpp/main.exe
+T1_C_EXE := $(BINDIR)/t1_dist_matrix_c/main.exe
 
-T2_CPP_OBJ := $(BINDIR)\t2_passport_cpp\main.obj $(BINDIR)\common\string_utils_cpp.obj
-T2_C_OBJ := $(BINDIR)\t2_passport_c\main.obj $(BINDIR)\common\string_utils_c.obj
-T2_CPP_EXE := $(BINDIR)\t2_passport_cpp\main.exe
-T2_C_EXE := $(BINDIR)\t2_passport_c\main.exe
+T2_CPP_OBJ := $(BINDIR)/t2_passport_cpp/main.obj $(BINDIR)/common/string_utils_cpp.obj
+T2_C_OBJ := $(BINDIR)/t2_passport_c/main.obj $(BINDIR)/common/string_utils_c.obj
+T2_CPP_EXE := $(BINDIR)/t2_passport_cpp/main.exe
+T2_C_EXE := $(BINDIR)/t2_passport_c/main.exe
 
-T3_CPP_EXE := $(BINDIR)\t3_bbox_cpp\main.exe
-T3_C_EXE := $(BINDIR)\t3_bbox_c\main.exe
+T3_CPP_EXE := $(BINDIR)/t3_bbox_cpp/main.exe
+T3_C_EXE := $(BINDIR)/t3_bbox_c/main.exe
 
-T4_CPP_EXE := $(BINDIR)\t4_filter_cpp\main.exe
-T4_C_EXE := $(BINDIR)\t4_filter_c\main.exe
+T4_CPP_EXE := $(BINDIR)/t4_filter_cpp/main.exe
+T4_C_EXE := $(BINDIR)/t4_filter_c/main.exe
 
-# target-specific переменные - для определения линковки на этапе компиляции - статическая / динамическая
-$(T1_CPP_EXE) $(T1_C_EXE) $(T2_CPP_EXE) $(T2_C_EXE): COMMON_FLAG := /DCOMMON_STATIC
+# target-specific переменные - для определения линковки на этапе компиляции - статическая / динамическая 
+$(T1_CPP_EXE) $(T1_C_EXE) $(T2_CPP_EXE) $(T2_C_EXE): COMMON_FLAG := $(DEFINE)COMMON_STATIC
 # для t3 - t4 этот флаг пустой - так функции будут помечаться, как импортируемые из dll
-# и инструкция set PATH чтобы .exe находил .dll
 $(T3_CPP_EXE) $(T3_C_EXE) $(T4_CPP_EXE) $(T4_C_EXE): COMMON_FLAG :=
 
 # цели (тестовые)
 # тут нельзя через wildcard: если так сделать, то при построении дерева make будет сверяться с файловой системой
 # и не увидит там ни одного из .ok файлов - прогона тестов ещё не было. тогда ни для одного .ok файла рецепт для неё не выполнится
 # поэтом с абсолютными путями
-T1_CPP_TESTS := $(TESTDIR)\t1_cpp_abc.ok \
-	    $(TESTDIR)\t1_cpp_float.ok \
-	    $(TESTDIR)\t1_cpp_low.ok \
-	    $(TESTDIR)\t1_cpp_high.ok \
-	    $(TESTDIR)\t1_cpp_nul.ok \
-            $(TESTDIR)\t1_cpp_norm.ok
+T1_CPP_TESTS := $(TESTDIR)/t1_cpp_abc.ok \
+	    $(TESTDIR)/t1_cpp_float.ok \
+	    $(TESTDIR)/t1_cpp_low.ok \
+	    $(TESTDIR)/t1_cpp_high.ok \
+	    $(TESTDIR)/t1_cpp_nul.ok \
+            $(TESTDIR)/t1_cpp_norm.ok
 
-T1_C_TESTS := $(TESTDIR)\t1_c_abc.ok \
-	    $(TESTDIR)\t1_c_float.ok \
-	    $(TESTDIR)\t1_c_low.ok \
-	    $(TESTDIR)\t1_c_high.ok \
-	    $(TESTDIR)\t1_c_nul.ok \
-            $(TESTDIR)\t1_c_norm.ok
+T1_C_TESTS := $(TESTDIR)/t1_c_abc.ok \
+	    $(TESTDIR)/t1_c_float.ok \
+	    $(TESTDIR)/t1_c_low.ok \
+	    $(TESTDIR)/t1_c_high.ok \
+	    $(TESTDIR)/t1_c_nul.ok \
+            $(TESTDIR)/t1_c_norm.ok
 
-T2_CPP_TESTS := $(TESTDIR)\t2_cpp_norm.ok \
-                $(TESTDIR)\t2_cpp_eof_name.ok \
-                $(TESTDIR)\t2_cpp_empty_name.ok \
-                $(TESTDIR)\t2_cpp_eof_vertexes.ok \
-                $(TESTDIR)\t2_cpp_empty_vertexes.ok \
-                $(TESTDIR)\t2_cpp_negative_vertexes.ok \
-                $(TESTDIR)\t2_cpp_fractional_vertexes.ok \
-                $(TESTDIR)\t2_cpp_nan_vertexes.ok
+T2_CPP_TESTS := $(TESTDIR)/t2_cpp_norm.ok \
+                $(TESTDIR)/t2_cpp_eof_name.ok \
+                $(TESTDIR)/t2_cpp_empty_name.ok \
+                $(TESTDIR)/t2_cpp_eof_vertexes.ok \
+                $(TESTDIR)/t2_cpp_empty_vertexes.ok \
+                $(TESTDIR)/t2_cpp_negative_vertexes.ok \
+                $(TESTDIR)/t2_cpp_fractional_vertexes.ok \
+                $(TESTDIR)/t2_cpp_nan_vertexes.ok
 
-T2_C_TESTS := $(TESTDIR)\t2_c_norm.ok \
-                $(TESTDIR)\t2_c_eof_name.ok \
-                $(TESTDIR)\t2_c_empty_name.ok \
-                $(TESTDIR)\t2_c_eof_vertexes.ok \
-                $(TESTDIR)\t2_c_empty_vertexes.ok \
-                $(TESTDIR)\t2_c_negative_vertexes.ok \
-                $(TESTDIR)\t2_c_fractional_vertexes.ok \
-                $(TESTDIR)\t2_c_nan_vertexes.ok
+T2_C_TESTS := $(TESTDIR)/t2_c_norm.ok \
+                $(TESTDIR)/t2_c_eof_name.ok \
+                $(TESTDIR)/t2_c_empty_name.ok \
+                $(TESTDIR)/t2_c_eof_vertexes.ok \
+                $(TESTDIR)/t2_c_empty_vertexes.ok \
+                $(TESTDIR)/t2_c_negative_vertexes.ok \
+                $(TESTDIR)/t2_c_fractional_vertexes.ok \
+                $(TESTDIR)/t2_c_nan_vertexes.ok
 
-T3_CPP_TESTS := $(TESTDIR)\t3_cpp_empty_case.ok \
-                $(TESTDIR)\t3_cpp_not_digit_case.ok \
-                $(TESTDIR)\t3_cpp_too_few_args_case.ok \
-                $(TESTDIR)\t3_cpp_test1.ok \
-                $(TESTDIR)\t3_cpp_test2.ok \
-                $(TESTDIR)\t3_cpp_test3.ok 
+T3_CPP_TESTS := $(TESTDIR)/t3_cpp_empty_case.ok \
+                $(TESTDIR)/t3_cpp_not_digit_case.ok \
+                $(TESTDIR)/t3_cpp_too_few_args_case.ok \
+                $(TESTDIR)/t3_cpp_test1.ok \
+                $(TESTDIR)/t3_cpp_test2.ok \
+                $(TESTDIR)/t3_cpp_test3.ok 
 
-T3_C_TESTS := $(TESTDIR)\t3_c_empty_case.ok \
-                $(TESTDIR)\t3_c_not_digit_case.ok \
-                $(TESTDIR)\t3_c_too_few_args_case.ok \
-                $(TESTDIR)\t3_c_test1.ok \
-                $(TESTDIR)\t3_c_test2.ok \
-                $(TESTDIR)\t3_c_test3.ok 
+T3_C_TESTS := $(TESTDIR)/t3_c_empty_case.ok \
+                $(TESTDIR)/t3_c_not_digit_case.ok \
+                $(TESTDIR)/t3_c_too_few_args_case.ok \
+                $(TESTDIR)/t3_c_test1.ok \
+                $(TESTDIR)/t3_c_test2.ok \
+                $(TESTDIR)/t3_c_test3.ok 
 
-T4_CPP_TESTS := $(TESTDIR)\t4_cpp_radius_empty.ok \
-                $(TESTDIR)\t4_cpp_radius_too_much.ok \
-                $(TESTDIR)\t4_cpp_radius_symbol.ok \
-                $(TESTDIR)\t4_cpp_radius_inf.ok \
-                $(TESTDIR)\t4_cpp_radius_negative.ok \
-                $(TESTDIR)\t4_cpp_symbol_coords.ok \
-                $(TESTDIR)\t4_cpp_too_few_coords.ok \
-                $(TESTDIR)\t4_cpp_empty_coords.ok \
-                $(TESTDIR)\t4_cpp_test1.ok \
-                $(TESTDIR)\t4_cpp_test2.ok \
-                $(TESTDIR)\t4_cpp_test3.ok 
+T4_CPP_TESTS := $(TESTDIR)/t4_cpp_radius_empty.ok \
+                $(TESTDIR)/t4_cpp_radius_too_much.ok \
+                $(TESTDIR)/t4_cpp_radius_symbol.ok \
+                $(TESTDIR)/t4_cpp_radius_inf.ok \
+                $(TESTDIR)/t4_cpp_radius_negative.ok \
+                $(TESTDIR)/t4_cpp_symbol_coords.ok \
+                $(TESTDIR)/t4_cpp_too_few_coords.ok \
+                $(TESTDIR)/t4_cpp_empty_coords.ok \
+                $(TESTDIR)/t4_cpp_test1.ok \
+                $(TESTDIR)/t4_cpp_test2.ok \
+                $(TESTDIR)/t4_cpp_test3.ok 
 
-T4_C_TESTS := $(TESTDIR)\t4_c_radius_empty.ok \
-                $(TESTDIR)\t4_c_radius_too_much.ok \
-                $(TESTDIR)\t4_c_radius_symbol.ok \
-                $(TESTDIR)\t4_c_radius_inf.ok \
-                $(TESTDIR)\t4_c_radius_negative.ok \
-                $(TESTDIR)\t4_c_symbol_coords.ok \
-                $(TESTDIR)\t4_c_too_few_coords.ok \
-                $(TESTDIR)\t4_c_empty_coords.ok \
-                $(TESTDIR)\t4_c_test1.ok \
-                $(TESTDIR)\t4_c_test2.ok \
-                $(TESTDIR)\t4_c_test3.ok
+T4_C_TESTS := $(TESTDIR)/t4_c_radius_empty.ok \
+                $(TESTDIR)/t4_c_radius_too_much.ok \
+                $(TESTDIR)/t4_c_radius_symbol.ok \
+                $(TESTDIR)/t4_c_radius_inf.ok \
+                $(TESTDIR)/t4_c_radius_negative.ok \
+                $(TESTDIR)/t4_c_symbol_coords.ok \
+                $(TESTDIR)/t4_c_too_few_coords.ok \
+                $(TESTDIR)/t4_c_empty_coords.ok \
+                $(TESTDIR)/t4_c_test1.ok \
+                $(TESTDIR)/t4_c_test2.ok \
+                $(TESTDIR)/t4_c_test3.ok
 
 # exit-коды
 USAGE := 64
@@ -158,8 +198,8 @@ NO_INPUT := 66
 IO_FAIL := 74
 
 # отдельно вынесенные имена каталогов - визуально сократить order-only (абс. пути), т.к. % паттерн не м.б. в связке с order-only
-CPP_DIRS := $(BINDIR)\t1_dist_matrix_cpp $(BINDIR)\t2_passport_cpp $(BINDIR)\t3_bbox_cpp $(BINDIR)\t4_filter_cpp
-C_DIRS := $(BINDIR)\t1_dist_matrix_c $(BINDIR)\t2_passport_c $(BINDIR)\t3_bbox_c $(BINDIR)\t4_filter_c
+CPP_DIRS := $(BINDIR)/t1_dist_matrix_cpp $(BINDIR)/t2_passport_cpp $(BINDIR)/t3_bbox_cpp $(BINDIR)/t4_filter_cpp
+C_DIRS := $(BINDIR)/t1_dist_matrix_c $(BINDIR)/t2_passport_c $(BINDIR)/t3_bbox_c $(BINDIR)/t4_filter_c
 
 
 # ---------- ПОДКАТАЛОГИ (ORDER-ONLY, ВАЖНО ТОЛЬКО ИХ НАЛИЧИЕ) ---------- 
@@ -169,8 +209,8 @@ C_DIRS := $(BINDIR)\t1_dist_matrix_c $(BINDIR)\t2_passport_c $(BINDIR)\t3_bbox_c
 
 # Make зайдёт сюда только если где-то будет, например, $(BINDIR)/common, но папки /common ещё нет. 
 # тогда make придёт сюда и сделает инструкцию MKDIR
-$(CPP_DIRS) $(C_DIRS) $(BINDIR)\common $(BINDIR)\tools $(TESTDIR):
-	$(MKDIR) $@
+$(CPP_DIRS) $(C_DIRS) $(BINDIR)/common $(BINDIR)/tools $(TESTDIR):
+	$(MKDIR) $(subst /,\,$@)
 
 
 # ---------- ЗАВИСИМОСТИ - (ПЕРЕ)СОБРАТЬ ЦЕЛЬ ЕСЛИ: ПРЕРЕКВИЗИТ БЫЛ ИЗМЕНЁН ПОЗЖЕ ЦЕЛИ ИЛИ ЦЕЛЬ ЕЩЁ НЕ СУЩЕСТВУЕТ ---------- 
@@ -184,90 +224,98 @@ $(CPP_DIRS) $(C_DIRS) $(BINDIR)\common $(BINDIR)\tools $(TESTDIR):
 # для которых есть зеркальные .cpp/.c (лежат в такой же папке, но она в корне проекта)
 # флаг COMMON_FLAG - target-specific переменная. влияет на вид последущей линковки - статич. / динамич. 
 # и order-only - чтобы папка для объектника существовала, если сборок ещё не было
-$(BINDIR)\\%.obj: %.cpp | $(CPP_DIRS)
-	$(CXX) /c $(COMMON_FLAG) /Fo:$@ $(CXXFLAGS) $<   
+$(BINDIR)/%.obj: %.cpp | $(CPP_DIRS)
+	$(CXX) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CXXFLAGS) $<   
 
 # аналогичное для Си
-$(BINDIR)\\%.obj: %.c | $(C_DIRS) 
-	$(CC) /c $(COMMON_FLAG) /Fo:$@ $(CFLAGS) $<
+$(BINDIR)/%.obj: %.c | $(C_DIRS) 
+	$(CC) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CFLAGS) $<
 
 # STATIC (t1-t2) правила для geometry + string_utils, т.к. их имена объектников не совпадают с именами .src
-$(BINDIR)\common\geometry_cpp.obj: common\geometry.cpp common\geometry.hpp | $(BINDIR)\common
-	$(CXX) /c /DCOMMON_STATIC /Fo:$@ $(CXXFLAGS) $< 
+$(BINDIR)/common/geometry_cpp.obj: common/geometry.cpp common/geometry.hpp | $(BINDIR)/common
+	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(CXXFLAGS) $< 
 
-$(BINDIR)\common\geometry_c.obj: common\geometry.c common\geometry.h | $(BINDIR)\common
-	$(CC) /c /DCOMMON_STATIC /Fo:$@ $(CFLAGS) $<
+$(BINDIR)/common/geometry_c.obj: common/geometry.c common/geometry.h | $(BINDIR)/common
+	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(CFLAGS) $<
 
-$(BINDIR)\common\string_utils_cpp.obj: common\string_utils.cpp common\string_utils.hpp | $(BINDIR)\common
-	$(CXX) /c /DCOMMON_STATIC /Fo:$@ $(CXXFLAGS) $<
+$(BINDIR)/common/string_utils_cpp.obj: common/string_utils.cpp common/string_utils.hpp | $(BINDIR)/common
+	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(CXXFLAGS) $<
 
-$(BINDIR)\common\string_utils_c.obj: common\string_utils.c common\string_utils.h | $(BINDIR)\common
-	$(CC) /c /DCOMMON_STATIC /Fo:$@ $(CFLAGS) $<
+$(BINDIR)/common/string_utils_c.obj: common/string_utils.c common/string_utils.h | $(BINDIR)/common
+	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(CFLAGS) $<
 
 # DYNAMIC (t3-t4)
-$(BINDIR)\common\geometry_cpp_dll.obj: common\geometry.cpp common\geometry.hpp | $(BINDIR)\common
-	$(CXX) /c /DCOMMON_EXPORTS /Fo:$@ $(CXXFLAGS) $<
+$(BINDIR)/common/geometry_cpp_dll.obj: common/geometry.cpp common/geometry.hpp | $(BINDIR)/common
+	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CXXFLAGS) $<
 
-$(BINDIR)\common\geometry_c_dll.obj: common\geometry.c common\geometry.h | $(BINDIR)\common
-	$(CC) /c /DCOMMON_EXPORTS /Fo:$@ $(CFLAGS) $<
+$(BINDIR)/common/geometry_c_dll.obj: common/geometry.c common/geometry.h | $(BINDIR)/common
+	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CFLAGS) $<
 
-$(BINDIR)\common\string_utils_cpp_dll.obj: common\string_utils.cpp common\string_utils.hpp | $(BINDIR)\common
-	$(CXX) /c /DCOMMON_EXPORTS /Fo:$@ $(CXXFLAGS) $<
+$(BINDIR)/common/string_utils_cpp_dll.obj: common/string_utils.cpp common/string_utils.hpp | $(BINDIR)/common
+	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CXXFLAGS) $<
 
-$(BINDIR)\common\string_utils_c_dll.obj: common\string_utils.c common\string_utils.h | $(BINDIR)\common
-	$(CC) /c /DCOMMON_EXPORTS /Fo:$@ $(CFLAGS) $<
+$(BINDIR)/common/string_utils_c_dll.obj: common/string_utils.c common/string_utils.h | $(BINDIR)/common
+	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CFLAGS) $<
 
 # ЛИНКОВКИ
 # линковка для 1 задачи и модуля geometry. линковка статическая, тк тут один geometry без string_utils
-$(BINDIR)\t1_dist_matrix_cpp\main.exe: $(T1_CPP_OBJ) | $(BINDIR)\t1_dist_matrix_cpp
-	$(LINK) $(LINK_FLAGS) /OUT:$@ $^ 
+$(BINDIR)/t1_dist_matrix_cpp/main.exe: $(T1_CPP_OBJ) | $(BINDIR)/t1_dist_matrix_cpp
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^ 
 
-$(BINDIR)\t1_dist_matrix_c\main.exe: $(T1_C_OBJ) | $(BINDIR)\t1_dist_matrix_c 
-	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
+$(BINDIR)/t1_dist_matrix_c/main.exe: $(T1_C_OBJ) | $(BINDIR)/t1_dist_matrix_c 
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
 # линковка для 2 задачи. также статич., с одним модулем string_utils
-$(BINDIR)\t2_passport_cpp\main.exe: $(T2_CPP_OBJ) | $(BINDIR)\t2_passport_cpp
-	$(LINK) $(LINK_FLAGS) /OUT:$@ $^	
+$(BINDIR)/t2_passport_cpp/main.exe: $(T2_CPP_OBJ) | $(BINDIR)/t2_passport_cpp
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^	
 
-$(BINDIR)\t2_passport_c\main.exe: $(T2_C_OBJ) | $(BINDIR)\t2_passport_c
-	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
+$(BINDIR)/t2_passport_c/main.exe: $(T2_C_OBJ) | $(BINDIR)/t2_passport_c
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
 # линковка common_cpp.dll И common_c.dll: .lib также в целях, чтобы при линковке с main.exe .lib всегда существовал
 # grouped target чтобы не было раскрытия на два правила
 # жёсткий путь до dll а не $@, т.к. $@ - цель, которая триггернула правило. а не надо, чтобы был случай линка в .lib
-CPP_DLL_OBJ := $(BINDIR)\common\geometry_cpp_dll.obj $(BINDIR)\common\string_utils_cpp_dll.obj
-$(BINDIR)\common\common_cpp.dll $(BINDIR)\common\common_cpp.lib &: $(CPP_DLL_OBJ) | $(BINDIR)\common
-	$(LINK) $(LINK_FLAGS) /DLL /OUT:$(BINDIR)\common\common_cpp.dll $^
+CPP_DLL_OBJ := $(BINDIR)/common/geometry_cpp_dll.obj $(BINDIR)/common/string_utils_cpp_dll.obj
+$(BINDIR)/common/common_cpp.dll $(BINDIR)/common/common_cpp.lib &: $(CPP_DLL_OBJ) | $(BINDIR)/common
+	$(LINK) $(LINK_FLAGS) $(DLL) $(LINK_OUT)$(BINDIR)/common/common_cpp.dll $^
 
-C_DLL_OBJ := $(BINDIR)\common\geometry_c_dll.obj $(BINDIR)\common\string_utils_c_dll.obj
-$(BINDIR)\common\common_c.dll $(BINDIR)\common\common_c.lib &: $(C_DLL_OBJ) | $(BINDIR)\common
-	$(LINK) $(LINK_FLAGS) /DLL /OUT:$(BINDIR)\common\common_c.dll $^
+C_DLL_OBJ := $(BINDIR)/common/geometry_c_dll.obj $(BINDIR)/common/string_utils_c_dll.obj
+$(BINDIR)/common/common_c.dll $(BINDIR)/common/common_c.lib &: $(C_DLL_OBJ) | $(BINDIR)/common
+	$(LINK) $(LINK_FLAGS) $(DLL) $(LINK_OUT)$(BINDIR)/common/common_c.dll $^
 
 # линковка t3 - t4 с dll
 # common_cpp.lib имеет свой рецепт для перестройки на случай, если его удалят. поэтому он - полноценный элемент дерева файлов
-$(BINDIR)\t3_bbox_cpp\main.exe: $(BINDIR)\t3_bbox_cpp\main.obj $(BINDIR)\common\common_cpp.lib | $(BINDIR)\t3_bbox_cpp
-	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
+$(BINDIR)/t3_bbox_cpp/main.exe: $(BINDIR)/t3_bbox_cpp/main.obj $(BINDIR)/common/common_cpp.lib | $(BINDIR)/t3_bbox_cpp
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
-$(BINDIR)\t3_bbox_c\main.exe: $(BINDIR)\t3_bbox_c\main.obj $(BINDIR)\common\common_c.lib | $(BINDIR)\t3_bbox_c
-	$(LINK) $(LINK_FLAGS) /OUT:$@ $^ 
+$(BINDIR)/t3_bbox_c/main.exe: $(BINDIR)/t3_bbox_c/main.obj $(BINDIR)/common/common_c.lib | $(BINDIR)/t3_bbox_c
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^ 
 
-$(BINDIR)\t4_filter_cpp\main.exe: $(BINDIR)\t4_filter_cpp\main.obj $(BINDIR)\common\common_cpp.lib | $(BINDIR)\t4_filter_cpp
-	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
+$(BINDIR)/t4_filter_cpp/main.exe: $(BINDIR)/t4_filter_cpp/main.obj $(BINDIR)/common/common_cpp.lib | $(BINDIR)/t4_filter_cpp
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
-$(BINDIR)\t4_filter_c\main.exe: $(BINDIR)\t4_filter_c\main.obj $(BINDIR)\common\common_c.lib | $(BINDIR)\t4_filter_c
-	$(LINK) $(LINK_FLAGS) /OUT:$@ $^
+$(BINDIR)/t4_filter_c/main.exe: $(BINDIR)/t4_filter_c/main.obj $(BINDIR)/common/common_c.lib | $(BINDIR)/t4_filter_c
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
 # ----- СБОРКА ПРИКЛАДНЫХ ПРОГРАММ (ДЛЯ ТЕСТИРОВАНИЯ) -----
-# RUN_CASE - правило + рецепт
-# небольшой .exe, который будет проверять, что код выхода программы совпадает с заданным кодом
-# Fo - file output (obj) Fe - file executable (exe)
-$(BINDIR)\tools\run_case.exe: tests\run_case.cpp | $(BINDIR)\tools
-	$(CXX) /Fo:$(BINDIR)\tools\run_case.obj /Fe:$@ $(CXXFLAGS) $<
-
+# RUN_CASE - .exe, который будет проверять, что код выхода программы совпадает с заданным кодом
 # FIND_SUBSTR - правило + рецепт
 # берёт file1 file2 и ищёт подстроку file2 в file1; сравнивает побайтово
-$(BINDIR)\tools\check_contains.exe: tests\check_contains.cpp | $(BINDIR)\tools
-	$(CXX) /Fo:$(BINDIR)\tools\check_contains.obj /Fe:$@ $(CXXFLAGS) $<
+ifeq ($(OS), Windows_NT)
+# Fo - file output (obj) Fe - file executable (exe)
+$(BINDIR)/tools/run_case.exe: tests/run_case.cpp | $(BINDIR)/tools
+	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/run_case.obj $(EXE_OUT)$@ $(CXXFLAGS) $<
+
+$(BINDIR)/tools/check_contains.exe: tests/check_contains.cpp | $(BINDIR)/tools
+	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/check_contains.obj $(EXE_OUT)$@ $(CXXFLAGS) $<
+
+else
+$(BINDIR)/tools/run_case: tests/run_case.cpp | $(BINDIR)/tools
+	$(CXX) $(EXE_OUT)$@ $(CXXFLAGS) $<
+
+$(BINDIR)/tools/check_contains: tests/check_contains.cpp | $(BINDIR)/tools
+	$(CXX) $(EXE_OUT)$@ $(CXXFLAGS) $<
+endif
 
 
 # ---------- ТЕСТЫ ---------- 
@@ -276,323 +324,331 @@ $(BINDIR)\tools\check_contains.exe: tests\check_contains.cpp | $(BINDIR)\tools
 # cpp tests
 # exit-code тесты
 # после && будет выполнение, только если до && код выхода == 0. работает и в shell, и в cmd 
-$(TESTDIR)\t1_cpp_abc.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo abc | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
+$(TESTDIR)/t1_cpp_abc.ok: $(T1_CPP_EXE) $(RUN_CASE) tests/input_data/t1_abc | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_CPP_EXE) < tests/input_data/t1_abc > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && $(TOUCH) $@
 
-$(TESTDIR)\t1_cpp_float.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo 2.3 | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
+$(TESTDIR)/t1_cpp_float.ok: $(T1_CPP_EXE) $(RUN_CASE) tests/input_data/t1_float | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_CPP_EXE) < tests/input_data/t1_float > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && $(TOUCH) $@
 
-$(TESTDIR)\t1_cpp_low.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo 2 | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && $(TOUCH) $@
+$(TESTDIR)/t1_cpp_low.ok: $(T1_CPP_EXE) $(RUN_CASE) tests/input_data/t1_low | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_CPP_EXE) < tests/input_data/t1_low > $(NULLDEV) 2> $(NULLDEV))" $(USAGE) && $(TOUCH) $@
 
-$(TESTDIR)\t1_cpp_high.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo 21 | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && $(TOUCH) $@
+$(TESTDIR)/t1_cpp_high.ok: $(T1_CPP_EXE) $(RUN_CASE) tests/input_data/t1_high | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_CPP_EXE) < tests/input_data/t1_high > $(NULLDEV) 2> $(NULLDEV))" $(USAGE) && $(TOUCH) $@
 
-$(TESTDIR)\t1_cpp_nul.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "type $(NULLDEV) | $(T1_CPP_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && $(TOUCH) $@
+$(TESTDIR)/t1_cpp_nul.ok: $(T1_CPP_EXE) $(RUN_CASE) tests/input_data/t1_nul | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_CPP_EXE) < tests/input_data/t1_nul > $(NULLDEV) 2> $(NULLDEV))" $(NO_INPUT) && $(TOUCH) $@
 
 # тест с корретными данными. проверка на норм. выходные данные
-$(TESTDIR)\t1_cpp_norm.ok: $(T1_CPP_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo 3 | $(T1_CPP_EXE) > $(BINDIR)\t1_dist_matrix_cpp\main_out.txt 2> $(NULLDEV)" 0 && \
-        $(GREP) /C:"   0.000   1.732   1.732" $(BINDIR)\t1_dist_matrix_cpp\main_out.txt && $(TOUCH) $@
+$(TESTDIR)/t1_cpp_norm.ok: $(T1_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t1_test1 tests/expect/t1_test1 | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_CPP_EXE) < tests/input_data/t1_test1 > $(BINDIR)/t1_dist_matrix_cpp/t1_test1 2> $(NULLDEV))" 0 && \
+        $(FC) $(call WCMD,$(BINDIR)/t1_dist_matrix_cpp/t1_test1 tests/expect/t1_test1) > $(NULLDEV) && $(TOUCH) $@
 
 # C tests
 # exit-code тесты
-$(TESTDIR)\t1_c_abc.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo abc | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
+$(TESTDIR)/t1_c_abc.ok: $(T1_C_EXE) $(RUN_CASE) tests/input_data/t1_abc | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_C_EXE) < tests/input_data/t1_abc > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && $(TOUCH) $@
 
-$(TESTDIR)\t1_c_float.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo 2.3 | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && $(TOUCH) $@
+$(TESTDIR)/t1_c_float.ok: $(T1_C_EXE) $(RUN_CASE) tests/input_data/t1_float | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_C_EXE) < tests/input_data/t1_float > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && $(TOUCH) $@
 
-$(TESTDIR)\t1_c_low.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo 2 | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && $(TOUCH) $@
+$(TESTDIR)/t1_c_low.ok: $(T1_C_EXE) $(RUN_CASE) tests/input_data/t1_low | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_C_EXE) < tests/input_data/t1_low > $(NULLDEV) 2> $(NULLDEV))" $(USAGE) && $(TOUCH) $@
 
-$(TESTDIR)\t1_c_high.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo 21 | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && $(TOUCH) $@
+$(TESTDIR)/t1_c_high.ok: $(T1_C_EXE) $(RUN_CASE) tests/input_data/t1_high | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_C_EXE) < tests/input_data/t1_high > $(NULLDEV) 2> $(NULLDEV))" $(USAGE) && $(TOUCH) $@
 
-$(TESTDIR)\t1_c_nul.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "type $(NULLDEV) | $(T1_C_EXE) > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && $(TOUCH) $@
+$(TESTDIR)/t1_c_nul.ok: $(T1_C_EXE) $(RUN_CASE) tests/input_data/t1_nul | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_C_EXE) < tests/input_data/t1_nul > $(NULLDEV) 2> $(NULLDEV))" $(NO_INPUT) && $(TOUCH) $@
 
-# нормальные входные данные. проверка выходных данных
-$(TESTDIR)\t1_c_norm.ok: $(T1_C_EXE) $(RUN_CASE) | $(TESTDIR)
-	$(RUN_CASE) "echo 3 | $(T1_C_EXE) > $(BINDIR)\t1_dist_matrix_c\main_out.txt 2> $(NULLDEV)" 0 && \
-        $(GREP) /C:"   0.000   1.732   1.732" $(BINDIR)\t1_dist_matrix_c\main_out.txt && $(TOUCH) $@
+# тест с корректными данными. проверка на норм. выходные данные
+$(TESTDIR)/t1_c_norm.ok: $(T1_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t1_test1 tests/expect/t1_test1 | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T1_C_EXE) < tests/input_data/t1_test1 > $(BINDIR)/t1_dist_matrix_c/t1_test1 2> $(NULLDEV))" 0 && \
+        $(FC) $(call WCMD,$(BINDIR)/t1_dist_matrix_c/t1_test1 tests/expect/t1_test1) > $(NULLDEV) && $(TOUCH) $@
 
 # TASK 2 cpp tests
-$(TESTDIR)\t2_cpp_norm.ok: $(T2_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t2_input tests\expect\t2_norm | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_input > $(BINDIR)\t2_passport_cpp\t2_norm 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t2_passport_cpp\t2_norm tests\expect\t2_norm && $(TOUCH) $@
+# тест на нормальных данных
+$(TESTDIR)/t2_cpp_norm.ok: $(T2_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/input_data/t2_input tests/expect/t2_norm | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_CPP_EXE) < tests/input_data/t2_input > $(BINDIR)/t2_passport_cpp/t2_norm 2> $(NULLDEV))" 0 && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t2_passport_cpp/t2_norm tests/expect/t2_norm) && $(TOUCH) $@
 
-$(TESTDIR)\t2_cpp_eof_name.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_eof_name | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_eof_name > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && \
-        $(TOUCH) $@ 
-
-$(TESTDIR)\t2_cpp_empty_name.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_empty_name | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_empty_name > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
-        $(TOUCH) $@ 
-
-$(TESTDIR)\t2_cpp_eof_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_eof_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_eof_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && \
+# тесты на коды ошибок
+$(TESTDIR)/t2_cpp_eof_name.ok: $(T2_CPP_EXE) $(RUN_CASE_CMD) tests/input_data/t2_eof_name | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_CPP_EXE) < tests/input_data/t2_eof_name > $(NULLDEV) 2> $(NULLDEV))" $(NO_INPUT) && \
         $(TOUCH) $@
 
-$(TESTDIR)\t2_cpp_empty_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_empty_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_empty_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
-        $(TOUCH) $@
-
-$(TESTDIR)\t2_cpp_negative_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_negative_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_negative_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && \
+$(TESTDIR)/t2_cpp_empty_name.ok: $(T2_CPP_EXE) $(RUN_CASE_CMD) tests/input_data/t2_empty_name | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_CPP_EXE) < tests/input_data/t2_empty_name > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && \
         $(TOUCH) $@ 
 
-$(TESTDIR)\t2_cpp_fractional_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_fractional_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_fractional_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+$(TESTDIR)/t2_cpp_eof_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE_CMD) tests/input_data/t2_eof_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_CPP_EXE) < tests/input_data/t2_eof_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(NO_INPUT) && \
         $(TOUCH) $@
 
-$(TESTDIR)\t2_cpp_nan_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE) tests\input_data\t2_nan_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_CPP_EXE) < tests\input_data\t2_nan_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+$(TESTDIR)/t2_cpp_empty_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE_CMD) tests/input_data/t2_empty_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_CPP_EXE) < tests/input_data/t2_empty_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && \
+        $(TOUCH) $@
+
+$(TESTDIR)/t2_cpp_negative_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE_CMD) tests/input_data/t2_negative_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_CPP_EXE) < tests/input_data/t2_negative_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(USAGE) && \
+        $(TOUCH) $@ 
+
+$(TESTDIR)/t2_cpp_fractional_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE_CMD) tests/input_data/t2_fractional_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_CPP_EXE) < tests/input_data/t2_fractional_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && \
+        $(TOUCH) $@
+
+$(TESTDIR)/t2_cpp_nan_vertexes.ok: $(T2_CPP_EXE) $(RUN_CASE_CMD) tests/input_data/t2_nan_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_CPP_EXE) < tests/input_data/t2_nan_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && \
         $(TOUCH) $@
 
 # TASK 2 c tests
-$(TESTDIR)\t2_c_norm.ok: $(T2_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t2_input tests\expect\t2_norm | $(TESTDIR)
-	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_input > $(BINDIR)\t2_passport_c\t2_norm 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t2_passport_c\t2_norm tests\expect\t2_norm && $(TOUCH) $@
+$(TESTDIR)/t2_c_norm.ok: $(T2_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t2_input tests/expect/t2_norm | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_C_EXE) < tests/input_data/t2_input > $(BINDIR)/t2_passport_c/t2_norm 2> $(NULLDEV))" 0 && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t2_passport_c/t2_norm tests/expect/t2_norm) && $(TOUCH) $@
 
-$(TESTDIR)\t2_c_eof_name.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_eof_name | $(TESTDIR)
-	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_eof_name > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && \
+# тесты на коды ошибок
+$(TESTDIR)/t2_c_eof_name.ok: $(T2_C_EXE) $(RUN_CASE) tests/input_data/t2_eof_name | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_C_EXE) < tests/input_data/t2_eof_name > $(NULLDEV) 2> $(NULLDEV))" $(NO_INPUT) && \
+        $(TOUCH) $@
+
+$(TESTDIR)/t2_c_empty_name.ok: $(T2_C_EXE) $(RUN_CASE) tests/input_data/t2_empty_name | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_C_EXE) < tests/input_data/t2_empty_name > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && \
         $(TOUCH) $@ 
 
-$(TESTDIR)\t2_c_empty_name.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_empty_name | $(TESTDIR)
-	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_empty_name > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+$(TESTDIR)/t2_c_eof_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests/input_data/t2_eof_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_C_EXE) < tests/input_data/t2_eof_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(NO_INPUT) && \
         $(TOUCH) $@
 
-$(TESTDIR)\t2_c_eof_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_eof_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_eof_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(NO_INPUT) && \
+$(TESTDIR)/t2_c_empty_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests/input_data/t2_empty_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_C_EXE) < tests/input_data/t2_empty_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && \
         $(TOUCH) $@
 
-$(TESTDIR)\t2_c_empty_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_empty_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_empty_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+$(TESTDIR)/t2_c_negative_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests/input_data/t2_negative_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_C_EXE) < tests/input_data/t2_negative_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(USAGE) && \
+        $(TOUCH) $@ 
+
+$(TESTDIR)/t2_c_fractional_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests/input_data/t2_fractional_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_C_EXE) < tests/input_data/t2_fractional_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && \
         $(TOUCH) $@
 
-$(TESTDIR)\t2_c_negative_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_negative_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_negative_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(USAGE) && \
-        $(TOUCH) $@
-
-$(TESTDIR)\t2_c_fractional_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_fractional_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_fractional_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
-        $(TOUCH) $@
-
-$(TESTDIR)\t2_c_nan_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests\input_data\t2_nan_vertexes | $(TESTDIR)
-	$(RUN_CASE) "$(T2_C_EXE) < tests\input_data\t2_nan_vertexes > $(NULLDEV) 2> $(NULLDEV)" $(DATA) && \
+$(TESTDIR)/t2_c_nan_vertexes.ok: $(T2_C_EXE) $(RUN_CASE) tests/input_data/t2_nan_vertexes | $(TESTDIR)
+	$(RUN_CASE_CMD) "$(call WCMD,$(T2_C_EXE) < tests/input_data/t2_nan_vertexes > $(NULLDEV) 2> $(NULLDEV))" $(DATA) && \
         $(TOUCH) $@
 
 # Task 3 cpp tests
 # т.к. make делает каждый рецепт в новом cmd, то set PATH делается тут же, т.к. он только для данного процесса cmd
-SET_DLL_PATH := set "PATH=$(CURDIR)\$(BINDIR)\common;%PATH%"
+ifeq ($(OS), Windows_NT)
+  SET_DLL_PATH := set "PATH=$(CURDIR)/$(BINDIR)/common;%PATH%"
+else
+ SET_DLL_PATH := export LD_LIBRARY_PATH=$(CURDIR)/$(BINDIR)/common:$$LD_LIBRARY_PATH
+endif
 # тесты с кодами ошибок 
-$(TESTDIR)\t3_cpp_empty_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_empty_case tests\expect\t3_empty_case | $(TESTDIR)
+$(TESTDIR)/t3_cpp_empty_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_empty_case tests/expect/t3_empty_case | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_CPP_EXE) < tests\input_data\t3_empty_case > $(NULLDEV) 2> $(BINDIR)\t3_bbox_cpp\t3_empty_case" $(NO_INPUT) && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_cpp\t3_empty_case tests\expect\t3_empty_case && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_empty_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_empty_case)" $(NO_INPUT) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_empty_case tests/expect/t3_empty_case) && $(TOUCH) $@
 
-$(TESTDIR)\t3_cpp_not_digit_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_not_digit_case tests\expect\t3_not_digit_case | $(TESTDIR)
+$(TESTDIR)/t3_cpp_not_digit_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_not_digit_case tests/expect/t3_not_digit_case | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_CPP_EXE) < tests\input_data\t3_not_digit_case > $(NULLDEV) 2> $(BINDIR)\t3_bbox_cpp\t3_not_digit_case" $(DATA) && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_cpp\t3_not_digit_case tests\expect\t3_not_digit_case && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_not_digit_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_not_digit_case)" $(DATA) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_not_digit_case tests/expect/t3_not_digit_case) && $(TOUCH) $@
 
-$(TESTDIR)\t3_cpp_too_few_args_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_too_few_args_case tests\expect\t3_too_few_args_case | $(TESTDIR)
+$(TESTDIR)/t3_cpp_too_few_args_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_too_few_args_case tests/expect/t3_too_few_args_case | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_CPP_EXE) < tests\input_data\t3_too_few_args_case > $(NULLDEV) 2> $(BINDIR)\t3_bbox_cpp\t3_too_few_args_case" $(DATA) && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_cpp\t3_too_few_args_case tests\expect\t3_too_few_args_case && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_too_few_args_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_too_few_args_case)" $(DATA) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_too_few_args_case tests/expect/t3_too_few_args_case) && $(TOUCH) $@ 
 
 # тесты на нормальных входных данных
-$(TESTDIR)\t3_cpp_test1.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_test1 tests\expect\t3_test1 | $(TESTDIR)
+$(TESTDIR)/t3_cpp_test1.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_test1 tests/expect/t3_test1 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_CPP_EXE) < tests\input_data\t3_test1 > $(BINDIR)\t3_bbox_cpp\t3_test1 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_cpp\t3_test1 tests\expect\t3_test1 && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_test1 > $(BINDIR)/t3_bbox_cpp/t3_test1 2> $(NULLDEV))" 0 && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_test1 tests/expect/t3_test1) && $(TOUCH) $@
 
-$(TESTDIR)\t3_cpp_test2.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_test2 tests\expect\t3_test2 | $(TESTDIR)
+$(TESTDIR)/t3_cpp_test2.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_test2 tests/expect/t3_test2 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_CPP_EXE) < tests\input_data\t3_test2 > $(BINDIR)\t3_bbox_cpp\t3_test2 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_cpp\t3_test2 tests\expect\t3_test2 && $(TOUCH) $@  
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_test2 > $(BINDIR)/t3_bbox_cpp/t3_test2 2> $(NULLDEV))" 0 && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_test2 tests/expect/t3_test2) && $(TOUCH) $@  
 
-$(TESTDIR)\t3_cpp_test3.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_test3 tests\expect\t3_test3 | $(TESTDIR)
+$(TESTDIR)/t3_cpp_test3.ok: $(T3_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_test3 tests/expect/t3_test3 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_CPP_EXE) < tests\input_data\t3_test3 > $(BINDIR)\t3_bbox_cpp\t3_test3 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_cpp\t3_test3 tests\expect\t3_test3 && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_test3 > $(BINDIR)/t3_bbox_cpp/t3_test3 2> $(NULLDEV))" 0 && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_test3 tests/expect/t3_test3) && $(TOUCH) $@
 
 # T3 c tests
 # тесты с кодами ошибок
-$(TESTDIR)\t3_c_empty_case.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_empty_case tests\expect\t3_empty_case | $(TESTDIR)
+$(TESTDIR)/t3_c_empty_case.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_empty_case tests/expect/t3_empty_case | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_C_EXE) < tests\input_data\t3_empty_case > $(NULLDEV) 2> $(BINDIR)\t3_bbox_c\t3_empty_case" $(NO_INPUT) && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_c\t3_empty_case tests\expect\t3_empty_case && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_empty_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_empty_case)" $(NO_INPUT) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_empty_case tests/expect/t3_empty_case) && $(TOUCH) $@
 
-$(TESTDIR)\t3_c_not_digit_case.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_not_digit_case tests\expect\t3_not_digit_case | $(TESTDIR)
+$(TESTDIR)/t3_c_not_digit_case.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_not_digit_case tests/expect/t3_not_digit_case | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_C_EXE) < tests\input_data\t3_not_digit_case > $(NULLDEV) 2> $(BINDIR)\t3_bbox_c\t3_not_digit_case" $(DATA) && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_c\t3_not_digit_case tests\expect\t3_not_digit_case && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_not_digit_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_not_digit_case)" $(DATA) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_not_digit_case tests/expect/t3_not_digit_case) && $(TOUCH) $@
 
-$(TESTDIR)\t3_c_too_few_args_case.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_too_few_args_case tests\expect\t3_too_few_args_case | $(TESTDIR)
+$(TESTDIR)/t3_c_too_few_args_case.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_too_few_args_case tests/expect/t3_too_few_args_case | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_C_EXE) < tests\input_data\t3_too_few_args_case > $(NULLDEV) 2> $(BINDIR)\t3_bbox_c\t3_too_few_args_case" $(DATA) && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_c\t3_too_few_args_case tests\expect\t3_too_few_args_case && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_too_few_args_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_too_few_args_case)" $(DATA) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_too_few_args_case tests/expect/t3_too_few_args_case) && $(TOUCH) $@ 
 
 # тесты на нормальных входных данных
-$(TESTDIR)\t3_c_test1.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_test1 tests\expect\t3_test1 | $(TESTDIR)
+$(TESTDIR)/t3_c_test1.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_test1 tests/expect/t3_test1 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_C_EXE) < tests\input_data\t3_test1 > $(BINDIR)\t3_bbox_c\t3_test1 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_c\t3_test1 tests\expect\t3_test1 && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_test1 > $(BINDIR)/t3_bbox_c/t3_test1 2> $(NULLDEV))" 0 && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_test1 tests/expect/t3_test1) && $(TOUCH) $@
 
-$(TESTDIR)\t3_c_test2.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_test2 tests\expect\t3_test2 | $(TESTDIR)
+$(TESTDIR)/t3_c_test2.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_test2 tests/expect/t3_test2 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_C_EXE) < tests\input_data\t3_test2 > $(BINDIR)\t3_bbox_c\t3_test2 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_c\t3_test2 tests\expect\t3_test2 && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_test2 > $(BINDIR)/t3_bbox_c/t3_test2 2> $(NULLDEV))" 0 && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_test2 tests/expect/t3_test2) && $(TOUCH) $@  
 
-$(TESTDIR)\t3_c_test3.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\input_data\t3_test3 tests\expect\t3_test3 | $(TESTDIR)
+$(TESTDIR)/t3_c_test3.ok: $(T3_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests/input_data/t3_test3 tests/expect/t3_test3 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T3_C_EXE) < tests\input_data\t3_test3 > $(BINDIR)\t3_bbox_c\t3_test3 2> $(NULLDEV)" 0 && \
-        $(FIND_SUBSTR) $(BINDIR)\t3_bbox_c\t3_test3 tests\expect\t3_test3 && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_test3 > $(BINDIR)/t3_bbox_c/t3_test3 2> $(NULLDEV))" 0 && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_test3 tests/expect/t3_test3) && $(TOUCH) $@
 
 # T4 cpp tests
 # неверные значения радиуса. подаётся числом, т.к. это аргумент командной строки
 # пустой радиус
-$(TESTDIR)\t4_cpp_radius_empty.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_empty | $(TESTDIR)
+$(TESTDIR)/t4_cpp_radius_empty.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_empty | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_empty" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_empty tests\expect\t4_radius_empty && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_radius_empty)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_radius_empty tests/expect/t4_radius_empty) && $(TOUCH) $@ 
 
 # два аргумента, хотя нужно ввести только один
-$(TESTDIR)\t4_cpp_radius_too_much.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_too_much | $(TESTDIR)
+$(TESTDIR)/t4_cpp_radius_too_much.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_too_much | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) 2 3 > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_too_much" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_too_much tests\expect\t4_radius_too_much && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 2 3 > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_radius_too_much)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_radius_too_much tests/expect/t4_radius_too_much) && $(TOUCH) $@
 
 # нечисловые символы в радиусе
-$(TESTDIR)\t4_cpp_radius_symbol.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_symbol | $(TESTDIR)
+$(TESTDIR)/t4_cpp_radius_symbol.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_symbol | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) 4ch > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_symbol" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_symbol tests\expect\t4_radius_symbol && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 4ch > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_radius_symbol)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_radius_symbol tests/expect/t4_radius_symbol) && $(TOUCH) $@ 
 
 # бесконечность, хотя радиус должен быть конечным числом
-$(TESTDIR)\t4_cpp_radius_inf.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_inf | $(TESTDIR)
+$(TESTDIR)/t4_cpp_radius_inf.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_inf | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) inf > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_inf" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_inf tests\expect\t4_radius_inf && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) inf > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_radius_inf)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_radius_inf tests/expect/t4_radius_inf) && $(TOUCH) $@ 
 
 # отрицат. значение радиуса
-$(TESTDIR)\t4_cpp_radius_negative.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_negative | $(TESTDIR)
+$(TESTDIR)/t4_cpp_radius_negative.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_negative | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) -10 > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_radius_negative" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_radius_negative tests\expect\t4_radius_negative && $(TOUCH) $@  
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) -10 > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_radius_negative)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_radius_negative tests/expect/t4_radius_negative) && $(TOUCH) $@    
 
 # тесты с ошибочными значениями точек. точки уже из файла
 # буквы среди чисел
-$(TESTDIR)\t4_cpp_symbol_coords.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_symbol_coords tests\input_data\t4_symbol_coords | $(TESTDIR)
+$(TESTDIR)/t4_cpp_symbol_coords.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_symbol_coords tests/input_data/t4_symbol_coords | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) 1 < tests\input_data\t4_symbol_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_symbol_coords" $(DATA) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_symbol_coords tests\expect\t4_symbol_coords && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_symbol_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_symbol_coords)" $(DATA) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_symbol_coords tests/expect/t4_symbol_coords) && $(TOUCH) $@
 
 # меньше трёх координат
-$(TESTDIR)\t4_cpp_too_few_coords.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_too_few_coords tests\input_data\t4_too_few_coords | $(TESTDIR)
+$(TESTDIR)/t4_cpp_too_few_coords.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_too_few_coords tests/input_data/t4_too_few_coords | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) 1 < tests\input_data\t4_too_few_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_too_few_coords" $(DATA) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_too_few_coords tests\expect\t4_too_few_coords && $(TOUCH) $@  
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_too_few_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_too_few_coords)" $(DATA) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_too_few_coords tests/expect/t4_too_few_coords) && $(TOUCH) $@  
 
 # отсутствие координат
-$(TESTDIR)\t4_cpp_empty_coords.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_empty_coords tests\input_data\t4_empty_coords | $(TESTDIR)
+$(TESTDIR)/t4_cpp_empty_coords.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_empty_coords tests/input_data/t4_empty_coords | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) 1 < tests\input_data\t4_empty_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_cpp\t4_empty_coords" $(NO_INPUT) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_cpp\t4_empty_coords tests\expect\t4_empty_coords && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_empty_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_empty_coords)" $(NO_INPUT) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_empty_coords tests/expect/t4_empty_coords) && $(TOUCH) $@
 
 # тесты на визуально понятных данных; сравнение через file compare т.к. надо явно проверить, что не прошло ничего лишнего;
 # для более строгого байт-в-байт сравнение добавить флаг /b к fc.
 # единственная точка и она проходит
-$(TESTDIR)\t4_cpp_test1.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test1 tests\input_data\t4_test1 | $(TESTDIR)
+$(TESTDIR)/t4_cpp_test1.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_test1 tests/input_data/t4_test1 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) 8 < tests\input_data\t4_test1 > $(BINDIR)\t4_filter_cpp\t4_test1 2> $(NULLDEV)" 0 && \
-        $(FC) $(BINDIR)\t4_filter_cpp\t4_test1 tests\expect\t4_test1 > $(NULLDEV) && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 8 < tests/input_data/t4_test1 > $(BINDIR)/t4_filter_cpp/t4_test1 2> $(NULLDEV))" 0 && \
+        $(FC) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_test1 tests/expect/t4_test1) > $(NULLDEV) && $(TOUCH) $@
 
 # много точек и только одна проходит
-$(TESTDIR)\t4_cpp_test2.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test2 tests\input_data\t4_test2 | $(TESTDIR)
+$(TESTDIR)/t4_cpp_test2.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_test2 tests/input_data/t4_test2 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) 10 < tests\input_data\t4_test2 > $(BINDIR)\t4_filter_cpp\t4_test2 2> $(NULLDEV)" 0 && \
-        $(FC) $(BINDIR)\t4_filter_cpp\t4_test2 tests\expect\t4_test2 > $(NULLDEV) && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 10 < tests/input_data/t4_test2 > $(BINDIR)/t4_filter_cpp/t4_test2 2> $(NULLDEV))" 0 && \
+        $(FC) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_test2 tests/expect/t4_test2) > $(NULLDEV) && $(TOUCH) $@
 
 # одна точка, но она не проходит 
-$(TESTDIR)\t4_cpp_test3.ok: $(T4_CPP_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test3 tests\input_data\t4_test3 | $(TESTDIR)
+$(TESTDIR)/t4_cpp_test3.ok: $(T4_CPP_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_test3 tests/input_data/t4_test3 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_CPP_EXE) 5 < tests\input_data\t4_test3 > $(BINDIR)\t4_filter_cpp\t4_test3 2> $(NULLDEV)" 0 && \
-        $(FC) $(BINDIR)\t4_filter_cpp\t4_test3 tests\expect\t4_test3 > $(NULLDEV) && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 5 < tests/input_data/t4_test3 > $(BINDIR)/t4_filter_cpp/t4_test3 2> $(NULLDEV))" 0 && \
+        $(FC) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_test3 tests/expect/t4_test3) > $(NULLDEV) && $(TOUCH) $@
 
 # T4 c tests
 # неверные значения радиуса. подаётся числом, т.к. это аргумент командной строки
 # пустой радиус
-$(TESTDIR)\t4_c_radius_empty.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_empty | $(TESTDIR)
+$(TESTDIR)/t4_c_radius_empty.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_empty | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_empty" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_empty tests\expect\t4_radius_empty && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_radius_empty)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_c/t4_radius_empty tests/expect/t4_radius_empty) && $(TOUCH) $@ 
 
 # два аргумента, хотя нужно ввести только один
-$(TESTDIR)\t4_c_radius_too_much.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_too_much | $(TESTDIR)
+$(TESTDIR)/t4_c_radius_too_much.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_too_much | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) 2 3 > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_too_much" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_too_much tests\expect\t4_radius_too_much && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 2 3 > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_radius_too_much)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_c/t4_radius_too_much tests/expect/t4_radius_too_much) && $(TOUCH) $@
 
 # нечисловые символы в радиусе
-$(TESTDIR)\t4_c_radius_symbol.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_symbol | $(TESTDIR)
+$(TESTDIR)/t4_c_radius_symbol.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_symbol | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) 4ch > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_symbol" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_symbol tests\expect\t4_radius_symbol && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 4ch > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_radius_symbol)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_c/t4_radius_symbol tests/expect/t4_radius_symbol) && $(TOUCH) $@ 
 
 # бесконечность, хотя радиус должен быть конечным числом
-$(TESTDIR)\t4_c_radius_inf.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_inf | $(TESTDIR)
+$(TESTDIR)/t4_c_radius_inf.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_inf | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) inf > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_inf" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_inf tests\expect\t4_radius_inf && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) inf > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_radius_inf)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_c/t4_radius_inf tests/expect/t4_radius_inf) && $(TOUCH) $@ 
 
 # отрицат. значение радиуса
-$(TESTDIR)\t4_c_radius_negative.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_radius_negative | $(TESTDIR)
+$(TESTDIR)/t4_c_radius_negative.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_radius_negative | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) -10 > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_radius_negative" $(USAGE) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_radius_negative tests\expect\t4_radius_negative && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) -10 > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_radius_negative)" $(USAGE) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_c/t4_radius_negative tests/expect/t4_radius_negative) && $(TOUCH) $@    
 
 # тесты с ошибочными значениями точек. точки уже из файла
 # буквы среди чисел
-$(TESTDIR)\t4_c_symbol_coords.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_symbol_coords tests\input_data\t4_symbol_coords | $(TESTDIR)
+$(TESTDIR)/t4_c_symbol_coords.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_symbol_coords tests/input_data/t4_symbol_coords | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) 1 < tests\input_data\t4_symbol_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_symbol_coords" $(DATA) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_symbol_coords tests\expect\t4_symbol_coords && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_symbol_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_symbol_coords)" $(DATA) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_c/t4_symbol_coords tests/expect/t4_symbol_coords) && $(TOUCH) $@
 
 # меньше трёх координат
-$(TESTDIR)\t4_c_too_few_coords.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_too_few_coords tests\input_data\t4_too_few_coords | $(TESTDIR)
+$(TESTDIR)/t4_c_too_few_coords.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_too_few_coords tests/input_data/t4_too_few_coords | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) 1 < tests\input_data\t4_too_few_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_too_few_coords" $(DATA) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_too_few_coords tests\expect\t4_too_few_coords && $(TOUCH) $@  
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_too_few_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_too_few_coords)" $(DATA) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_c/t4_too_few_coords tests/expect/t4_too_few_coords) && $(TOUCH) $@  
 
 # отсутствие координат
-$(TESTDIR)\t4_c_empty_coords.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_empty_coords tests\input_data\t4_empty_coords | $(TESTDIR)
+$(TESTDIR)/t4_c_empty_coords.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_empty_coords tests/input_data/t4_empty_coords | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) 1 < tests\input_data\t4_empty_coords > $(NULLDEV) 2> $(BINDIR)\t4_filter_c\t4_empty_coords" $(NO_INPUT) && \
-        $(FIND_SUBSTR) $(BINDIR)\t4_filter_c\t4_empty_coords tests\expect\t4_empty_coords && $(TOUCH) $@ 
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_empty_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_empty_coords)" $(NO_INPUT) && \
+        $(FIND_SUBSTR_CMD) $(call WCMD,$(BINDIR)/t4_filter_c/t4_empty_coords tests/expect/t4_empty_coords) && $(TOUCH) $@
 
 # тесты на визуально понятных данных; сравнение через file compare т.к. надо явно проверить, что не прошло ничего лишнего;
 # для более строгого байт-в-байт сравнение добавить флаг /b к fc.
 # единственная точка и она проходит
-$(TESTDIR)\t4_c_test1.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test1 tests\input_data\t4_test1 | $(TESTDIR)
+$(TESTDIR)/t4_c_test1.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_test1 tests/input_data/t4_test1 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) 8 < tests\input_data\t4_test1 > $(BINDIR)\t4_filter_c\t4_test1 2> $(NULLDEV)" 0 && \
-        $(FC) $(BINDIR)\t4_filter_c\t4_test1 tests\expect\t4_test1 > $(NULLDEV) && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 8 < tests/input_data/t4_test1 > $(BINDIR)/t4_filter_c/t4_test1 2> $(NULLDEV))" 0 && \
+        $(FC) $(call WCMD,$(BINDIR)/t4_filter_c/t4_test1 tests/expect/t4_test1) > $(NULLDEV) && $(TOUCH) $@
 
 # много точек и только одна проходит
-$(TESTDIR)\t4_c_test2.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test2 tests\input_data\t4_test2 | $(TESTDIR)
+$(TESTDIR)/t4_c_test2.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_test2 tests/input_data/t4_test2 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) 10 < tests\input_data\t4_test2 > $(BINDIR)\t4_filter_c\t4_test2 2> $(NULLDEV)" 0 && \
-        $(FC) $(BINDIR)\t4_filter_c\t4_test2 tests\expect\t4_test2 > $(NULLDEV) && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 10 < tests/input_data/t4_test2 > $(BINDIR)/t4_filter_c/t4_test2 2> $(NULLDEV))" 0 && \
+        $(FC) $(call WCMD,$(BINDIR)/t4_filter_c/t4_test2 tests/expect/t4_test2) > $(NULLDEV) && $(TOUCH) $@
 
 # одна точка, но она не проходит 
-$(TESTDIR)\t4_c_test3.ok: $(T4_C_EXE) $(RUN_CASE) $(FIND_SUBSTR) tests\expect\t4_test3 tests\input_data\t4_test3 | $(TESTDIR)
+$(TESTDIR)/t4_c_test3.ok: $(T4_C_EXE) $(RUN_CASE_CMD) $(FIND_SUBSTR_CMD) tests/expect/t4_test3 tests/input_data/t4_test3 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
-        $(RUN_CASE) "$(T4_C_EXE) 5 < tests\input_data\t4_test3 > $(BINDIR)\t4_filter_c\t4_test3 2> $(NULLDEV)" 0 && \
-        $(FC) $(BINDIR)\t4_filter_c\t4_test3 tests\expect\t4_test3 > $(NULLDEV) && $(TOUCH) $@
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 5 < tests/input_data/t4_test3 > $(BINDIR)/t4_filter_c/t4_test3 2> $(NULLDEV))" 0 && \
+        $(FC) $(call WCMD,$(BINDIR)/t4_filter_c/t4_test3 tests/expect/t4_test3) > $(NULLDEV) && $(TOUCH) $@
+
 
 # ---------- ФИКТИВНЫЕ ЦЕЛИ (PHONY TARGETS) ---------- 
 # фиктивные, т.к. по итогу их выполнения не будет итоговой цели как файла. они нужны для побочного результата - дерева пререквизитов
