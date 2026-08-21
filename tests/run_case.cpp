@@ -2,13 +2,16 @@
 #include <iostream>
 #include <print>
 #include <string>
+// под линуксом exit-код надо обработать по-другому от windows, поэтому нужен будет след. заголовочник
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
 
 // по совету deepseek синтаксис такой: run_case <команда> <ожидаемый код>
 // <команда> - вводимое значение (echo) | prog_name.exe > null 2> null
 // argv[1]: <команда>
 // argv[2]: <ожидаемый код>
 int main(int argc, char* argv[]) {
-
     // проверка что введено 2 аргумента, помимо имени программы run_case
     if (argc != 3) {
         std::print(stderr, "Ожидалось 2 аргумента: <команда> <ожидаемый код>. Получено {} аргументов\n", argc - 1);
@@ -18,7 +21,12 @@ int main(int argc, char* argv[]) {
     int expected_code = std::stoi(argv[2]);
     // std::system(command) позовёт, в случае винды, cmd.exe со строкой command
     // std::system вернёт код, с которым завершилась программа
-    int real_code = std::system(argv[1]);
+    int status = std::system(argv[1]);
+#ifdef _WIN32
+    int real_code = status;
+#else
+    int real_code = WEXITSTATUS(status);
+#endif
 
     if (real_code != expected_code) {
         std::print(stderr, "Ожидался код: {}. Был получен код: {}\n", expected_code, real_code);

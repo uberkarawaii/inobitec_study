@@ -1,6 +1,8 @@
 #ifndef IRINA_GEOMETRY_H
 #define IRINA_GEOMETRY_H
 
+#ifdef _WIN32
+
 #ifdef COMMON_STATIC
 #define COMMON_API
 
@@ -9,6 +11,10 @@
 
 #else
 #define COMMON_API __declspec(dllimport)
+#endif
+
+#else
+#define COMMON_API
 #endif
 
 struct Point {

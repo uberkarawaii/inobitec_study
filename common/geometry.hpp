@@ -10,6 +10,10 @@
 // поставит ссылку на неё в .dll
 // т.е. для управления поведением заголовочника - условная компиляция
 // и чтобы не было проблем при статической линковке - пустой COMMON_API для соотв. константы
+
+// в условную компиляцию добавлен случай linux - там этих флагов вообще не будет
+#ifdef _WIN32
+
 #ifdef COMMON_STATIC
 #define COMMON_API
 
@@ -18,6 +22,10 @@
 
 #else
 #define COMMON_API __declspec(dllimport)
+#endif
+
+#else
+#define COMMON_API
 #endif
 
 struct Point {
