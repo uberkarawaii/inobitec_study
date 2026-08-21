@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "..\common\exit_codes.h"
-#include "..\common\geometry.h"
-#include "..\common\string_utils.h"
+#include "../common/exit_codes.h"
+#include "../common/geometry.h"
+#include "../common/string_utils.h"
 
 int get_points(double r) {
     // счётчик для вывода ошибок и длина текущей строки

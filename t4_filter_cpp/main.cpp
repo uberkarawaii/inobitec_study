@@ -7,9 +7,9 @@
 #include <string_view>
 #include <vector>
 
-#include "..\common\exit_codes.hpp"
-#include "..\common\geometry.hpp"
-#include "..\common\string_utils.hpp"
+#include "../common/exit_codes.hpp"
+#include "../common/geometry.hpp"
+#include "../common/string_utils.hpp"
 
 // получение радиуса в виде числа
 // 1 - несчисловой символ

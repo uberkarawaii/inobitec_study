@@ -8,40 +8,31 @@
 // 1 - мало координат
 // 2 - нечисловые данные
 int parse_point(char* str, struct Point* p) {
-    // копия т.к. strtok_s будет делить через \0 и исход. строка разрушится
-    // выделение места и копирование в него
-    char* copy = malloc(strlen(str) + 1);
-    strcpy_s(copy, strlen(str) + 1, str);
-    // указатель на начала строк для strtok_s
-    char* next_token = NULL;
-    // то что будет отделено от след. последовательности символами " \t\n\r"
-    char* pch = strtok_s(copy, " \t\n\r", &next_token);
+
+    char* pointer = str;
+    char* end = NULL;
+
     int i = 0;
     double d[3];
-    while (pch != NULL && i < 3) {
-        char* end_ptr = NULL;
-        d[i] = strtod(pch, &end_ptr);
-
-        // если парс числа остановился не не-числовом символе, значит он есть в строке
-        if (*end_ptr != '\0') {
-            free(copy);
+    while (i < 3 && *pointer != '\0') {
+        // попытка распознать число
+        d[i] = strtod(pointer, &end);
+        // нечисловые данные; плохо если остановка не на пробеле/конце или в самом начале строки уже нечисловые данные,
+        // тогда end == pointer
+        if (end == pointer || (*end != '\0' && strchr(" \t\n\r", *end) == NULL))
             return 2;
-        }
-
-        // если указать null как входной парам., сканирование продолжится
-        // с того места, где останов. в прошлый раз
-        pch = strtok_s(NULL, " \t\n\r", &next_token);
+        // продвижение указателя в место, где окончилось распознавание числа
+        pointer = end;
+        // сдвигаем указатель на кол-во пробелов после числа
+        pointer += strspn(pointer, " \t\n\r");
         ++i;
     }
 
     // если прошли меньше раз или дальше ещё что-то было для распознвания - есть лишние символы
-    if (i != 3 || pch != NULL) {
-        free(copy);
+    if (i != 3 || *pointer != '\0')
         return 1;
-    }
 
     *p = (struct Point){.x = d[0], .y = d[1], .z = d[2]};
-    // т.к. strdup использует malloc
-    free(copy);
+
     return 0;
 }

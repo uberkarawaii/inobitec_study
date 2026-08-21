@@ -5,8 +5,8 @@
 #include <string_view>
 #include <system_error>
 
-#include "..\common\exit_codes.hpp"
-#include "..\common\string_utils.hpp"
+#include "../common/exit_codes.hpp"
+#include "../common/string_utils.hpp"
 
 // форма слова "вершина" со склонением.
 // функция отдаёт индекс, по которому в массиве лежит нужная форма слова

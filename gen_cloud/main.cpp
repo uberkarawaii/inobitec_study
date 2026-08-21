@@ -5,7 +5,7 @@
 #include <random>
 #include <system_error>
 
-#include "..\common\exit_codes.hpp"
+#include "../common/exit_codes.hpp"
 
 int main(int argc, char* argv[]) {
 

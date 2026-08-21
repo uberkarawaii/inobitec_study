@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "..\common\exit_codes.h"
-#include "..\common\string_utils.h"
+#include "../common/exit_codes.h"
+#include "../common/string_utils.h"
 
 int get_vertex_name(int N) {
     if ((N / 10) % 10 != 1 && N % 10 == 1)

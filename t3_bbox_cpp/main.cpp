@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "..\common\exit_codes.hpp"
-#include "..\common\geometry.hpp"
-#include "..\common\string_utils.hpp"
+#include "../common/exit_codes.hpp"
+#include "../common/geometry.hpp"
+#include "../common/string_utils.hpp"
 
 int main() {
     // считывание начальных x y z в массив; сначала строка, потом число
