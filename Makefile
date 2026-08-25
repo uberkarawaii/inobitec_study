@@ -97,9 +97,13 @@ else
   # пока линковочные флаги пусты, потом возможно будет что-то типа -ffunction-sections -fdata-sections -Wl --gc-sections --icf=safe
   LINK_FLAGS := 
   endif
+  # дл€ включени€ .d файлов с заголовочниками, иначе make будет их "игнорировать"
+  -include $(wildcard $(BINDIR)/*/*.d)
   # итоговый набор флагов cl
-  CXXFLAGS := $(CXXSTD) $(WARN) $(CONFIG_FLAGS)  
-  CFLAGS := $(CSTD) $(WARN) $(CONFIG_FLAGS)
+  # -MMD - вклчить не глобальные заголовочники в .d и сделать это не отдельной опреацией препроцессора, а во врем€ компил€ции
+  # -MP - фантомные цели дл€ header-ов чтобы спастись от падени€ и достичть пересборки .o при корректном сценарии и старом .d
+  CXXFLAGS := $(CXXSTD) $(WARN) -MMD -MP $(CONFIG_FLAGS)  
+  CFLAGS := $(CSTD) $(WARN) -MMD -MP $(CONFIG_FLAGS)
 endif
 
 
@@ -247,43 +251,67 @@ $(CPP_DIRS) $(C_DIRS) $(BINDIR)/common $(BINDIR)/tools $(TESTDIR):
 # и order-only - чтобы папка дл€ объектника существовала, если сборок ещЄ не было
 
 # заголовочники также пререкв. obj - иначе при изменении hdr obj останетс€ старым
-# излишние заголовочники дл€ t1-t2 т.к. это незатратно и уменьшает усложнение которое есть, если писать разделение, под какой obj какие hdr 
-C_HDR := common/exit_codes.h common/string_utils.h common/geometry.h
-CPP_HDR := common/exit_codes.hpp common/string_utils.hpp common/geometry.hpp
+# излишние заголовочники дл€ t1-t2 т.к. это незатратно и уменьшает усложнение которое есть, если писать разделение, под какой obj какие hdr
 
-$(BINDIR)/%$(OBJ_EXT): %.cpp $(CPP_HDR) | $(CPP_DIRS)
+# деп-лист заголовочников (только дл€ видноус)
+ifeq ($(OS), Windows_NT)
+ 
+GEOM_CPP_HDR := common/geometry.hpp
+GEOM_C_HDR := common/geometry.h
+
+STR_UTIL_CPP_HDR := common/string_utils.hpp
+STR_UTIL_C_HDR := common/string_utils.h
+
+CPP_OBJ_HDR := common/exit_codes.hpp $(STR_UTIL_CPP_HDR) $(GEOM_CPP_HDR)
+C_OBJ_HDR := common/exit_codes.h $(STR_UTIL_C_HDR) $(GEOM_C_HDR)
+
+else
+
+GEOM_CPP_HDR := 
+GEOM_C_HDR := 
+
+STR_UTIL_CPP_HDR := 
+STR_UTIL_C_HDR := 
+
+CPP_OBJ_HDR := 
+C_OBJ_HDR := 
+
+endif
+
+
+$(BINDIR)/%$(OBJ_EXT): %.cpp $(CPP_OBJ_HDR) | $(CPP_DIRS)
 	$(CXX) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CXXFLAGS) $<   
 
 # аналогичное дл€ —и
-$(BINDIR)/%$(OBJ_EXT): %.c $(C_HDR) | $(C_DIRS) 
+$(BINDIR)/%$(OBJ_EXT): %.c $(C_OBJ_HDR) | $(C_DIRS) 
 	$(CC) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CFLAGS) $<
 
 # STATIC (t1-t2) правила дл€ geometry + string_utils, т.к. их имена объектников не совпадают с именами .src
-$(BINDIR)/common/geometry_cpp$(OBJ_EXT): common/geometry.cpp common/geometry.hpp | $(BINDIR)/common
+$(BINDIR)/common/geometry_cpp$(OBJ_EXT): common/geometry.cpp $(GEOM_CPP_HDR) | $(BINDIR)/common
 	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CXXFLAGS) $< 
 
-$(BINDIR)/common/geometry_c$(OBJ_EXT): common/geometry.c common/geometry.h | $(BINDIR)/common
+$(BINDIR)/common/geometry_c$(OBJ_EXT): common/geometry.c $(GEOM_C_HDR) | $(BINDIR)/common
 	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CFLAGS) $<
 
-$(BINDIR)/common/string_utils_cpp$(OBJ_EXT): common/string_utils.cpp common/string_utils.hpp | $(BINDIR)/common
+$(BINDIR)/common/string_utils_cpp$(OBJ_EXT): common/string_utils.cpp $(STR_UTIL_CPP_HDR) | $(BINDIR)/common
 	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CXXFLAGS) $<
 
-$(BINDIR)/common/string_utils_c$(OBJ_EXT): common/string_utils.c common/string_utils.h | $(BINDIR)/common
+$(BINDIR)/common/string_utils_c$(OBJ_EXT): common/string_utils.c $(STR_UTIL_C_HDR) | $(BINDIR)/common
 	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CFLAGS) $<
 
 # DYNAMIC (t3-t4)
 # под линкусом флагов в заголовочниках вообще нет, поэтому и различи€ объектников (которое есть на винде) не будет
 ifeq ($(OS), Windows_NT)
-$(BINDIR)/common/geometry_cpp_dll$(OBJ_EXT): common/geometry.cpp common/geometry.hpp | $(BINDIR)/common
+$(BINDIR)/common/geometry_cpp_dll$(OBJ_EXT): common/geometry.cpp $(GEOM_CPP_HDR) | $(BINDIR)/common
 	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CXXFLAGS) $<
 
-$(BINDIR)/common/geometry_c_dll$(OBJ_EXT): common/geometry.c common/geometry.h | $(BINDIR)/common
+$(BINDIR)/common/geometry_c_dll$(OBJ_EXT): common/geometry.c $(GEOM_C_HDR) | $(BINDIR)/common
 	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CFLAGS) $<
 
-$(BINDIR)/common/string_utils_cpp_dll$(OBJ_EXT): common/string_utils.cpp common/string_utils.hpp | $(BINDIR)/common
+$(BINDIR)/common/string_utils_cpp_dll$(OBJ_EXT): common/string_utils.cpp $(STR_UTIL_CPP_HDR) | $(BINDIR)/common
 	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CXXFLAGS) $<
 
-$(BINDIR)/common/string_utils_c_dll$(OBJ_EXT): common/string_utils.c common/string_utils.h | $(BINDIR)/common
+$(BINDIR)/common/string_utils_c_dll$(OBJ_EXT): common/string_utils.c $(STR_UTIL_C_HDR) | $(BINDIR)/common
 	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CFLAGS) $<
 endif
 
@@ -296,8 +324,6 @@ $(BINDIR)/t1_dist_matrix_c/main$(EXE_EXT): $(T1_C_OBJ) | $(BINDIR)/t1_dist_matri
 	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
 # линковка дл€ 2 задачи. также статич., с одним модулем string_utils
-T2_C_H := common/exit_codes.h common/string_utils.h
-T2_CPP_H := common/exit_codes.hpp common/string_utils.hpp
 $(BINDIR)/t2_passport_cpp/main$(EXE_EXT): $(T2_CPP_OBJ) | $(BINDIR)/t2_passport_cpp
 	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^	
 
