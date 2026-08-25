@@ -245,11 +245,17 @@ $(CPP_DIRS) $(C_DIRS) $(BINDIR)/common $(BINDIR)/tools $(TESTDIR):
 # для которых есть зеркальные .cpp/.c (лежат в такой же папке, но она в корне проекта)
 # флаг COMMON_FLAG - target-specific переменная. влияет на вид последущей линковки - статич. / динамич. 
 # и order-only - чтобы папка для объектника существовала, если сборок ещё не было
-$(BINDIR)/%$(OBJ_EXT): %.cpp | $(CPP_DIRS)
+
+# заголовочники также пререкв. obj - иначе при изменении hdr obj останется старым
+# излишние заголовочники для t1-t2 т.к. это незатратно и уменьшает усложнение которое есть, если писать разделение, под какой obj какие hdr 
+C_HDR := common/exit_codes.h common/string_utils.h common/geometry.h
+CPP_HDR := common/exit_codes.hpp common/string_utils.hpp common/geometry.hpp
+
+$(BINDIR)/%$(OBJ_EXT): %.cpp $(CPP_HDR) | $(CPP_DIRS)
 	$(CXX) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CXXFLAGS) $<   
 
 # аналогичное для Си
-$(BINDIR)/%$(OBJ_EXT): %.c | $(C_DIRS) 
+$(BINDIR)/%$(OBJ_EXT): %.c $(C_HDR) | $(C_DIRS) 
 	$(CC) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CFLAGS) $<
 
 # STATIC (t1-t2) правила для geometry + string_utils, т.к. их имена объектников не совпадают с именами .src
@@ -290,6 +296,8 @@ $(BINDIR)/t1_dist_matrix_c/main$(EXE_EXT): $(T1_C_OBJ) | $(BINDIR)/t1_dist_matri
 	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
 # линковка для 2 задачи. также статич., с одним модулем string_utils
+T2_C_H := common/exit_codes.h common/string_utils.h
+T2_CPP_H := common/exit_codes.hpp common/string_utils.hpp
 $(BINDIR)/t2_passport_cpp/main$(EXE_EXT): $(T2_CPP_OBJ) | $(BINDIR)/t2_passport_cpp
 	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^	
 
@@ -323,10 +331,17 @@ ifeq ($(OS), Windows_NT)
 # grouped target чтобы не было раскрытия на два правила
 # жёсткий путь до dll а не $@, т.к. $@ - цель, которая триггернула правило. а не надо, чтобы был случай линка в .lib
 # под виндоус важно держать .lib в дереве т.к. потом линковка конечного .exe будет именно с .lib
+
+# удаление .lib каждый раз в начале, чтобы она пересоздавалась каждый раз. вне зависимости от содержания.
+# иначе при незатрагивающих её изменениях линкер не заменяет её на новый возникающий .lib и .lib всегда старая -> всегда триггерит пересборку dll
+# минус перед del - игнорировать ошибку если .lib не существует (первый прогон/ручное удалнеие) - так make пойдёт дальше и не упадёт
+
 $(CPP_SHARED) $(CPP_SHARED_LINK) &: $(CPP_DLL_OBJ) | $(BINDIR)/common
+	-del /q $(call WCMD,$(CPP_SHARED_LINK)) 2>$(NULLDEV)
 	$(LINK) $(LINK_FLAGS) $(DLL) $(LINK_OUT)$(CPP_SHARED) $^
 
 $(C_SHARED) $(C_SHARED_LINK) &: $(C_DLL_OBJ) | $(BINDIR)/common
+	-del /q $(call WCMD,$(C_SHARED_LINK)) 2>$(NULLDEV)
 	$(LINK) $(LINK_FLAGS) $(DLL) $(LINK_OUT)$(C_SHARED) $^
 else
 # под линукс будет только .so (dll) и не будет .lib с таблицей
@@ -345,7 +360,7 @@ $(BINDIR)/t3_bbox_cpp/main$(EXE_EXT): $(BINDIR)/t3_bbox_cpp/main$(OBJ_EXT) $(CPP
 	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
 $(BINDIR)/t3_bbox_c/main$(EXE_EXT): $(BINDIR)/t3_bbox_c/main$(OBJ_EXT) $(C_SHARED_LINK) | $(BINDIR)/t3_bbox_c
-	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^ 
+	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
 
 $(BINDIR)/t4_filter_cpp/main$(EXE_EXT): $(BINDIR)/t4_filter_cpp/main$(OBJ_EXT) $(CPP_SHARED_LINK) | $(BINDIR)/t4_filter_cpp
 	$(LINK) $(LINK_FLAGS) $(LINK_OUT)$@ $^
@@ -719,6 +734,9 @@ $(TESTDIR)/t4_c_test3.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_test3
 # этот раздел не может иметь рецепта, т.к. просто помечает цели как фиктивные 
 
 .PHONY: all t1 t2 t3 t4 test format format-check clean
+
+# по умолчанию, для make без конкр. цели, будет делаться all; иначе в таком случае выполняется первая  по порядку цель из makefile
+.DEFAULT_GOAL := all
 
 # phony-s для получения файлов
 all: t1 t2 t3 t4
