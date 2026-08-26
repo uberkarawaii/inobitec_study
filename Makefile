@@ -35,6 +35,9 @@ ifeq ($(OS), Windows_NT)
   OBJ_EXT :=.obj
   # чтобы код был позиционно независимым (только для линукс)
   PIC_FLAGS :=
+  # для раснесения сведений о символах - чтобы не было конфликта при едином vcX.pdb
+  # будет давать name.obj.pdb - неконфликтно с итоговым name.pdb
+  FD = /Fd:$@.pdb
   ifeq ($(CONFIG), debug)
     CONFIG_FLAGS := /Od /Zi /MDd /fsanitize=address
     LINK_FLAGS := /DEBUG 
@@ -82,6 +85,8 @@ else
   OBJ_EXT :=.o
   # чтобы код был позиционно независимым (только для линукс)
   PIC_FLAGS := -fPIC
+  # windows-flag, на линуксе пустой
+  FD :=
   ifeq ($(CONFIG), debug)
   # -O0 - без оптимизаций; 
   # -g - отладочкая инф., отдельного pdb не будет. лежит прямо в .о; 
@@ -280,39 +285,39 @@ endif
 
 
 $(BINDIR)/%$(OBJ_EXT): %.cpp $(CPP_OBJ_HDR) | $(CPP_DIRS)
-	$(CXX) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CXXFLAGS) $<   
+	$(CXX) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CXXFLAGS) $(FD) $<   
 
 # аналогичное для Си
 $(BINDIR)/%$(OBJ_EXT): %.c $(C_OBJ_HDR) | $(C_DIRS) 
-	$(CC) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CFLAGS) $<
+	$(CC) $(COMPILE_ONLY) $(COMMON_FLAG) $(OBJ_OUT)$@ $(CFLAGS) $(FD) $<
 
 # STATIC (t1-t2) правила для geometry + string_utils, т.к. их имена объектников не совпадают с именами .src
 $(BINDIR)/common/geometry_cpp$(OBJ_EXT): common/geometry.cpp $(GEOM_CPP_HDR) | $(BINDIR)/common
-	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CXXFLAGS) $< 
+	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CXXFLAGS) $(FD) $< 
 
 $(BINDIR)/common/geometry_c$(OBJ_EXT): common/geometry.c $(GEOM_C_HDR) | $(BINDIR)/common
-	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CFLAGS) $<
+	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CFLAGS) $(FD) $<
 
 $(BINDIR)/common/string_utils_cpp$(OBJ_EXT): common/string_utils.cpp $(STR_UTIL_CPP_HDR) | $(BINDIR)/common
-	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CXXFLAGS) $<
+	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CXXFLAGS) $(FD) $<
 
 $(BINDIR)/common/string_utils_c$(OBJ_EXT): common/string_utils.c $(STR_UTIL_C_HDR) | $(BINDIR)/common
-	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CFLAGS) $<
+	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_STATIC $(OBJ_OUT)$@ $(PIC_FLAGS) $(CFLAGS) $(FD) $<
 
 # DYNAMIC (t3-t4)
 # под линкусом флагов в заголовочниках вообще нет, поэтому и различия объектников (которое есть на винде) не будет
 ifeq ($(OS), Windows_NT)
 $(BINDIR)/common/geometry_cpp_dll$(OBJ_EXT): common/geometry.cpp $(GEOM_CPP_HDR) | $(BINDIR)/common
-	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CXXFLAGS) $<
+	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CXXFLAGS) $(FD) $<
 
 $(BINDIR)/common/geometry_c_dll$(OBJ_EXT): common/geometry.c $(GEOM_C_HDR) | $(BINDIR)/common
-	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CFLAGS) $<
+	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CFLAGS) $(FD) $<
 
 $(BINDIR)/common/string_utils_cpp_dll$(OBJ_EXT): common/string_utils.cpp $(STR_UTIL_CPP_HDR) | $(BINDIR)/common
-	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CXXFLAGS) $<
+	$(CXX) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CXXFLAGS) $(FD) $<
 
 $(BINDIR)/common/string_utils_c_dll$(OBJ_EXT): common/string_utils.c $(STR_UTIL_C_HDR) | $(BINDIR)/common
-	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CFLAGS) $<
+	$(CC) $(COMPILE_ONLY) $(DEFINE)COMMON_EXPORTS $(OBJ_OUT)$@ $(CFLAGS) $(FD) $<
 endif
 
 # ЛИНКОВКИ
@@ -400,11 +405,12 @@ $(BINDIR)/t4_filter_c/main$(EXE_EXT): $(BINDIR)/t4_filter_c/main$(OBJ_EXT) $(C_S
 # сравнение происходит побайтово
 ifeq ($(OS), Windows_NT)
 # obj_out = Fo - file output (obj) exe_out = Fe - file executable (exe)
+# filter-out - взять из флагов всё, что не /Zi, т.к. не надо отлаживать программы для тестирования программ
 $(BINDIR)/tools/run_case.exe: tests/run_case.cpp | $(BINDIR)/tools
-	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/run_case$(OBJ_EXT) $(EXE_OUT)$@ $(CXXFLAGS) $<
+	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/run_case$(OBJ_EXT) $(EXE_OUT)$@ $(filter-out /Zi,$(CXXFLAGS)) $<
 
 $(BINDIR)/tools/check.exe: tests/check.cpp | $(BINDIR)/tools
-	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/check$(OBJ_EXT) $(EXE_OUT)$@ $(CXXFLAGS) $<
+	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/check$(OBJ_EXT) $(EXE_OUT)$@ $(filter-out /Zi,$(CXXFLAGS)) $<
 
 else
 $(BINDIR)/tools/run_case: tests/run_case.cpp | $(BINDIR)/tools
