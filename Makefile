@@ -804,7 +804,7 @@ format-check:
 else
 # тут друг€ логика: в if успех - exit-code = 0, а не наоборот 
 format-check:
-	@echo Checking file format (clang-format --dry-run -Werror)...	
+	@echo Checking file format: clang-format --dry-run -Werror...	
 	@if command -v clang-format >/dev/null 2>&1; then clang-format --dry-run -Werror $(wildcard **/*.cpp **/*.c **/*.h **/*.hpp) &&\
         echo "File format is correct"; else\
         echo "clang-format was not found, so file format was not checked. The following installation is recomended: sudo apt install clang-format"; fi

@@ -1288,6 +1288,16 @@ C-реализация и C++-реализация одной задачи — *
   оставить вывод через echo). 
   эти варианты мне не нравятся, так что лучше предупреждения на английском
 
+- протестировала на линукс. убирала clang не через PATH, а
+  ```
+  sudo  mv /usr/bin/clang-format /usr/bin/clang-format.disabled
+  hash -r
+  make test -> clang-format wasnt found... ALL TESTS PASSED
+  sudo mv /usr/bin/clang-format.disabled /usr/bin/clang-format
+  hash -r
+  ```
+  и ситуацию, когда формат испорчен и clang-format имеется - чтобы make именно падал с ошибкой. так и происходит. то же самое на виндоус
+
 *Что заметила при работе с deepseek*
 - в format-check-wrapper посоветовал в удачной ветке заменить make format-check на $(MAKE) format-check. поговорили при рекурсивный make
 
