@@ -792,9 +792,24 @@ test: format-check $(T1_CPP_TESTS) $(T1_C_TESTS) $(T2_CPP_TESTS) $(T2_C_TESTS) $
 # phony-s для работы над файлами  
 format: 
 	clang-format -i $(wildcard **/*.cpp **/*.c **/*.hpp **/*.h)
+
+# поверх - проверка на случай, когда у пользователя нет clang-format-a; падения не будет, но выведется предупреждение и рекомендация установки
 # --dry-run - не меняй файл, только выведи несоотв. (и warning, и error); Werror - warning переходят в разряд error
-format-check: 
-	clang-format --dry-run -Werror $(wildcard **/*.cpp **/*.c **/*.h **/*.hpp)
+ifeq ($(OS), Windows_NT)
+format-check:
+	@echo Checking file format (clang-format --dry-run -Werror)...
+	@where clang-format >nul 2>nul & if errorlevel 1\
+        (echo clang-format was not found, so file format was not checked. The following installation is recomended: winget install --id=LLVM.ClangFormat -e)\
+        else (clang-format --dry-run -Werror $(wildcard **/*.cpp **/*.c **/*.h **/*.hpp) && echo File format is correct)
+else
+# тут другя логика: в if успех - exit-code = 0, а не наоборот 
+format-check:
+	@echo Checking file format (clang-format --dry-run -Werror)...	
+	@if command -v clang-format >/dev/null 2>&1; then clang-format --dry-run -Werror $(wildcard **/*.cpp **/*.c **/*.h **/*.hpp) &&\
+        echo "File format is correct"; else\
+        echo "clang-format was not found, so file format was not checked. The following installation is recomended: sudo apt install clang-format"; fi
+endif
+
 clean: 
 	$(RMDIR) build 
 	@echo BUILD DIR REMOVED
