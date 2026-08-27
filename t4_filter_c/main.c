@@ -46,11 +46,21 @@ int get_points(double r) {
 
         if (ex_code != 0) {
             // если мало аргументов
-            if (ex_code == 1)
-                fprintf(stderr, "Строка %d. Ожидалось X Y Z, получено: %s\n", i, s);
+            if (ex_code == PARSE_TOO_FEW)
+                fprintf(stderr, "Строка %d - недостаточно координат. Ожидалось X Y Z, получено: %s\n", i, s);
+
             // если значение нечисловое
-            else
-                fprintf(stderr, "Строка %d. Нечисловое значение: %s\n", i, s);
+            else if (ex_code == PARSE_NOT_NUMBER)
+                fprintf(stderr, "Строка %d. Нечисловые данные: %s\n", i, s);
+
+            // слишком много аргументов
+            else if (ex_code == PARSE_EXTRA)
+                fprintf(stderr, "Строка %d - слишком много координат. Ожидалось X Y Z, получено: %s\n", i, s);
+
+            // одна из координат это inf или Nan
+            else if (ex_code == PARSE_NOT_FINITE)
+                fprintf(stderr, "Строка %d. Среди X Y Z обнаружена не конечная координата: %s\n", i, s);
+
             free(s);
             s = NULL;
             return data;
@@ -84,13 +94,11 @@ int main(int argc, char* argv[]) {
     setvbuf(stdout, NULL, _IOFBF, 4096);
 
     // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
-    if (argc < 2) {
-        fprintf(stderr, "Ожидался радиус; его значение не было введено\n");
-        return usage;
-    }
-
-    if (argc > 2) {
-        fprintf(stderr, "Ожидался радиус; были введены лишние аргументы\n");
+    if (argc != 2) {
+        if (argc < 2)
+            fprintf(stderr, "Ожидался радиус; его значение не было введено\n");
+        else
+            fprintf(stderr, "Ожидался радиус; были введены лишние аргументы\n");
         return usage;
     }
 

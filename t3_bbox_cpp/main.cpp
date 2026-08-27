@@ -35,11 +35,19 @@ int main() {
         auto result = parse_point(temp);
         if (!result) {
             // мало аргументов
-            if (result.error() == 1)
-                std::cerr << "Строка " << i << ". Ожидались координаты X Y Z. Получено: " << temp << "\n";
+            if (result.error() == parse_too_few)
+                std::cerr << "Строка " << i << " - недостаточно координат. Ожидалось X Y Z, получено: " << temp << "\n";
             // нечисловые данные
-            else
+            else if (result.error() == parse_not_number)
                 std::cerr << "Строка " << i << ". Нечисловые данные: " << temp << "\n";
+            // слишком много координат
+            else if (result.error() == parse_too_much)
+                std::cerr << "Строка " << i << " - слишком много координат. Ожидалось X Y Z, получено: " << temp
+                          << "\n";
+            // одна из координат - не конечное число
+            else if (result.error() == parse_not_finite)
+                std::cerr << "Строка " << i << ". Среди X Y Z обнаружена не конечная координата: " << temp << "\n";
+
             return exit_code::data;
         }
 

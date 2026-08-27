@@ -11,23 +11,26 @@
 #include "../common/geometry.hpp"
 #include "../common/string_utils.hpp"
 
-// получение радиуса в виде числа
 // 1 - несчисловой символ
 // 2 - не конечное число
 // 3 - не положительный радиус
+inline constexpr int radius_not_number = 1;
+inline constexpr int radius_not_finite = 2;
+inline constexpr int radius_not_positive = 3;
+// получение радиуса в виде числа
 std::expected<double, int> get_radius(std::string_view r_line) {
     double R;
     // если парс остановился не на конце или возникла ошибка - там нечисловой символ
     auto [ptr, ec] = std::from_chars(r_line.data(), r_line.data() + r_line.size(), R);
     if (ec != std::errc() || ptr != r_line.data() + r_line.size())
-        return std::unexpected(1);
+        return std::unexpected(radius_not_number);
     // deepseek посоветовал сделать провеку на конечность числа
     // т.к. fromchars читает nan и бесконечность без проблем, как число
     if (!std::isfinite(R))
-        return std::unexpected(2);
+        return std::unexpected(radius_not_finite);
     // проверка положительности радиуса
     if (R <= 0)
-        return std::unexpected(3);
+        return std::unexpected(radius_not_positive);
 
     return R;
 }
@@ -56,10 +59,23 @@ std::expected<std::vector<Point>, int> get_points() {
         // если мало аргументов вернётся 1, если нечисловой символ - 2
         auto result = parse_point(temp);
         if (!result) {
-            if (result.error() == 1)
-                std::cerr << "Строка " << i << ". Ожидалось X Y Z, получено: " << temp << "\n";
-            else
-                std::cerr << "Строка " << i << ". Нечисловое значение: " << temp << "\n";
+            // мало аргументов
+            if (result.error() == parse_too_few)
+                std::cerr << "Строка " << i << " - недостаточно координат. Ожидалось X Y Z, получено: " << temp << "\n";
+
+            // нечисловые данные
+            else if (result.error() == parse_not_number)
+                std::cerr << "Строка " << i << ". Нечисловые данные: " << temp << "\n";
+
+            // слишком много координат
+            else if (result.error() == parse_too_much)
+                std::cerr << "Строка " << i << " - слишком много координат. Ожидалось X Y Z, получено: " << temp
+                          << "\n";
+
+            // одна из координат - не конечное число
+            else if (result.error() == parse_not_finite)
+                std::cerr << "Строка " << i << ". Среди X Y Z обнаружена не конечная координата: " << temp << "\n";
+
             return std::unexpected(exit_code::data);
         }
 
@@ -90,11 +106,11 @@ int main(int argc, char* argv[]) {
     // распознавание числа и проверка, что это число
     auto parsedR = get_radius(r_line);
     if (!parsedR) {
-        if (parsedR.error() == 1)
+        if (parsedR.error() == radius_not_number)
             std::cerr << "Радиус должен быть числом. Получено: " << r_line << "\n";
-        else if (parsedR.error() == 2)
+        else if (parsedR.error() == radius_not_finite)
             std::cerr << "Радиус должен быть конечным числом. Получено: " << r_line << "\n";
-        else
+        else if (parsedR.error() == radius_not_positive)
             std::cerr << "Радиус должен быть положительным. Получено: " << r_line << "\n";
         return exit_code::usage;
     }

@@ -35,5 +35,14 @@ struct Point {
 };
 
 // распознавание x y z
-// возвращает либо Point, либо код ошибки
-COMMON_API std::expected<Point, int> parse_point(std::string_view s);
+// возвращает либо Point, либо код ошибки (произойдёт первая ошибка при движении справа налево)
+COMMON_API std::expected<Point, constexpr int> parse_point(std::string_view s);
+
+// 1 - мало координат
+// 2 - нечисловые данные
+// 3 - много координат
+// 4 - координата равна inf или nan
+inline constexpr int parse_too_few = 1;
+inline constexpr int parse_not_number = 2;
+inline constexpr int parse_too_much = 3;
+inline constexpr int parse_not_finite = 4;
