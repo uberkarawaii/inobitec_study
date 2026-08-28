@@ -405,14 +405,19 @@ $(BINDIR)/t4_filter_c/main$(EXE_EXT): $(BINDIR)/t4_filter_c/main$(OBJ_EXT) $(C_S
 # сравнение происходит побайтово
 ifeq ($(OS), Windows_NT)
 # obj_out = Fo - file output (obj) exe_out = Fe - file executable (exe)
-# filter-out - взять из флагов всё, что не /Zi, т.к. не надо отлаживать программы для тестирования программ
+
+# filter-out - взять из флагов всё, что не /Zi и /fsanitize=address, т.к. не надо отлаживать программы для тестирования программ
+# с некотрой вероятностью отсутствие asan в них может вызвать проблемы при утечке памяти
+# если так, то 1) $(filter-out ...$(CXXFLAGS)) -> $(CXXFLAGS) 2) добавить $(FD) - для своего .obj.pdb рядом
+
 $(BINDIR)/tools/run_case.exe: tests/run_case.cpp | $(BINDIR)/tools
-	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/run_case$(OBJ_EXT) $(EXE_OUT)$@ $(filter-out /Zi,$(CXXFLAGS)) $<
+	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/run_case$(OBJ_EXT) $(EXE_OUT)$@ $(filter-out /Zi /fsanitize=address,$(CXXFLAGS)) $<
 
 $(BINDIR)/tools/check.exe: tests/check.cpp | $(BINDIR)/tools
-	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/check$(OBJ_EXT) $(EXE_OUT)$@ $(filter-out /Zi,$(CXXFLAGS)) $<
+	$(CXX) $(OBJ_OUT)$(BINDIR)/tools/check$(OBJ_EXT) $(EXE_OUT)$@ $(filter-out /Zi /fsanitize=address,$(CXXFLAGS)) $<
 
 else
+# под линуксом проблем с asan не будет, поэтому здесь он остаётся. без filter-out
 $(BINDIR)/tools/run_case: tests/run_case.cpp | $(BINDIR)/tools
 	$(CXX) $(EXE_OUT)$@ $(CXXFLAGS) $<
 

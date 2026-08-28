@@ -6,11 +6,9 @@
 #include "../common/geometry.h"
 #include "../common/string_utils.h"
 
-int get_points(double r) {
+int get_points(struct Point** points, int* points_size, int* points_capacity) {
     // счЄтчик дл€ вывода ошибок и длина текущей строки
     int i = 0, len = 0;
-    // счЄтчик удачно прочитанных строк
-    int ctr = 0;
     // указатель на динамич. массив в последующем
     char* s;
 
@@ -67,19 +65,29 @@ int get_points(double r) {
         }
 
         // если дошли сюда, то код возврата из parse_points == 0 - распознавание удачно
-        // + 1 прочитанна€ точка
-        ++ctr;
+        // добавление точки в массив
+        (*points)[*points_size] = p;
+        (*points_size)++;
 
-        // вывод точек, у которых расст. до центра < r
-        if (sqrt(p.x * p.x + p.y * p.y + p.z * p.z) < r)
-            printf("%.3f %.3f %.3f\n", p.x, p.y, p.z);
+        //
+        if (*points_size >= *points_capacity) {
+            *points_capacity *= 2;
+            struct Point* tmp = realloc(*points, *points_capacity * sizeof(*tmp));
+            if (!tmp) {
+                fprintf(stderr, "ќшибка при выделении пам€ти\n");
+                free(s);
+                free(*points);
+                exit(io_fail);
+            }
+            *points = tmp;
+        }
 
         // освободить s т.к. в неЄ положитс€ нова€ строка
         free(s);
         s = NULL;
     }
 
-    if (ctr == 0) {
+    if (*points_size == 0) {
         fprintf(stderr, "“очки отсутствуют\n");
         free(s);
         return no_input;
@@ -89,10 +97,6 @@ int get_points(double r) {
 }
 
 int main(int argc, char* argv[]) {
-    // дл€ отложенного вывода буфера stdout
-    // освобождение произойдЄт в момент return
-    setvbuf(stdout, NULL, _IOFBF, 4096);
-
     // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
     if (argc != 2) {
         if (argc < 2)
@@ -119,11 +123,25 @@ int main(int argc, char* argv[]) {
         return usage;
     }
 
-    // вызов вспомогат. ф-ции.если код возвр. != 0, она уже что-то напечатала
-    // и можно вернуть этот же код
-    int status = get_points(r);
+    // массив точек и проверка выделени€ пам€ти
+    int points_size = 0, points_capacity = 1;
+    struct Point* points = malloc(sizeof(struct Point));
+    if (!points) {
+        fprintf(stderr, "Ќе удалось выделить пам€ть\n");
+        return io_fail;
+    }
+
+    // вызов вспомогат. ф-ции
+    // если код возвр. != 0, она уже что-то напечатала, и можно вернуть этот же код
+    int status = get_points(&points, &points_size, &points_capacity);
     if (status != 0)
         return status;
+    else
+        // вывод точек, у которых расст. до центра < r
+        for (int i = 0; i < points_size; ++i) {
+            if (sqrt(points[i].x * points[i].x + points[i].y * points[i].y + points[i].z * points[i].z) < r)
+                printf("%.3f %.3f %.3f\n", points[i].x, points[i].y, points[i].z);
+        }
 
     return 0;
 }
