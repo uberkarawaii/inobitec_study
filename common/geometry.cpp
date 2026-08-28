@@ -10,7 +10,7 @@
 #include <system_error>
 
 // распознавание x y z
-std::expected<Point, constexpr int> parse_point(std::string_view s) {
+std::expected<Point, int> parse_point(std::string_view s) {
     // чтение double чисел из строки
     std::array<double, 3> dots{};
     // указатель на (начало строки)
