@@ -186,16 +186,32 @@ T2_C_TESTS := $(TESTDIR)/t2_c_norm.ok \
 T3_CPP_TESTS := $(TESTDIR)/t3_cpp_empty_case.ok \
                 $(TESTDIR)/t3_cpp_not_digit_case.ok \
                 $(TESTDIR)/t3_cpp_too_few_args_case.ok \
+                $(TESTDIR)/t3_cpp_too_much_args_case.ok \
+                $(TESTDIR)/t3_cpp_extra_nan.ok \
+                $(TESTDIR)/t3_cpp_x_y_z_4k.ok \
+                $(TESTDIR)/t3_cpp_x_y_z_k4.ok \
+                $(TESTDIR)/t3_cpp_inf_coord.ok \
+                $(TESTDIR)/t3_cpp_x_ky_z.ok \
+                $(TESTDIR)/t3_cpp_x_yk_z.ok \
                 $(TESTDIR)/t3_cpp_test1.ok \
                 $(TESTDIR)/t3_cpp_test2.ok \
-                $(TESTDIR)/t3_cpp_test3.ok 
+                $(TESTDIR)/t3_cpp_test3.ok \
+                $(TESTDIR)/t3_cpp_scientific.ok
 
 T3_C_TESTS := $(TESTDIR)/t3_c_empty_case.ok \
                 $(TESTDIR)/t3_c_not_digit_case.ok \
                 $(TESTDIR)/t3_c_too_few_args_case.ok \
+                $(TESTDIR)/t3_c_too_much_args_case.ok \
+                $(TESTDIR)/t3_c_extra_nan.ok \
+                $(TESTDIR)/t3_c_x_y_z_4k.ok \
+                $(TESTDIR)/t3_c_x_y_z_k4.ok \
+                $(TESTDIR)/t3_c_inf_coord.ok \
+                $(TESTDIR)/t3_c_x_ky_z.ok \
+                $(TESTDIR)/t3_c_x_yk_z.ok \
                 $(TESTDIR)/t3_c_test1.ok \
                 $(TESTDIR)/t3_c_test2.ok \
-                $(TESTDIR)/t3_c_test3.ok 
+                $(TESTDIR)/t3_c_test3.ok \
+                $(TESTDIR)/t3_c_scientific.ok
 
 T4_CPP_TESTS := $(TESTDIR)/t4_cpp_radius_empty.ok \
                 $(TESTDIR)/t4_cpp_radius_too_much.ok \
@@ -205,9 +221,17 @@ T4_CPP_TESTS := $(TESTDIR)/t4_cpp_radius_empty.ok \
                 $(TESTDIR)/t4_cpp_symbol_coords.ok \
                 $(TESTDIR)/t4_cpp_too_few_coords.ok \
                 $(TESTDIR)/t4_cpp_empty_coords.ok \
+                $(TESTDIR)/t4_cpp_too_much_coords.ok \
+                $(TESTDIR)/t4_cpp_extra_nan.ok \
+                $(TESTDIR)/t4_cpp_x_y_z_4k.ok \
+                $(TESTDIR)/t4_cpp_x_y_z_k4.ok \
+                $(TESTDIR)/t4_cpp_inf_coord.ok \
+                $(TESTDIR)/t4_cpp_x_ky_z.ok \
+                $(TESTDIR)/t4_cpp_x_yk_z.ok \
                 $(TESTDIR)/t4_cpp_test1.ok \
                 $(TESTDIR)/t4_cpp_test2.ok \
-                $(TESTDIR)/t4_cpp_test3.ok 
+                $(TESTDIR)/t4_cpp_test3.ok \
+                $(TESTDIR)/t4_cpp_scientific.ok
 
 T4_C_TESTS := $(TESTDIR)/t4_c_radius_empty.ok \
                 $(TESTDIR)/t4_c_radius_too_much.ok \
@@ -217,9 +241,17 @@ T4_C_TESTS := $(TESTDIR)/t4_c_radius_empty.ok \
                 $(TESTDIR)/t4_c_symbol_coords.ok \
                 $(TESTDIR)/t4_c_too_few_coords.ok \
                 $(TESTDIR)/t4_c_empty_coords.ok \
+                $(TESTDIR)/t4_c_too_much_coords.ok \
+                $(TESTDIR)/t4_c_extra_nan.ok \
+                $(TESTDIR)/t4_c_x_y_z_4k.ok \
+                $(TESTDIR)/t4_c_x_y_z_k4.ok \
+                $(TESTDIR)/t4_c_inf_coord.ok \
+                $(TESTDIR)/t4_c_x_ky_z.ok \
+                $(TESTDIR)/t4_c_x_yk_z.ok \
                 $(TESTDIR)/t4_c_test1.ok \
                 $(TESTDIR)/t4_c_test2.ok \
-                $(TESTDIR)/t4_c_test3.ok
+                $(TESTDIR)/t4_c_test3.ok \
+                $(TESTDIR)/t4_c_scientific.ok
 
 # exit-коды
 USAGE := 64
@@ -573,7 +605,49 @@ $(TESTDIR)/t3_cpp_not_digit_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/in
 $(TESTDIR)/t3_cpp_too_few_args_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_too_few_args_case tests/expect/t3_too_few_args_case | $(TESTDIR)
 	$(SET_DLL_PATH) && \
         $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_too_few_args_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_too_few_args_case)" $(DATA) && \
-        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_too_few_args_case tests/expect/t3_too_few_args_case) && $(TOUCH) $@ 
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_too_few_args_case tests/expect/t3_too_few_args_case) && $(TOUCH) $@
+
+# слишком много входных данных
+$(TESTDIR)/t3_cpp_too_much_args_case.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_too_much_args_case tests/expect/t3_too_much_args_case | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_too_much_args_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_too_much_args_case)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_too_much_args_case tests/expect/t3_too_much_args_case) && $(TOUCH) $@
+
+# лишний nan после X Y Z
+$(TESTDIR)/t3_cpp_extra_nan.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_extra_nan tests/expect/t3_extra_nan | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_extra_nan > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_extra_nan)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_extra_nan tests/expect/t3_extra_nan) && $(TOUCH) $@ 
+
+# входные данные с лишним символом после 4 координаты: 1 2 3 4k
+$(TESTDIR)/t3_cpp_x_y_z_4k.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_x_y_z_4k tests/expect/t3_x_y_z_4k | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_x_y_z_4k > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_x_y_z_4k)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_x_y_z_4k tests/expect/t3_x_y_z_4k) && $(TOUCH) $@ 
+
+# входные данные с лишним символом после 4 координаты: 1 2 3 k4
+$(TESTDIR)/t3_cpp_x_y_z_k4.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_x_y_z_k4 tests/expect/t3_x_y_z_k4 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_x_y_z_k4 > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_x_y_z_k4)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_x_y_z_k4 tests/expect/t3_x_y_z_k4) && $(TOUCH) $@ 
+
+# входные данные с одной бесконечной координатой
+$(TESTDIR)/t3_cpp_inf_coord.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_inf_coord tests/expect/t3_inf_coord | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_inf_coord > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_inf_coord)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_inf_coord tests/expect/t3_inf_coord) && $(TOUCH) $@
+
+# 1 k2 3 - должна быть ошибка от нечисловых данных
+$(TESTDIR)/t3_cpp_x_ky_z.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_x_ky_z tests/expect/t3_x_ky_z | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_x_ky_z > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_x_ky_z)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_x_ky_z tests/expect/t3_x_ky_z) && $(TOUCH) $@
+
+# 1 2k 3 - должна быть ошибка от нечисловых данных
+$(TESTDIR)/t3_cpp_x_yk_z.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_x_yk_z tests/expect/t3_x_yk_z | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_x_yk_z > $(NULLDEV) 2> $(BINDIR)/t3_bbox_cpp/t3_x_yk_z)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_x_yk_z tests/expect/t3_x_yk_z) && $(TOUCH) $@
 
 # тесты на нормальных входных данных
 $(TESTDIR)/t3_cpp_test1.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_test1 tests/expect/t3_test1 | $(TESTDIR)
@@ -590,6 +664,12 @@ $(TESTDIR)/t3_cpp_test3.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/
 	$(SET_DLL_PATH) && \
         $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_test3 > $(BINDIR)/t3_bbox_cpp/t3_test3 2> $(NULLDEV))" 0 && \
         $(CHECK_CMD) $(EQ) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_test3 tests/expect/t3_test3) && $(TOUCH) $@
+
+# входные данные с экспонентой и минусом
+$(TESTDIR)/t3_cpp_scientific.ok: $(T3_CPP_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_scientific tests/expect/t3_scientific | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_CPP_EXE) < tests/input_data/t3_scientific > $(BINDIR)/t3_bbox_cpp/t3_scientific 2> $(NULLDEV))" 0 && \
+        $(CHECK_CMD) $(EQ) $(call WCMD,$(BINDIR)/t3_bbox_cpp/t3_scientific tests/expect/t3_scientific) && $(TOUCH) $@
 
 # T3 c tests
 # тесты с кодами ошибок
@@ -608,6 +688,48 @@ $(TESTDIR)/t3_c_too_few_args_case.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/inp
         $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_too_few_args_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_too_few_args_case)" $(DATA) && \
         $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_too_few_args_case tests/expect/t3_too_few_args_case) && $(TOUCH) $@ 
 
+# слишком много входных данных
+$(TESTDIR)/t3_c_too_much_args_case.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_too_much_args_case tests/expect/t3_too_much_args_case | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_too_much_args_case > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_too_much_args_case)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_too_much_args_case tests/expect/t3_too_much_args_case) && $(TOUCH) $@
+
+# лишний nan после X Y Z
+$(TESTDIR)/t3_c_extra_nan.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_extra_nan tests/expect/t3_extra_nan | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_extra_nan > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_extra_nan)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_extra_nan tests/expect/t3_extra_nan) && $(TOUCH) $@ 
+
+# входные данные с лишним символом после 4 координаты: 1 2 3 4k
+$(TESTDIR)/t3_c_x_y_z_4k.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_x_y_z_4k tests/expect/t3_x_y_z_4k | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_x_y_z_4k > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_x_y_z_4k)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_x_y_z_4k tests/expect/t3_x_y_z_4k) && $(TOUCH) $@ 
+
+# входные данные с лишним символом после 4 координаты: 1 2 3 k4
+$(TESTDIR)/t3_c_x_y_z_k4.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_x_y_z_k4 tests/expect/t3_x_y_z_k4 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_x_y_z_k4 > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_x_y_z_k4)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_x_y_z_k4 tests/expect/t3_x_y_z_k4) && $(TOUCH) $@ 
+
+# входные данные с одной бесконечной координатой
+$(TESTDIR)/t3_c_inf_coord.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_inf_coord tests/expect/t3_inf_coord | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_inf_coord > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_inf_coord)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_inf_coord tests/expect/t3_inf_coord) && $(TOUCH) $@
+
+# 1 k2 3 - должна быть ошибка от нечисловых данных
+$(TESTDIR)/t3_c_x_ky_z.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_x_ky_z tests/expect/t3_x_ky_z | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_x_ky_z > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_x_ky_z)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_x_ky_z tests/expect/t3_x_ky_z) && $(TOUCH) $@
+
+# 1 2k 3 - должна быть ошибка от нечисловых данных
+$(TESTDIR)/t3_c_x_yk_z.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_x_yk_z tests/expect/t3_x_yk_z | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_x_yk_z > $(NULLDEV) 2> $(BINDIR)/t3_bbox_c/t3_x_yk_z)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_x_yk_z tests/expect/t3_x_yk_z) && $(TOUCH) $@
+
 # тесты на нормальных входных данных
 $(TESTDIR)/t3_c_test1.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_test1 tests/expect/t3_test1 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
@@ -623,6 +745,12 @@ $(TESTDIR)/t3_c_test3.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_t
 	$(SET_DLL_PATH) && \
         $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_test3 > $(BINDIR)/t3_bbox_c/t3_test3 2> $(NULLDEV))" 0 && \
         $(CHECK_CMD) $(EQ) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_test3 tests/expect/t3_test3) && $(TOUCH) $@
+
+# входные данные с экспонентой и минусом
+$(TESTDIR)/t3_c_scientific.ok: $(T3_C_EXE) $(RUN_CASE) $(CHECK) tests/input_data/t3_scientific tests/expect/t3_scientific | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T3_C_EXE) < tests/input_data/t3_scientific > $(BINDIR)/t3_bbox_c/t3_scientific 2> $(NULLDEV))" 0 && \
+        $(CHECK_CMD) $(EQ) $(call WCMD,$(BINDIR)/t3_bbox_c/t3_scientific tests/expect/t3_scientific) && $(TOUCH) $@
 
 # T4 cpp tests
 # неверные значения радиуса. подаётся числом, т.к. это аргумент командной строки
@@ -675,6 +803,49 @@ $(TESTDIR)/t4_cpp_empty_coords.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expe
         $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_empty_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_empty_coords)" $(NO_INPUT) && \
         $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_empty_coords tests/expect/t4_empty_coords) && $(TOUCH) $@
 
+# слишком много координат
+$(TESTDIR)/t4_cpp_too_much_coords.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_too_much_coords tests/input_data/t4_too_much_coords | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_too_much_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_too_much_coords)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_too_much_coords tests/expect/t4_too_much_coords) && $(TOUCH) $@
+
+# лишний nan после X Y Z
+$(TESTDIR)/t4_cpp_extra_nan.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_extra_nan tests/input_data/t4_extra_nan | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_extra_nan > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_extra_nan)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_extra_nan tests/expect/t4_extra_nan) && $(TOUCH) $@
+
+# лишнее после x y z (1 2 3 4k) - ошибка от лишнего символа
+$(TESTDIR)/t4_cpp_x_y_z_4k.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_x_y_z_4k tests/input_data/t4_x_y_z_4k | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_x_y_z_4k > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_x_y_z_4k)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_x_y_z_4k tests/expect/t4_x_y_z_4k) && $(TOUCH) $@
+
+# лишнее после x y z (1 2 3 k4) - ошибка от лишнего символа
+$(TESTDIR)/t4_cpp_x_y_z_k4.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_x_y_z_k4 tests/input_data/t4_x_y_z_k4 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_x_y_z_k4 > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_x_y_z_k4)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_x_y_z_k4 tests/expect/t4_x_y_z_k4) && $(TOUCH) $@
+
+# одна из координат - бесконечность
+$(TESTDIR)/t4_cpp_inf_coord.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_inf_coord tests/input_data/t4_inf_coord | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_inf_coord > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_inf_coord)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_inf_coord tests/expect/t4_inf_coord) && $(TOUCH) $@
+
+# координаты 1 k2 3 - ошибка от символа среди чисел
+$(TESTDIR)/t4_cpp_x_ky_z.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_x_ky_z tests/input_data/t4_x_ky_z | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_x_ky_z > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_x_ky_z)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_x_ky_z tests/expect/t4_x_ky_z) && $(TOUCH) $@
+
+# координаты 1 2k 3 - ошибка от символа среди чисел
+$(TESTDIR)/t4_cpp_x_yk_z.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_x_yk_z tests/input_data/t4_x_yk_z | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 1 < tests/input_data/t4_x_yk_z > $(NULLDEV) 2> $(BINDIR)/t4_filter_cpp/t4_x_yk_z)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_x_yk_z tests/expect/t4_x_yk_z) && $(TOUCH) $@
+
+# тесты на нормальных данных
 # единственная точка и она проходит
 $(TESTDIR)/t4_cpp_test1.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_test1 tests/input_data/t4_test1 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
@@ -692,6 +863,13 @@ $(TESTDIR)/t4_cpp_test3.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_t
 	$(SET_DLL_PATH) && \
         $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 5 < tests/input_data/t4_test3 > $(BINDIR)/t4_filter_cpp/t4_test3 2> $(NULLDEV))" 0 && \
         $(CHECK_CMD) $(EQ) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_test3 tests/expect/t4_test3) && $(TOUCH) $@
+
+# входные данные с минусом и экспонентой 
+$(TESTDIR)/t4_cpp_scientific.ok: $(T4_CPP_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_scientific tests/input_data/t4_scientific | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_CPP_EXE) 100 < tests/input_data/t4_scientific > $(BINDIR)/t4_filter_cpp/t4_scientific 2> $(NULLDEV))" 0 && \
+        $(CHECK_CMD) $(EQ) $(call WCMD,$(BINDIR)/t4_filter_cpp/t4_scientific tests/expect/t4_scientific) && $(TOUCH) $@
+
 
 # T4 c tests
 # неверные значения радиуса. подаётся числом, т.к. это аргумент командной строки
@@ -744,6 +922,49 @@ $(TESTDIR)/t4_c_empty_coords.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t
         $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_empty_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_empty_coords)" $(NO_INPUT) && \
         $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_c/t4_empty_coords tests/expect/t4_empty_coords) && $(TOUCH) $@
 
+# слишком много координат
+$(TESTDIR)/t4_c_too_much_coords.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_too_much_coords tests/input_data/t4_too_much_coords | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_too_much_coords > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_too_much_coords)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_c/t4_too_much_coords tests/expect/t4_too_much_coords) && $(TOUCH) $@
+
+# лишний nan после X Y Z
+$(TESTDIR)/t4_c_extra_nan.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_extra_nan tests/input_data/t4_extra_nan | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_extra_nan > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_extra_nan)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_c/t4_extra_nan tests/expect/t4_extra_nan) && $(TOUCH) $@
+
+# лишнее после x y z (1 2 3 4k) - ошибка от лишнего символа
+$(TESTDIR)/t4_c_x_y_z_4k.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_x_y_z_4k tests/input_data/t4_x_y_z_4k | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_x_y_z_4k > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_x_y_z_4k)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_c/t4_x_y_z_4k tests/expect/t4_x_y_z_4k) && $(TOUCH) $@
+
+# лишнее после x y z (1 2 3 k4) - ошибка от лишнего символа
+$(TESTDIR)/t4_c_x_y_z_k4.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_x_y_z_k4 tests/input_data/t4_x_y_z_k4 | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_x_y_z_k4 > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_x_y_z_k4)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_c/t4_x_y_z_k4 tests/expect/t4_x_y_z_k4) && $(TOUCH) $@
+
+# одна из координат - бесконечность
+$(TESTDIR)/t4_c_inf_coord.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_inf_coord tests/input_data/t4_inf_coord | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_inf_coord > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_inf_coord)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_c/t4_inf_coord tests/expect/t4_inf_coord) && $(TOUCH) $@
+
+# координаты 1 k2 3 - ошибка от символа среди чисел
+$(TESTDIR)/t4_c_x_ky_z.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_x_ky_z tests/input_data/t4_x_ky_z | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_x_ky_z > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_x_ky_z)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_c/t4_x_ky_z tests/expect/t4_x_ky_z) && $(TOUCH) $@
+
+# координаты 1 2k 3 - ошибка от символа среди чисел
+$(TESTDIR)/t4_c_x_yk_z.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_x_yk_z tests/input_data/t4_x_yk_z | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 1 < tests/input_data/t4_x_yk_z > $(NULLDEV) 2> $(BINDIR)/t4_filter_c/t4_x_yk_z)" $(DATA) && \
+        $(CHECK_CMD) $(CONTAINS) $(call WCMD,$(BINDIR)/t4_filter_c/t4_x_yk_z tests/expect/t4_x_yk_z) && $(TOUCH) $@
+
+# тесты на нормальных данных
 # единственная точка и она проходит
 $(TESTDIR)/t4_c_test1.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_test1 tests/input_data/t4_test1 | $(TESTDIR)
 	$(SET_DLL_PATH) && \
@@ -761,6 +982,12 @@ $(TESTDIR)/t4_c_test3.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_test3
 	$(SET_DLL_PATH) && \
         $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 5 < tests/input_data/t4_test3 > $(BINDIR)/t4_filter_c/t4_test3 2> $(NULLDEV))" 0 && \
         $(CHECK_CMD) $(EQ) $(call WCMD,$(BINDIR)/t4_filter_c/t4_test3 tests/expect/t4_test3) && $(TOUCH) $@
+
+# входные данные с минусом и экспонентой 
+$(TESTDIR)/t4_c_scientific.ok: $(T4_C_EXE) $(RUN_CASE) $(CHECK) tests/expect/t4_scientific tests/input_data/t4_scientific | $(TESTDIR)
+	$(SET_DLL_PATH) && \
+        $(RUN_CASE_CMD) "$(call WCMD,$(T4_C_EXE) 100 < tests/input_data/t4_scientific > $(BINDIR)/t4_filter_c/t4_scientific 2> $(NULLDEV))" 0 && \
+        $(CHECK_CMD) $(EQ) $(call WCMD,$(BINDIR)/t4_filter_c/t4_scientific tests/expect/t4_scientific) && $(TOUCH) $@
 
 
 # ---------- ФИКТИВНЫЕ ЦЕЛИ (PHONY TARGETS) ---------- 
