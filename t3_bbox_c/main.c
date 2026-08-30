@@ -75,6 +75,7 @@ int main() {
 
             free(s);
             s = NULL;
+            free(points);
             return data;
         }
         // если дошли до сюда, код выхода == 0 и распознавание произошло
