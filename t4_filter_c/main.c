@@ -143,5 +143,7 @@ int main(int argc, char* argv[]) {
                 printf("%.3f %.3f %.3f\n", points[i].x, points[i].y, points[i].z);
         }
 
+    free(points);
+
     return 0;
 }
