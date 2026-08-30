@@ -134,17 +134,16 @@ int main(int argc, char* argv[]) {
     // вызов вспомогат. ф-ции
     // если код возвр. != 0, она уже что-то напечатала, и можно вернуть этот же код
     int status = get_points(&points, &points_size, &points_capacity);
-    if (status != 0){
+    if (status != 0) {
         free(points);
         return status;
-    }
-    else
+    } else
         // вывод точек, у которых расст. до центра < r
         for (int i = 0; i < points_size; ++i) {
             if (sqrt(points[i].x * points[i].x + points[i].y * points[i].y + points[i].z * points[i].z) < r)
                 printf("%.3f %.3f %.3f\n", points[i].x, points[i].y, points[i].z);
         }
-    
+
     free(points);
 
     return 0;
