@@ -3,3 +3,7 @@ root = true
 [*.{c,h,cpp,hpp}]
 indent_style = space
 indent_size = 4
+
+# для .md файлов кодировка utf-8
+[*.md]
+charset = utf-8
