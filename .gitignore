@@ -6,4 +6,5 @@
 *.pch
 *.exp
 *.txt
+!CMakeLists.txt
 build/
