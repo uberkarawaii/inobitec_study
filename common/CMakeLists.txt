@@ -13,6 +13,11 @@ add_library(common_c_static STATIC geometry.c)
 target_compile_definitions(common_cpp_static PUBLIC COMMON_STATIC)
 target_compile_definitions(common_c_static PUBLIC COMMON_STATIC)
 
+# libm.so для линукса. с ней линкуется библиотека и транзитивно - t1_c
+if(UNIX)
+  target_link_libraries(common_c_static PUBLIC m)
+endif()
+
 # из верхнего CMakeLists.txt - построит команду для сборки
 # т.к. common_..._static - static library -> из configure_target для неё произойдёт только cl, не link
 # и т.к. static, то ещё будет lib (CMake видит тип таргета)  
