@@ -8,6 +8,7 @@ cmake_minimum_required(VERSION 3.22)
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
 project(inobitec_stud LANGUAGES C CXX)
 
+
 # === СТАНДАРТЫ ===
 # стандарт языка Си
 set(CMAKE_C_STANDARD 17)
@@ -20,17 +21,19 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+
 # === ТИП СБОРКИ ===
 # определение debug / release; делается через -DCMAKE_BUILD_TYPE=...
 # Debug будет поставлен, если ничего не передали через флаг
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug / Release" FORCE)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING FORCE)
 endif()
-# переменная CMAKE_BUILD_TYPE будет сохранена в кэше с с пояснит. строкой
-# кэш: для самого CMake (хранить инф. м-у выполнениями) и чтобы человек каждый раз не вводил эти вещи
+# переменная CMAKE_BUILD_TYPE уйдёт в кэш 
+# кэш: для CMake, хранить инф. м-у выполнениями, и пользователь не повторяет ввод каждый раз
 # FORCE вызовет перезапись параметра
 
-# === НЕ /RTC1, А ASan ===
+
+# === ИСПРАВЛЕНИЕ DEFAULT-ФЛАГОВ ===
 # CMAke дефолтно положит /RTC1 в debug-ветку. /RTC1 ловит ошибки в runtime, для этого лезет в стек и размечает его
 # ASan - та же ф-ция. если оба будут менять стек, они помешают друг другу -> несовместимы. /RTC1 убирается 
 # /incremental также несовместим с asan (именно по документации. так работало и когда оба вместе)
@@ -40,11 +43,12 @@ if(MSVC)
   string(REPLACE "/INCREMENTAL" "" CMAKE_EXE_LINKER_FLAGS_DEBUG  "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
 endif()
 
+
 # === ПОСТРОИТЬ КОМАНДЫ КОМПИЛЯЦИИ И ЛИНКА ===
-# тут /Zi, /EHsc, /DEBUG  будут дублироваться, но прописываются для ясности
 function(configure_target trgt DBG)
 if(MSVC)
-  # target_compile_options - общие флаги компилятора 
+  # в msvc /Zi, /EHsc, /DEBUG  будут дублироваться, но прописываются для ясности
+  # target_compile_options - произвольные флаги компилятора 
   # PRIVATE даёт нетранзитивность: А (этот объект) и Б к нему сможет линковаться. а когда К линк. к Б, то К не будет линк. к А
   target_compile_options(${trgt} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/EHsc> /W4 /permissive-)
 
@@ -68,10 +72,10 @@ else()
 endif()
 endfunction()
 
-# === ДОБАВЛЕНИЕ ЗАДАЧИ === 
+
+# === Ф-ЦИЯ ДОБАВЛЕНИЯ ЗАДАЧИ === 
 # сборки exe из main.c/main.cpp; уходит в каталог build/cfg/dir
 function(add_task dir trgt src lib)
-
   # добавление исполняемного файла 
   # цель и её исходник. цель имеет одно имя (логическое, типа t1_c), а сделанный ею файл - другое (OUTPUT_NAME main)
   add_executable(${trgt} ${src})
@@ -90,12 +94,39 @@ function(add_task dir trgt src lib)
  
 endfunction()
 
-# переход в /common к CMakeLists.txt, там сделаются common_...lib, с которыми main надо слинковаться  
+# === ПОДПРОЕКТ ДЛЯ СОЗДАНИЯ БИБЛИОТЕК === 
+# add_subdirectory(source_dir [binary_dir] ...)
+# source_dir - где лежит вложенный CMakeLists.txt /common)
+# binary_dir - где положить служеб. файлы CMake для подпроекта (если не указано, то в CMAKE_BINARY_DIR/source_dir)  
 add_subdirectory(common)
 
+
+# === ДОБАВЛЕНИЕ ЗАДАЧ ===
 # arg1 - папка бинарей и прочих продуктов (build/cfg/...)
 # arg2 - логическое имя цели
 # arg3 - исходник, чтобы сделать файл цели
 # arg4 - библиотека с которой линковаться
-add_task(t1_dist_matrix_cpp t1_cpp t1_dist_matrix_cpp/main.cpp common_cpp_static)
-add_task(t1_dist_matrix_c t1_c t1_dist_matrix_c/main.c common_c_static)
+
+# TASK 1
+add_task(t1_dist_matrix_cpp t1_cpp t1_dist_matrix_cpp/main.cpp geometry_cpp_static)
+add_task(t1_dist_matrix_c t1_c t1_dist_matrix_c/main.c geometry_c_static)
+
+# TASK 2
+add_task(t2_passport_cpp t2_cpp t2_passport_cpp/main.cpp string_utils_cpp_static)
+add_task(t2_passport_c t2_c t2_passport_c/main.c string_utils_c_static)
+
+# TASK 3
+add_task(t3_bbox_cpp t3_cpp t3_bbox_cpp/main.cpp common_cpp_shared)
+add_task(t3_bbox_c t3_c t3_bbox_c/main.c common_c_shared)
+
+# TASK 4
+add_task(t4_filter_cpp t4_cpp t4_filter_cpp/main.cpp common_cpp_shared)
+add_task(t4_filter_c t4_c t4_filter_c/main.c common_c_shared)
+
+
+# TESTS
+# include(CTest) - было в документации. что это вообще делает?
+enable_testing() # или вот так, что мне больше нравится. после неё можно add_test()
+add_subdirectory(tests) 
+
+
