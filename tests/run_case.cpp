@@ -1,8 +1,65 @@
 #include <print>
 #include <string>
+#include <string_view>
+#include <system_error>
 #ifdef _WIN32
 #include <windows.h>
-#include <system_error>
+#endif
+
+#ifdef _WIN32
+// печать ошибки - передаётся строка со смыслом проблемы и имя файла, с которым была проблема
+void print_win_error(std::string_view context, std::string_view target){
+    DWORD current_err = GetLastError();
+    std::error_code ec(static_cast<int>(current_err), std::system_category());
+    std::print(stderr, "не удалось {} {}: {} (код {})\n", context, target, ec.message(), current_err);
+}
+
+// обёртка для хэндлов. сделана, когда нашлась проблема каскадных CloseHandle
+// у HANDLE нет деструктора, это вообще не класс, а псевдоним для числа-указателя
+// а обёртка позволяет закрыть хэндл при выходе из скоупа, а не руками перед return ...
+class win_handle {
+    // h_: член класса win_handle, приватный 
+    // по дефолту и при создании из результата неудачного вызова будет = INVALID_HANDLE_VALUE
+    HANDLE h_ = INVALID_HANDLE_VALUE;
+public:
+    // конструктор. значение h по умолчанию - INVALID_HANDLE_VALUE
+    // при передаче реального хэндла внутренний h_ будет им инициализирован
+    win_handle(HANDLE h = INVALID_HANDLE_VALUE) : h_(h) {}
+    // деструктор. при валидном h_ - закрываем его
+    ~win_handle() { if (h_ != INVALID_HANDLE_VALUE && h_ != nullptr) CloseHandle(h_); }
+
+    // устранение ситуации двойного закрытия: 
+    // нельзя копировать через конструктор - т.е. нельзя сделать объект win_handle от win_handle, можно от HANDLE
+    win_handle(const win_handle&) = delete;
+    // нельзя сделать win_handle a = b, где b - тоже win_handle
+    win_handle& operator=(const win_handle&) = delete;
+
+    // отдать HANDLE - т.е. просто число. ему не сделают CloseHandle и управление остаётся у обёртки
+    HANDLE get() const { return h_; }
+    // преобразование хэндла к 0/1 (explicit) - только в логических операциях, не в неявных преобразованиях
+    explicit operator bool() const { return h_ != INVALID_HANDLE_VALUE && h_ != nullptr; }
+};
+
+// вынесение создания и обработки ошибки создания хэндла
+win_handle open_io_file(const char* path, DWORD desired_access, DWORD creation_disposition, std::string_view context){
+// дескриптор безопасности для объектов, которые созданы/открыты внутри программы (для файлов in/out/err)
+SECURITY_ATTRIBUTES sa{};
+sa.nLength = sizeof(sa); // размер структ. в байтах; будет размер самого SECURITY_ATTRIBUTES
+sa.bInheritHandle = true; // хэндл с этим sa может наследоваться дочерним процессом
+sa.lpSecurityDescriptor = nullptr; // разрешения безопасности - по дефолту 
+// хэндл на переданный файл (созданный / открытый)
+HANDLE h = CreateFileA(path, desired_access, FILE_SHARE_READ,
+                        &sa, creation_disposition, FILE_ATTRIBUTE_NORMAL, NULL);
+
+// при неудачном создании хэндла - ввести сообщение и вернуть объект
+if (h == INVALID_HANDLE_VALUE){
+    print_win_error(context, path);
+    return win_handle{}; // конаструктор по умолчанию вернёт INVALID_HANDLE_VALUE
+}
+// возврат объекта через prvalue
+return win_handle{h};
+}
+
 #endif
 
 // run_case <ожидаемый_код> <файл_входа> <файл_stdout> <файл_stderr> -- <exe> [арг...]
@@ -29,59 +86,42 @@ std::print(stderr, "Ожидается exit-code типа int, а полученное число({}) - за пр
 return 1;
 }
 
+// виндоус-специфичная ветка для создания дочернего процесса с переданными аргументами и сравнение кода
 #ifdef _WIN32
-// hStdInput/hStdOutput/hStdError из STARTUPINFO становятся потоками 0/1/2 дочернего процесса
-
-// дескриптор безопасности для объектов, которые созданы внутри программы(здесь - CreateFileA)
-SECURITY_ATTRIBUTES sa{};
-sa.nLength = sizeof(sa);
-sa.bInheritHandle = true; // хэндл может наследоваться дочерним процессом
-sa.lpSecurityDescriptor = nullptr; 
-
-// TODO вынести дублирование 3 блоков
-// если in будет неудачным, то out не закрывается и тд по цепочке 
-// ОС вроде всё уберёт при завершении начального процесса
-HANDLE in = CreateFileA(argv[2], GENERIC_READ, FILE_SHARE_READ,
-                        &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-if (in == INVALID_HANDLE_VALUE) {
-    DWORD current_err = GetLastError();
-    std::error_code ec(static_cast<int>(current_err), std::system_category());
-    std::print(stderr, "не удалось открыть файл входа {}: {} (код {})\n", argv[2], ec.message(), current_err);
-    return 1;
-}
-
-HANDLE out = CreateFileA(argv[3], GENERIC_WRITE, FILE_SHARE_READ,
-                         &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-
-if (out == INVALID_HANDLE_VALUE) {
-    DWORD current_err = GetLastError();
-    std::error_code ec(static_cast<int>(current_err), std::system_category());
-    std::print(stderr, "не удалось создать файл выхода {}: {} (код {})\n", argv[3], ec.message(), current_err);
-    return 1;
-}
-
-HANDLE err = CreateFileA(argv[4], GENERIC_WRITE, FILE_SHARE_READ,
-                         &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-if (err == INVALID_HANDLE_VALUE) {
-    DWORD current_err = GetLastError();
-    std::error_code ec(static_cast<int>(current_err), std::system_category());
-    std::print(stderr, "не удалось создать файл ошибки {}: {} (код {})\n", argv[4], ec.message(), current_err);
-    return 1;
-}
-
-STARTUPINFOA si{};
-si.cb = sizeof(si);
-si.dwFlags = STARTF_USESTDHANDLES;
-si.hStdInput = in;
-si.hStdOutput = out;
-si.hStdError = err;
-
-// обнуление чтобы не осталось мусора в полях
+// если процесс будет создан успешно, здесь будут
+// hProcess - хэндл на объект ядра процесс. нужен для ожидания завершения, снятия кода
+// hThread - хэндл на объект ядра поток(главный поток процесса). не используется, но нужно будет закрыть его
+// пустой конструктор чтобы не осталось мусора в полях
 PROCESS_INFORMATION pi{};
 
+//  логический блок для своевременного уничтожения in/out/err Обёрток
+{
+
+// хэндлы на файлы входа, выхода и ошибки
+// FILE_SHARE_READ - другому процессу тоже можно открыть на чтение данный файл. для НЕ-run_case и НЕ-main процессов
+win_handle in = open_io_file(argv[2], GENERIC_READ, OPEN_EXISTING, "открыть файл входа");
+if (!in)
+    return 1;
+
+win_handle out = open_io_file(argv[3], GENERIC_WRITE, CREATE_ALWAYS, "создать файл выхода");
+if (!out)        
+    return 1;
+
+win_handle err = open_io_file(argv[4], GENERIC_WRITE, CREATE_ALWAYS, "создать файл ошибки");
+if (!err)        
+    return 1;
+
+// параметры для будущего процесса
+// hStdInput/hStdOutput/hStdError - это будущие хэндлы на открытые/созданные файлы in/out/err
+// сработают при создании процесса с этим STARTUPINFOA. дадут ребёнку полную копию объектов ядра, как у run_case
+STARTUPINFOA si{};
+si.cb = sizeof(si); // размер структуры = размер STARTUPINFOA 
+si.dwFlags = STARTF_USESTDHANDLES; // хэндлы воспринимаются как потоки
+si.hStdInput = in.get();
+si.hStdOutput = out.get();
+si.hStdError = err.get();
+
+// строка вида "main.exe" arg1 arg2 ...; кавычки - от пробелов в пути
 std::string cmdline = "\"" + std::string(argv[6]) + "\"";
 for (int i = 7; i < argc; ++i) {
     cmdline += ' ';
@@ -89,39 +129,38 @@ for (int i = 7; i < argc; ++i) {
 }
 
 // был отказ от CreateProcessW в CreateProcessA пользу чтобы не конверт. в char* -> wchar_t
-// плохо: не-ASCII пути зависят от кодировки. но у меня нет кириллицы в путях 
-BOOL ok = CreateProcessA(argv[6], cmdline.data(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
-
-if (!ok) {
-    DWORD current_err = GetLastError();
-    // <system_error>: переводит код Windows в текст
-    std::error_code ec(static_cast<int>(current_err), std::system_category());
-    std::print(stderr, "не удалось запустить {}: {} (код {})\n", argv[6], ec.message(), current_err);
+// плохо: не-ASCII пути зависят от кодировки. но у меня нет кириллицы в путях
+// argv[6] - имя создаваемого процесса - аргумент-имя исполняемого файла
+// cmdline.data() - исполняемый файл и его аргументы командной строки
+// 3 и 4 NULL - нет своих параметров безопасности для процесса и потока
+// TRUE - этот процесс может наследовать. тут унаследует объекты ядра in/out/err от run_case
+// NULL - окружение по умолчанию - то есть от родителя
+// NULL - current working directory как у родителя 
+// startup info = si, process information = pi  
+if(!CreateProcessA(argv[6], cmdline.data(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)){
+    print_win_error("запустить", argv[6]);
     return 1;
 }
+} // здесь происходит удаление in/out/err через деструкторы для run_case
 
-CloseHandle(in); CloseHandle(out); CloseHandle(err);
+win_handle hproc{pi.hProcess};
+win_handle hthread{pi.hThread};
 
 DWORD exit_code = 0;
-if (WaitForSingleObject(pi.hProcess, INFINITE) != WAIT_OBJECT_0) {
-    DWORD current_err = GetLastError();
-    std::error_code ec(static_cast<int>(current_err), std::system_category());
-    std::print(stderr, "не удалось дождаться завершения {}: {} (код {})\n", argv[6], ec.message(), current_err);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
+// run_case блокируется и ждёт, пока не завершится процесс pi.hProcess
+// ждёт бесконечно, но ловит сбои ожидания и если они есть - бросит ошибку и завершится 
+if (WaitForSingleObject(hproc.get(), INFINITE) != WAIT_OBJECT_0) {
+    print_win_error("дождаться завершения", argv[6]);
     return 1;
 }
-if (!GetExitCodeProcess(pi.hProcess, &exit_code)) {
-    DWORD current_err = GetLastError();
-    std::error_code ec(static_cast<int>(current_err), std::system_category());
-    std::print(stderr, "не удалось получить код завершения {}: {} (код {})\n", argv[6],  ec.message(), current_err);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
+// GetExitCodeProcess - снять код завершения процесса pi.hProcess и положить в exit_code
+// проверка, если вдруг не удалось снять взять код завершения	 
+if (!GetExitCodeProcess(hproc.get(), &exit_code)) {
+    print_win_error("получить код завершения", argv[6]);
     return 1;
 }
-CloseHandle(pi.hProcess);
-CloseHandle(pi.hThread);
 
+// сравнение снятого кода процесса и ожидаемого
 if (static_cast<int>(exit_code) != expected_code) {
     std::print(stderr, "ожидался код {}; получен {}\n", expected_code, exit_code);
     return 1;
