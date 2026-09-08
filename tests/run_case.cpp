@@ -93,6 +93,7 @@ public:
     explicit operator bool() const { return fd_ >= 0; }
 };
 
+// вынесение печати ошибки
 void print_errno_error(std::string_view context, std::string_view target) {
     // системные вызовы POSIX при ошибках будут выставлять errno - это макрос в рамках потока
     // сохранение errno в локальной переменной, чтобы поймать состояние, когда он не был ничем перезаписан
@@ -101,6 +102,7 @@ void print_errno_error(std::string_view context, std::string_view target) {
     std::print(stderr, "Can not {} {}: {} (code {})\n", context, target, ec.message(), current_err);
 }
 
+// вынесение работы с файловым дескриптором и возврат его обёрки в posix_fd при удаче
 posix_fd open_io_file(const char* path, int flags, int mode, std::string_view context) {
     // flags - флаги того, что можно произоводить с этим файлом - чтение / запись / и т.д.
     // mode - права файла
@@ -113,6 +115,8 @@ posix_fd open_io_file(const char* path, int flags, int mode, std::string_view co
 
     return posix_fd{fd};
 }
+// вынесение кода "команда не найдена"
+constexpr int kExecFailed = 127;
 
 #endif
 
@@ -225,9 +229,12 @@ int main(int argc, char* argv[]) {
     return 0;
 #else
     // linux
-    // идентификатор процесса
+    // fork() положит в pid идентификатор процесса (пока его нет, и дефолтно -1)
+    // нужно для разделения действий: -1 - что сделать при fail; 0 - что сделать ребёнку
+    // положит. число - что сделать родителю
     pid_t pid = -1;
     {
+        // создание файловых дескрипторов в родителе, чтобы потом передать их ребёнку
         posix_fd in = open_io_file(argv[2], O_RDONLY | O_CLOEXEC, 0, "open input file");
         if (!in)
             return 1;
@@ -240,11 +247,13 @@ int main(int argc, char* argv[]) {
         if (!err)
             return 1;
 
-        pid = fork(); // <0 — печать errno, return 1
+        pid = fork(); // копия родительского процесса run_case
+        // действия если не получилось создать дочерний процесс (pid=-1)
         if (pid < 0) {
             print_errno_error("create a child process to run", argv[6]);
             return 1;
         }
+        // такой pid будет у ребёнка. в этом блоке - логика и действия ребёнка
         if (pid == 0) {
             // ребёнок: перенаправить 0/1/2 на файлы
             if (dup2(in.get(), STDIN_FILENO) < 0 || dup2(out.get(), STDOUT_FILENO) < 0 ||
@@ -252,37 +261,58 @@ int main(int argc, char* argv[]) {
                 int errno_copy = errno;
                 std::print(stderr, "Can not redirect streams: {}\n",
                            std::error_code(errno_copy, std::generic_category()).message());
-                _exit(127);
+                _exit(kExecFailed);
             }
+            // замена кода run_case на код main (или что передали) в ребёнке
+            // перенаправленные потоки остаются как и были
+            execv(argv[6], &argv[6]);
 
-            execv(argv[6], &argv[6]); // при успехе не возвращается
-
-            // сюда execv вернулся только при ошибке; stderr уже перенаправлен в err-файл
+            // поймать ошибку execv
             int errno_copy = errno;
             std::print(stderr, "Can not run {}: {}\n", argv[6],
                        std::error_code(errno_copy, std::generic_category()).message());
-            _exit(127);
-        }
-    } // родитель: in/out/err закрыты деструкторами
+            // завершить процесс ребёнка
+            _exit(kExecFailed);
 
+            // у процесса ребёнка - оконачние либо в execv либо в _exit; потому за этот скоуп не выйдет
+            // и не должен, т.к. далее - для родителя
+        }
+    } // тут 3шт fd run_case-а уничтожатся деструкторами обёртки, т.к. выход из спец. скоупа
+
+    // контейнер для exit-кода ребёнка
     int status = 0;
-    // потенциально уязыимое место если run_case получить какой-нибудь сигнал. но он их не получает
+    // для ожидния завершения процесса ребёнка
+    // pid - ожидай окончания процесса с этим id
+    // status - положи код по ссылке
+    // 0 - жди именно завершения, а остановки или иного
+    // при waitpid < 0 не удалось дождаться именно завершения процесса с этим pid. вывод причины
+    // упускается случай errno == EINTR. по идее, никто не должен послать сигналы тест. обвязке
     if (waitpid(pid, &status, 0) < 0) {
         print_errno_error("wait for the process of", argv[6]);
         return 1;
     }
 
+    // развилка того, как завершился ребёнок: штатно или внештатно
+    // WIFEXITED - макрос, даст true, если ребёнок завершился штатно, а не от sigkill/sigsegv/etc
     if (WIFEXITED(status)) {
+        // WEXITSTATUS - из всех битов информации извлекается именно код возврата
         int exit_code = WEXITSTATUS(status);
+        // когда реальный код и ожидаемый не совпали
         if (exit_code != expected_code) {
             std::print(stderr, "expected code is {}; received code is {}\n", expected_code, exit_code);
             return 1;
         }
-    } else if (WIFSIGNALED(status)) {
+    }
+    // процесс завершился не сам, а с опред. сигналом завершения
+    // в случае остановки когда asan нашёл ошибку / при невозможном обращении к памяти / ...
+    else if (WIFSIGNALED(status)) {
         std::print(stderr, "expected code is {}; process was terminated by signal {}\n", expected_code,
                    WTERMSIG(status));
         return 1;
-    } else {
+    }
+    // если не удалось отловить через WIFSIGNALED. тут завершение ребёнка также внештатное
+    // надо завершиться с ошибкой
+    else {
         std::print(stderr, "expected code is {}; process ended with unexpected status\n", expected_code);
         return 1;
     }
