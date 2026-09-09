@@ -84,11 +84,5 @@ set_tests_properties(${RESULT_TEST} PROPERTIES FIXTURES_REQUIRED ${test_name})
   
 endfunction()
 
-# TODO перенесётся в cases.cmake
-# include(cases.cmake)
-add_case(t1_c_empty t1_c "" t1_nul 66 CONTAINS t1_nul 2)
-
-
-
-
-
+# в cases.cmake находятся все тест-кейсы
+include(cases.cmake)

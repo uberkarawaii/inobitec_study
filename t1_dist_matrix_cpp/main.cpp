@@ -13,7 +13,7 @@ int main() {
     std::string lineN;
 
     if (!std::getline(std::cin, lineN) || lineN.empty()) {
-        std::cerr << "Пустой ввод вместо целого числа\n";
+        std::cerr << "Получен пустой ввод вместо целого N\n";
         return exit_code::no_in;
     }
 
@@ -33,7 +33,7 @@ int main() {
     }
 
     if (N < 3 || N > 20) {
-        std::cerr << "N должно быть в диапазоне [3; 20]. Получено: " << lineN << '\n';
+        std::cerr << "N должно быть в диапазоне [3;20]. Получено: " << lineN << '\n';
         return exit_code::usage;
     }
 

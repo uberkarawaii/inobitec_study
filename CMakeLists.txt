@@ -89,6 +89,15 @@ function(add_task dir trgt src lib)
   # тут private не имеет смысла (.exe конечен, к нему не линкуются), просто для единообразия
   target_link_libraries(${trgt} PRIVATE ${lib})
 
+  # определение типа библиотеки т.к. на windows для .dll нужно доп. действие для связки с .exe
+  get_target_property(lib_type ${lib} TYPE)
+  if(WIN32 AND lib_type STREQUAL "SHARED_LIBRARY")
+    # после построения файла trgt (exe): cmake -E ... 
+    add_custom_command(TARGET ${trgt} POST_BUILD COMMAND
+                       ${CMAKE_COMMAND} -E copy_if_different
+                       $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:${trgt}>)
+  endif()
+
   # команда для cl+link. флаг DEBUG = ON - т.е. пойдём по ветке if (DBG) с флагами для программ-задач
   configure_target(${trgt} ON)
  
@@ -125,8 +134,5 @@ add_task(t4_filter_c t4_c t4_filter_c/main.c common_c_shared)
 
 
 # TESTS
-# include(CTest) - было в документации. что это вообще делает?
-enable_testing() # или вот так, что мне больше нравится. после неё можно add_test()
+enable_testing()
 add_subdirectory(tests) 
-
-

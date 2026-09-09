@@ -34,7 +34,7 @@ int main() {
 
     std::string vertexes;
     if (!std::getline(std::cin, vertexes)) {
-        std::cerr << "EOF вместо кол-ва вершин\n";
+        std::cerr << "EOF вместо числа вершин\n";
         return exit_code::no_in;
     }
 

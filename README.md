@@ -14,7 +14,8 @@
 - common/CMakeLists.txt - построение библиотек (стат./динам.). по необходимости на линуксе привязывается libm.so; 
   добавляются константы времени компиляции COMMON_... с модификаторами PUBLIC/PRIVATE;
   включается в CMakeLists.txt перед добавлением задач.
-- tests/CMakeLists.txt - для тестовой части. собираются run_case и check, включается в CMakeLists.txt перед добавлением задач.
+- tests/CMakeLists.txt - для тестовой части. собираются run_case и check, включается в CMakeLists.txt перед добавлением задач. включает в себя tests/cases.cmake
+- tests/cases.cmake - тест-кейсы к задачам 1-4 через add_case(...)
 
 ### Прочее: 
 - /hello каталог с начальной задачей. выводит hello, world
@@ -89,4 +90,4 @@
 `ctest --test-dir build/cmake_debug`
 
 #### Через make
-make test
+`make test`

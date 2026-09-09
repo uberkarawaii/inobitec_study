@@ -45,11 +45,6 @@ std::expected<std::vector<Point>, int> get_points() {
 
     while (std::getline(std::cin, temp)) {
         ++i;
-        // error IO проверка
-        if (std::cin.bad()) {
-            std::cerr << "Ошибка IO при чтении строки " << i << "\n";
-            return std::unexpected(exit_code::io_fail);
-        }
 
         // пропуск пустых строк
         if (is_empty(temp))
@@ -81,6 +76,12 @@ std::expected<std::vector<Point>, int> get_points() {
 
         // если дошли сюда, то ex_code == 0 можно положить точку в массив
         points.push_back(*result);
+    }
+
+    // error IO проверка после while
+    if (std::cin.bad()) {
+        std::cerr << "Ошибка IO при чтении строки " << i << "\n";
+        return std::unexpected(exit_code::io_fail);
     }
 
     if (points.empty()) {
