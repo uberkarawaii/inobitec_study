@@ -50,7 +50,7 @@ add_test(NAME ${CODE_TEST} COMMAND $<TARGET_FILE:run_case> ${expected_excode}
  ${STDERR_FILE}
  --
  $<TARGET_FILE:${exe}>
- "${args}")
+ ${args})
 # args в кавычках чтобы не распадалось при подстановке
 # TODO при пустом args хвост. пробел игнорируется. надо сделать без пустого арг.
 

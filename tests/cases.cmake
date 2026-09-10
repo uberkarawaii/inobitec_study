@@ -95,7 +95,7 @@ add_case(t3_cpp_test3 t3_cpp "${EMPTY_ARG}" t3_test3 "${SUCCESS}" EQ t3_test3 "$
 add_case(t3_cpp_scientific t3_cpp "${EMPTY_ARG}" t3_scientific "${SUCCESS}" EQ t3_scientific "${OUT}")
 
 # === –¿ƒ»”—€ ===
-set(RAD_TOO_MUCH "2 3")
+set(RAD_TOO_MUCH 2 3)
 set(RAD_SYMB 4ch)
 set(RAD_INF inf)
 set(RAD_NEG -10)
