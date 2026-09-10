@@ -38,7 +38,8 @@ file(GLOB_RECURSE FORMAT_FILES
 
 # исключить поддиректорию билда из ресурсов для фоматирования, т.к. там не программы, а их продукты 
 # а также продукты генерации CMake - не надо форматировать этот код
-if(NOT "${BUILD_DIR}" STREQUAL "")
+# не дать исключить корень исходников, если кто-то соберёт "в корне"
+if(NOT "${BUILD_DIR}" STREQUAL "" AND NOT "${BUILD_DIR}" STREQUAL "${SRC_DIR}")
     list(FILTER FORMAT_FILES EXCLUDE REGEX "^${BUILD_DIR}/")
 endif()
 

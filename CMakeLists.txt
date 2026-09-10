@@ -137,9 +137,17 @@ add_task(t4_filter_c t4_c t4_filter_c/main.c common_c_shared)
 # cmake/format.cmake в скриптовом режиме. отделен он графа сборки проекта
 set(FORMAT_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/format.cmake")
 
+# исключаем весь каталог сборки, а не только текущую конфигурацию:
+# конфигурации вложены (build/debug, build/release)
+set(FORMAT_BUILD_ROOT "${CMAKE_BINARY_DIR}")
+get_filename_component(FORMAT_BUILD_PARENT "${CMAKE_BINARY_DIR}" DIRECTORY)
+if(NOT FORMAT_BUILD_PARENT STREQUAL CMAKE_SOURCE_DIR)
+  set(FORMAT_BUILD_ROOT "${FORMAT_BUILD_PARENT}")
+endif()
+
 # один и тот же source-dir и build-dir, изменяется только check/apply - он добавляется в командах
 # общая часть из source-dir и build-dir
-set(FORMAT_COMMON -DSRC_DIR=${CMAKE_SOURCE_DIR} -DBUILD_DIR=${CMAKE_BINARY_DIR} -P ${FORMAT_SCRIPT})
+set(FORMAT_COMMON -DSRC_DIR=${CMAKE_SOURCE_DIR} -DBUILD_DIR=${FORMAT_BUILD_ROOT} -P ${FORMAT_SCRIPT})
 
 # отформатировать
 add_custom_target(format
