@@ -21,12 +21,12 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
+                               
 # === ТИП СБОРКИ ===
 # определение debug / release; делается через -DCMAKE_BUILD_TYPE=...
 # Debug будет поставлен, если ничего не передали через флаг
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING FORCE)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type (Debug/Release)" FORCE)
 endif()
 # переменная CMAKE_BUILD_TYPE уйдёт в кэш 
 # кэш: для CMake, хранить инф. м-у выполнениями, и пользователь не повторяет ввод каждый раз
