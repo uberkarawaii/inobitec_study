@@ -93,6 +93,8 @@ std::expected<std::vector<Point>, int> get_points() {
 }
 
 int main(int argc, char* argv[]) {
+    // откл. синхронизации, иначе EOF и io-fail станут неразличимы из-за чтения через fgetc
+    std::ios::sync_with_stdio(false);
     // проверки ввода радиуса; при ошибке аргументов либо 0, либо больше чем 1
     if (argc != 2) {
         if (argc < 2)

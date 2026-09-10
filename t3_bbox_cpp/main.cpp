@@ -12,6 +12,8 @@
 #include "../common/string_utils.hpp"
 
 int main() {
+    // откл. синхронизации, иначе EOF и io-fail станут неразличимы из-за чтения через fgetc
+    std::ios::sync_with_stdio(false);
     // считывание начальных x y z в массив; сначала строка, потом число
     // при возникновении ошибки вывод с номером битой строки
     std::string temp;

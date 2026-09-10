@@ -68,7 +68,9 @@
 
 ### Как собрать
 
-#### task1 c и c++ через CMake
+#### через CMake
+**Временная мера от рассогласования /showIncludes на MSVC: `chcp 1251` перед любыми cmake-операциями**
+
 как сконфигурировать и сгенерировать служебные файлы: `cmake -B build/cmake_debug -G [generator] -DCMAKE_BUILD_TYPE=[Debug/Release]`
 рабочий пример с Ninja+Debug: `cmake -B build/cmake_debug -G Ninja -DCMAKE_BUILD_TYPE=Debug`
 
