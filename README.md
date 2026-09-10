@@ -7,7 +7,6 @@
 - .clang-format - форматирование файлов на С / С++
 - .editorconfig - правила чтения файлов для редакторов
 - .gitignore - список типов файлов, которые не будут включаться в коммиты
-- Makefile - для инкрементальной сборки
 - CMakeLists.txt - корневой файл CMake. включает настроки проекта, менеджит дефолтные флаги `CMAKE_..._FLAGS_DEBUG`,
   включает ф-цию для построения команд компиляции и линка в зависимости от платформы и собираемой цели (задача VS обвязка),
   и ф-цию добавления задач add_task, через которую они далее и добавляются 
@@ -38,7 +37,6 @@
   При тестировании будут создаваться папки со следующей иерархией:
     ```
     build/
-    ├── cmake_debug/
     ├── debug/
     │   └── test/
     │   │   └── t1_cpp_norm.ok
@@ -64,32 +62,41 @@
         ├── ...
         └── t4_filter_c/
     ```
-/cmake_debug - для CMake, там и его служебная информаци, и ninja-файлы, и артефакты сборки
 
-### Как собрать
-
-#### через CMake
+### Как собрать и прогнать тесты через CMake
+#### сборка
 **Временная мера от рассогласования /showIncludes на MSVC: `chcp 1251` перед любыми cmake-операциями**
 
-как сконфигурировать и сгенерировать служебные файлы: `cmake -B build/cmake_debug -G [generator] -DCMAKE_BUILD_TYPE=[Debug/Release]`
+как сконфигурировать и сгенерировать служебные файлы: 
+```
+cmake -B build/cmake_debug -G [generator] -DCMAKE_BUILD_TYPE=[Debug/Release]
+```
+
 рабочий пример с Ninja+Debug: `cmake -B build/cmake_debug -G Ninja -DCMAKE_BUILD_TYPE=Debug`
 
-как собрать: `cmake --build build/cmake_debug [--target t1_c/t1_cpp]` - с --target и именем будет отдельная цель, не всё
-как почистить: `cmake --build build/cmake_debug --target clean`
+как собрать: 
+```
+cmake --build build/cmake_debug [--target t1_c/t1_cpp]
+```
+с --target и именем будет отдельная цель, а не all
 
-#### через make (default-режим - debug)
-**Запуск - из корня проекта, т.к. это необходимо для верного пути до .dll, который есть в задачах 3-4**
-- `make all` - соберутся t1-t4 на Си и С++
-- `make format` - отформатируются все .c .cpp .h .hpp
-- `make test` - прогонятся тесты на нормальные данные, на коды выходов и сообщения об ошибках для t1-t4
+как отформатировать:
+```
+cmake --build build/cmake_debug --target format
+```
 
-**режим меняется через переменную CONFIG**: `make CONFIG=release ...`. после может быть и `all`, и `test`, и пр. по аналогии
+как почистить: 
+```
+cmake --build build/cmake_debug --target clean
+```
 
-**посмотреть дерево инструкций make (с учётом текущего состояния файловой системы, без выполнения)**: `make [CONFIG=...] -n ...`
+#### тесты
+тесты на коды и выходные значения:
+```
+ctest --test-dir build/cmake_debug
+```
 
-### Как прогнать тесты
-#### через cmake
-`ctest --test-dir build/cmake_debug`
-
-#### Через make
-`make test`
+тест на формат файлов:
+```
+cmake --build build/cmake_debug --target format-check
+```

@@ -132,7 +132,30 @@ add_task(t3_bbox_c t3_c t3_bbox_c/main.c common_c_shared)
 add_task(t4_filter_cpp t4_cpp t4_filter_cpp/main.cpp common_cpp_shared)
 add_task(t4_filter_c t4_c t4_filter_c/main.c common_c_shared)
 
+# === ФОРМАТИРОВАНИЕ ===
 
-# TESTS
+# cmake/format.cmake в скриптовом режиме. отделен он графа сборки проекта
+set(FORMAT_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/format.cmake")
+
+# один и тот же source-dir и build-dir, изменяется только check/apply - он добавляется в командах
+# общая часть из source-dir и build-dir
+set(FORMAT_COMMON -DSRC_DIR=${CMAKE_SOURCE_DIR} -DBUILD_DIR=${CMAKE_BINARY_DIR} -P ${FORMAT_SCRIPT})
+
+# отформатировать
+add_custom_target(format
+  COMMAND ${CMAKE_COMMAND} -DMODE=apply ${FORMAT_COMMON}
+  COMMENT "Applying clang-format to all C/C++ files")
+
+# проверить формат (в этом же виде вызывается из ctest)
+add_custom_target(format-check
+  COMMAND ${CMAKE_COMMAND} -DMODE=check ${FORMAT_COMMON}
+  COMMENT "Checking clang-format of all C/C++ files")
+
+# === TESTS ===
 enable_testing()
+# первый тест: проверка чистоты формата
+# если есть clang+format - проверка строгая, не-падение - только при чистом формате
+# иначе - warning и тесты
+add_test(NAME format-check COMMAND ${CMAKE_COMMAND} -DMODE=check ${FORMAT_COMMON}) 
+# тесты на знчения и коды
 add_subdirectory(tests) 
