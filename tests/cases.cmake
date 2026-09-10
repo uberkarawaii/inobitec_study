@@ -3,9 +3,12 @@ set(SUCCESS 0)
 set(USAGE 64)
 set(DATA 65)
 set(NO_INPUT 66)
+set(IO_FAIL 74)
 set(OUT 1)
 set(ERR 2)
 set(EMPTY_ARG "")
+# для достижения io-fail
+set(FOLDER_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/input_data")
 
 # === T1 C TESTS ====
 # входные данные с ошибками
@@ -50,6 +53,10 @@ add_case(t2_cpp_negative_vertexes t2_cpp "${EMPTY_ARG}" t2_negative_vertexes "${
 add_case(t2_cpp_norm t2_cpp "${EMPTY_ARG}" t2_input "${SUCCESS}" EQ t2_norm "${OUT}")
 
 # === T3 C TESTS ===
+# тест на io-fail - только под UNIX
+if(UNIX)
+  add_case(t3_c_io t3_c "${EMPTY_ARG}" "${FOLDER_INPUT}" "${IO_FAIL}" CONTAINS t3_t4_io_fail "${ERR}")
+endif()
 # входные данные с ошибками
 add_case(t3_c_empty t3_c "${EMPTY_ARG}" t3_empty_case "${NO_INPUT}" CONTAINS t3_empty_case "${ERR}")
 add_case(t3_c_not_digit_case t3_c "${EMPTY_ARG}" t3_not_digit_case "${DATA}" CONTAINS t3_not_digit_case "${ERR}")
@@ -67,6 +74,10 @@ add_case(t3_c_test3 t3_c "${EMPTY_ARG}" t3_test3 "${SUCCESS}" EQ t3_test3 "${OUT
 add_case(t3_c_scientific t3_c "${EMPTY_ARG}" t3_scientific "${SUCCESS}" EQ t3_scientific "${OUT}")
 
 # === T3 CPP TESTS ===
+# тест на io-fail - только под UNIX
+if(UNIX)
+  add_case(t3_cpp_io t3_cpp "${EMPTY_ARG}" "${FOLDER_INPUT}" "${IO_FAIL}" CONTAINS t3_t4_io_fail "${ERR}")
+endif()
 # входные данные с ошибками
 add_case(t3_cpp_empty t3_cpp "${EMPTY_ARG}" t3_empty_case "${NO_INPUT}" CONTAINS t3_empty_case "${ERR}")
 add_case(t3_cpp_not_digit_case t3_cpp "${EMPTY_ARG}" t3_not_digit_case "${DATA}" CONTAINS t3_not_digit_case "${ERR}")
@@ -95,6 +106,10 @@ set(RAD10 10)
 set(RAD100 100)
 
 # === T4 C TESTS ===
+# тест на io-fail - только под UNIX
+if(UNIX)
+  add_case(t4_c_io t4_c "${RAD1}" "${FOLDER_INPUT}" "${IO_FAIL}" CONTAINS t3_t4_io_fail "${ERR}")
+endif()
 # плохие значения радиуса
 # t4_bad_radius - для наличия потока input, сам по себе не имеет значения
 add_case(t4_c_radius_empty t4_c "${EMPTY_ARG}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_empty "${ERR}")
@@ -124,6 +139,10 @@ add_case(t4_c_test3 t4_c "${RAD5}" t4_test3 "${SUCCESS}" EQ t4_test3 "${OUT}")
 add_case(t4_c_scientific t4_c "${RAD100}" t4_scientific "${SUCCESS}" EQ t4_scientific "${OUT}")
 
 # === T4 CPP TESTS ===
+# тест на io-fail - только под UNIX
+if(UNIX)
+  add_case(t4_cpp_io t4_cpp "${RAD1}" "${FOLDER_INPUT}" "${IO_FAIL}" CONTAINS t3_t4_io_fail "${ERR}")
+endif()
 # плохие значения радиуса
 add_case(t4_cpp_radius_empty t4_cpp "${EMPTY_ARG}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_empty "${ERR}")
 add_case(t4_cpp_radius_too_much t4_cpp "${RAD_TOO_MUCH}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_too_much "${ERR}")

@@ -32,9 +32,11 @@ int main() {
         // сразу после прочтения проверка на проблему с IO
         if (len == -1) {
             if (ferror(stdin)) {
-                fprintf(stderr, "Ошибка в IO\n");
+                fprintf(stderr, "Строка %d - сбой ввода-вывода\n", i);
                 free(s);
                 s = NULL;
+                free(points);
+                points = NULL;
                 return io_fail;
             }
             // если len == -1 без проблем с потоком ошибок, то был достигнут EOF

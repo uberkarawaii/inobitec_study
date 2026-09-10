@@ -23,7 +23,7 @@ int get_points(struct Point** points, int* points_size, int* points_capacity) {
             s = NULL;
 
             if (ferror(stdin)) {
-                fprintf(stderr, "Ошибка в IO\n");
+                fprintf(stderr, "Строка %d - сбой ввода-вывода\n", i);
                 return io_fail;
             }
             // если len == -1 без проблем с потоком ошибок, то был достигнут EOF

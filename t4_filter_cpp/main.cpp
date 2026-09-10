@@ -78,9 +78,9 @@ std::expected<std::vector<Point>, int> get_points() {
         points.push_back(*result);
     }
 
-    // error IO проверка после while
+    // error IO проверка после while. i+1 т.к. в цикл при ошибке не зайдём
     if (std::cin.bad()) {
-        std::cerr << "Ошибка IO при чтении строки " << i << "\n";
+        std::cerr << "Строка " << i + 1 << " - сбой ввода-вывода\n";
         return std::unexpected(exit_code::io_fail);
     }
 

@@ -35,9 +35,17 @@ set(STDOUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/results/${test_name}.out")
 # имя файла stderr
 set(STDERR_FILE "${CMAKE_CURRENT_BINARY_DIR}/results/${test_name}.err")
 
+# входное знаение м.б. или файлом, или папкой (для теста на IO fail)
+# для относит. путей считается, что это файл и он в /input_data; абсолютные берутся как есть
+if(IS_ABSOLUTE "${input}")
+  set(INPUT_PATH "${input}")
+else()
+  set(INPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/input_data/${input}")
+endif() 
+
 # тест_1 на код всегда безусловен и одинаков по сигнатуре
 add_test(NAME ${CODE_TEST} COMMAND $<TARGET_FILE:run_case> ${expected_excode}
- ${CMAKE_CURRENT_SOURCE_DIR}/input_data/${input}
+ ${INPUT_PATH}
  ${STDOUT_FILE}
  ${STDERR_FILE}
  --
