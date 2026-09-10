@@ -15,6 +15,8 @@
   включается в CMakeLists.txt перед добавлением задач.
 - tests/CMakeLists.txt - для тестовой части. собираются run_case и check, включается в CMakeLists.txt перед добавлением задач. включает в себя tests/cases.cmake
 - tests/cases.cmake - тест-кейсы к задачам 1-4 через add_case(...)
+- cmake/format.cmake - файл с cmake в скриптовом режиме, используется для целей `format` и `format-check`,
+  подключается к корневому файлу CMakeLists.txt
 
 ### Прочее: 
 - /hello каталог с начальной задачей. выводит hello, world
@@ -34,69 +36,46 @@
 - /tests/expect - ожидаемые выводы при тестах на нормальных данных
 - /tests/input_data - входные данные для задач 
 
-  При тестировании будут создаваться папки со следующей иерархией:
-    ```
-    build/
-    ├── debug/
-    │   └── test/
-    │   │   └── t1_cpp_norm.ok
-    │   │   ├── t1_cpp_abc.ok
-    │   │   └── ...
-    │   ├── t1_dist_matrix_cpp/
-    │   ├── ...
-    │   ├── t4_filter_c/
-    │   ├── common/
-    │   │   └── geometry_cpp.obj
-    │   │   ├── ...
-    │   │   └── string_utils_c.pdb
-    │   └── tools/
-    │       ├── run_case.obj
-    │       ├── run_case.pdb
-    │       └── run_case.exe
-    │
-    └── release/
-        └── test/
-        ├── tools/
-        ├── common/
-        ├── t1_dist_matrix_cpp/
-        ├── ...
-        └── t4_filter_c/
-    ```
 
 ### Как собрать и прогнать тесты через CMake
 #### сборка
-**Временная мера от рассогласования /showIncludes на MSVC: `chcp 1251` перед любыми cmake-операциями**
+**среда: открыть x64 Native Tools prompt или вызвать vcvars64.bat**
+**windows-only мера для добавления папок с cmake/ninja в PATH. выполняется в начале каждой новой cmd:**
+```
+set "BT=D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools"
+set "PATH=%BT%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;%BT%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja;%PATH%"
+```
 
 как сконфигурировать и сгенерировать служебные файлы: 
 ```
-cmake -B build/cmake_debug -G [generator] -DCMAKE_BUILD_TYPE=[Debug/Release]
+cmake -B build/debug -G [generator] -DCMAKE_BUILD_TYPE=[Debug/Release]
 ```
 
-рабочий пример с Ninja+Debug: `cmake -B build/cmake_debug -G Ninja -DCMAKE_BUILD_TYPE=Debug`
+рабочий пример с Ninja+Debug: `cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug`
 
 как собрать: 
 ```
-cmake --build build/cmake_debug [--target t1_c/t1_cpp]
+cmake --build build/debug [--target t1_c/t1_cpp]
 ```
 с --target и именем будет отдельная цель, а не all
 
 как отформатировать:
 ```
-cmake --build build/cmake_debug --target format
+cmake --build build/debug --target format
 ```
 
 как почистить: 
 ```
-cmake --build build/cmake_debug --target clean
+cmake --build build/debug --target clean
 ```
 
 #### тесты
 тесты на коды и выходные значения:
 ```
-ctest --test-dir build/cmake_debug
+ctest --test-dir build/debug
 ```
 
 тест на формат файлов:
 ```
-cmake --build build/cmake_debug --target format-check
+cmake --build build/debug --target format-check
 ```
