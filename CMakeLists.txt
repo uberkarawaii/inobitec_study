@@ -91,11 +91,16 @@ function(add_task dir trgt src lib)
 
   # определение типа библиотеки т.к. на windows для .dll нужно доп. действие для связки с .exe
   get_target_property(lib_type ${lib} TYPE)
+  # копирование dll в папку к exe даже если сам exe не перестраивался
   if(WIN32 AND lib_type STREQUAL "SHARED_LIBRARY")
-    # после построения файла trgt (exe): cmake -E ... 
-    add_custom_command(TARGET ${trgt} POST_BUILD COMMAND
-                       ${CMAKE_COMMAND} -E copy_if_different
-                       $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:${trgt}>)
+    set(copied_dll "${CMAKE_BINARY_DIR}/${dir}/${lib}.dll")
+    add_custom_command(OUTPUT "${copied_dll}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${lib}> "${CMAKE_BINARY_DIR}/${dir}"
+      DEPENDS ${lib} 
+      COMMENT "Copying DLL ${lib} next to ${trgt}"
+      VERBATIM)
+    add_custom_target(${trgt}_dll DEPENDS "${copied_dll}")
+    add_dependencies(${trgt} ${trgt}_dll)
   endif()
 
   # команда для cl+link. флаг DEBUG = ON - т.е. пойдём по ветке if (DBG) с флагами для программ-задач
@@ -117,8 +122,8 @@ add_subdirectory(common)
 # arg4 - библиотека с которой линковаться
 
 # TASK 1
-add_task(t1_dist_matrix_cpp t1_cpp t1_dist_matrix_cpp/main.cpp geometry_cpp_static)
-add_task(t1_dist_matrix_c t1_c t1_dist_matrix_c/main.c geometry_c_static)
+add_task(t1_dist_matrix_cpp t1_cpp t1_dist_matrix_cpp/main.cpp common_cpp_static)
+add_task(t1_dist_matrix_c t1_c t1_dist_matrix_c/main.c common_c_static)
 
 # TASK 2
 add_task(t2_passport_cpp t2_cpp t2_passport_cpp/main.cpp string_utils_cpp_static)

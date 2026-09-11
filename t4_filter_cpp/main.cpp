@@ -19,9 +19,14 @@ inline constexpr int radius_not_finite = 2;
 inline constexpr int radius_not_positive = 3;
 // получение радиуса в виде числа
 std::expected<double, int> get_radius(std::string_view r_line) {
-    double R;
+    // возможно первый знак +, тогда сдвиг начала, чтобы from_chars смог нормально прочитать
+    const char* first = r_line.data();
+    if (*first == '+')
+        ++first;
+
+    double R = 0;
     // если парс остановился не на конце или возникла ошибка - там нечисловой символ
-    auto [ptr, ec] = std::from_chars(r_line.data(), r_line.data() + r_line.size(), R);
+    auto [ptr, ec] = std::from_chars(first, r_line.data() + r_line.size(), R);
     if (ec != std::errc() || ptr != r_line.data() + r_line.size())
         return std::unexpected(radius_not_number);
     // deepseek посоветовал сделать провеку на конечность числа

@@ -9,38 +9,37 @@
 
 #include "../common/exit_codes.h"
 #include "../common/geometry.h"
+#include "../common/string_utils.h"
 
 #define MAX_SIZE 20
 #define MIN_SIZE 3
 
 int main(void) {
     char lineN[32];
-    if (fgets(lineN, sizeof(lineN), stdin) == NULL || lineN[0] == '\n' || lineN[0] == '\r') {
+    if (fgets(lineN, sizeof(lineN), stdin) == NULL) {
         fprintf(stderr, "Получен пустой ввод вместо целого N");
         return no_input;
     }
-    // очистка строки от служебных символов на конце
-    size_t sz = strlen(lineN) - 1;
-    while (sz > 0 && (lineN[sz] == '\n' || lineN[sz] == '\r' || lineN[sz] == ' ')) {
-        lineN[sz] = '\0';
-        --sz;
-    }
-    // если после очистки единств. символ - симв. конца строки, то это пустая строка
-    if (lineN[0] == '\0') {
+    // очистка строки от пробельных символов по краям
+    int len = (int)strlen(lineN);
+    char* clean_n = trim_string(lineN, &len);
+
+    // проверка строки на пустоту после очистки от пробельных символов
+    if (is_empty(clean_n)) {
         fprintf(stderr, "Получен пустой ввод вместо целого N");
         return no_input;
     }
 
     // указат на указат на 1й символ, который strtol не сможет расшифровать
     char* endptr;
-    long int N = strtol(lineN, &endptr, 10);
+    long int N = strtol(clean_n, &endptr, 10);
     if (*endptr != '\n' && *endptr != '\0') {
-        fprintf(stderr, "N должно быть целым числом. Получено: %s", lineN);
+        fprintf(stderr, "N должно быть целым числом. Получено: %s", clean_n);
         return data;
     }
 
     if (N < MIN_SIZE || N > MAX_SIZE) {
-        fprintf(stderr, "N должно быть в диапазоне [3;20]. Получено: %s", lineN);
+        fprintf(stderr, "N должно быть в диапазоне [3;20]. Получено: %s", clean_n);
         return usage;
     }
 

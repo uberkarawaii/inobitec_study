@@ -28,9 +28,14 @@ std::expected<Point, int> parse_point(std::string_view s) {
         if (ptr_start == ptr_end)
             return std::unexpected(parse_too_few);
 
-        const auto [ptr, ec] = std::from_chars(ptr_start, ptr_end, dots[j]);
-        // указатель на конце, хотя 3 шт не было прочитано
-        if (ptr == ptr_end && j < 2)
+        // возможно первый знак +, тогда сдвиг начала, чтобы from_chars смог нормально прочитать
+        const char* first = ptr_start;
+        if (*first == '+')
+            ++first;
+
+        const auto [ptr, ec] = std::from_chars(first, ptr_end, dots[j]);
+        // распознавание было удачным и указатель на конце, хотя 3 числа не было прочитано
+        if (ec == std::errc{} && ptr == ptr_end && j < 2)
             return std::unexpected(parse_too_few);
 
         // если ec с ошибкой или распознавание слетело не на пробеле и не на конце, то это ошибка в данных

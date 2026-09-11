@@ -8,25 +8,29 @@
 
 #include "../common/exit_codes.hpp"
 #include "../common/geometry.hpp"
+#include "../common/string_utils.hpp"
 
 int main() {
     std::string lineN;
-
+    // считывание строки, проверка на пустоту
     if (!std::getline(std::cin, lineN) || lineN.empty()) {
         std::cerr << "Получен пустой ввод вместо целого N\n";
         return exit_code::no_in;
     }
-
-    while (!lineN.empty() && (lineN.back() == '\r' || lineN.back() == ' '))
-        lineN.pop_back();
-
+    // очистка от боковых пробельных символов и проверка на пустоту
+    trim_str(lineN);
     if (lineN.empty()) {
-        std::cerr << "Пустой ввод вместо целого числа\n";
+        std::cerr << "Получен пустой ввод вместо целого N\n";
         return exit_code::no_in;
     }
+    // возможно, первый знак в числе "+". чтобы from_chars не упал от этого, - пропуск "+"
+    const char* first = lineN.data();
+    if (*first == '+')
+        ++first;
 
-    int N;
-    const std::from_chars_result res = std::from_chars(lineN.data(), lineN.data() + lineN.size(), N);
+    // распознавание N и проверка на ошибки распознавания
+    int N = 0;
+    const std::from_chars_result res = std::from_chars(first, lineN.data() + lineN.size(), N);
     if (res.ec != std::errc{} || res.ptr != lineN.data() + lineN.size()) {
         std::cerr << "N должно быть целым числом. Получено: " << lineN << '\n';
         return exit_code::data;

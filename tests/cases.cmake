@@ -16,8 +16,11 @@ add_case(t1_c_empty t1_c "${EMPTY_ARG}" t1_nul "${NO_INPUT}" CONTAINS t1_nul "${
 add_case(t1_c_abc t1_c "${EMPTY_ARG}" t1_abc "${DATA}" CONTAINS t1_abc "${ERR}")
 add_case(t1_c_float t1_c "${EMPTY_ARG}" t1_float "${DATA}" CONTAINS t1_float "${ERR}")
 add_case(t1_c_high t1_c "${EMPTY_ARG}" t1_high "${USAGE}" CONTAINS t1_high "${ERR}")
+add_case(t1_c_double_plus t1_c "${EMPTY_ARG}" t1_double_plus "${DATA}" CONTAINS t1_double_plus "${ERR}")
+add_case(t1_c_plus_abc t1_c "${EMPTY_ARG}" t1_plus_abc "${DATA}" CONTAINS t1_plus_abc "${ERR}")
 # нормальные входные данные
 add_case(t1_c_norm t1_c "${EMPTY_ARG}" t1_test1 "${SUCCESS}" EQ t1_test1 "${OUT}")
+add_case(t1_c_plus t1_c "${EMPTY_ARG}" t1_plus "${SUCCESS}" EQ t1_test1 "${OUT}")
 
 # === T1 CPP TESTS ====
 # входные данные с ошибками
@@ -25,8 +28,11 @@ add_case(t1_cpp_empty t1_cpp "${EMPTY_ARG}" t1_nul "${NO_INPUT}" CONTAINS t1_nul
 add_case(t1_cpp_abc t1_cpp "${EMPTY_ARG}" t1_abc "${DATA}" CONTAINS t1_abc "${ERR}")
 add_case(t1_cpp_float t1_cpp "${EMPTY_ARG}" t1_float "${DATA}" CONTAINS t1_float "${ERR}")
 add_case(t1_cpp_high t1_cpp "${EMPTY_ARG}" t1_high "${USAGE}" CONTAINS t1_high "${ERR}")
+add_case(t1_cpp_double_plus t1_cpp "${EMPTY_ARG}" t1_double_plus "${DATA}" CONTAINS t1_double_plus "${ERR}")
+add_case(t1_cpp_plus_abc t1_cpp "${EMPTY_ARG}" t1_plus_abc "${DATA}" CONTAINS t1_plus_abc "${ERR}")
 # нормальные входные данные
 add_case(t1_cpp_norm t1_cpp "${EMPTY_ARG}" t1_test1 "${SUCCESS}" EQ t1_test1 "${OUT}")
+add_case(t1_cpp_plus t1_cpp "${EMPTY_ARG}" t1_plus "${SUCCESS}" EQ t1_test1 "${OUT}")
 
 # === T2 C TESTS ===
 # входные данные с ошибками
@@ -39,6 +45,7 @@ add_case(t2_c_nan_vertexes t2_c "${EMPTY_ARG}" t2_nan_vertexes "${DATA}" CONTAIN
 add_case(t2_c_negative_vertexes t2_c "${EMPTY_ARG}" t2_negative_vertexes "${USAGE}" CONTAINS t2_negative_vertexes "${ERR}")
 # нормальные входные данные
 add_case(t2_c_norm t2_c "${EMPTY_ARG}" t2_input "${SUCCESS}" EQ t2_norm "${OUT}")
+add_case(t2_c_plus t2_c "${EMPTY_ARG}" t2_plus "${SUCCESS}" EQ t2_norm "${OUT}")
 
 # === T2 CPP TESTS ===
 # входные данные с ошибками
@@ -51,6 +58,7 @@ add_case(t2_cpp_nan_vertexes t2_cpp "${EMPTY_ARG}" t2_nan_vertexes "${DATA}" CON
 add_case(t2_cpp_negative_vertexes t2_cpp "${EMPTY_ARG}" t2_negative_vertexes "${USAGE}" CONTAINS t2_negative_vertexes "${ERR}")
 # нормальные входные данные
 add_case(t2_cpp_norm t2_cpp "${EMPTY_ARG}" t2_input "${SUCCESS}" EQ t2_norm "${OUT}")
+add_case(t2_cpp_plus t2_cpp "${EMPTY_ARG}" t2_plus "${SUCCESS}" EQ t2_norm "${OUT}")
 
 # === T3 C TESTS ===
 # тест на io-fail - только под UNIX

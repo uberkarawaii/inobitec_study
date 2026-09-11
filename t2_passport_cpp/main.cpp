@@ -44,10 +44,15 @@ int main() {
         return exit_code::data;
     }
 
-    int V;
+    // возможно первый знак +, тогда сдвиг начала, чтобы from_chars смог нормально прочитать
+    const char* first = vertexes.data();
+    if (*first == '+')
+        ++first;
+
+    int V = 0;
     // ptr - указат., где остановлен парсинг. ec - error code.
     // в случае успешного чтения ec проинциализирована пустым инициализатором. это и есть std::errc()
-    const auto [ptr, ec] = std::from_chars(vertexes.data(), vertexes.data() + vertexes.size(), V);
+    const auto [ptr, ec] = std::from_chars(first, vertexes.data() + vertexes.size(), V);
     if (ec != std::errc{} || ptr != vertexes.data() + vertexes.size()) {
         std::cerr << "Кол-во вершин должно быть целым числом. Получено: " << vertexes << "\n";
         return exit_code::data;
