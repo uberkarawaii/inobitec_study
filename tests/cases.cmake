@@ -43,6 +43,8 @@ add_case(t2_c_empty_vertexes t2_c "${EMPTY_ARG}" t2_empty_vertexes "${DATA}" CON
 add_case(t2_c_fractional_vertexes t2_c "${EMPTY_ARG}" t2_fractional_vertexes "${DATA}" CONTAINS t2_fractional_vertexes "${ERR}")
 add_case(t2_c_nan_vertexes t2_c "${EMPTY_ARG}" t2_nan_vertexes "${DATA}" CONTAINS t2_nan_vertexes "${ERR}")
 add_case(t2_c_negative_vertexes t2_c "${EMPTY_ARG}" t2_negative_vertexes "${USAGE}" CONTAINS t2_negative_vertexes "${ERR}")
+add_case(t2_c_double_plus t2_c "${EMPTY_ARG}" t2_double_plus "${DATA}" CONTAINS t2_double_plus "${ERR}")
+add_case(t2_c_plus_abc t2_c "${EMPTY_ARG}" t2_plus_abc "${DATA}" CONTAINS t2_plus_abc "${ERR}")
 # нормальные входные данные
 add_case(t2_c_norm t2_c "${EMPTY_ARG}" t2_input "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_c_plus t2_c "${EMPTY_ARG}" t2_plus "${SUCCESS}" EQ t2_norm "${OUT}")
@@ -56,6 +58,8 @@ add_case(t2_cpp_empty_vertexes t2_cpp "${EMPTY_ARG}" t2_empty_vertexes "${DATA}"
 add_case(t2_cpp_fractional_vertexes t2_cpp "${EMPTY_ARG}" t2_fractional_vertexes "${DATA}" CONTAINS t2_fractional_vertexes "${ERR}")
 add_case(t2_cpp_nan_vertexes t2_cpp "${EMPTY_ARG}" t2_nan_vertexes "${DATA}" CONTAINS t2_nan_vertexes "${ERR}")
 add_case(t2_cpp_negative_vertexes t2_cpp "${EMPTY_ARG}" t2_negative_vertexes "${USAGE}" CONTAINS t2_negative_vertexes "${ERR}")
+add_case(t2_cpp_double_plus t2_cpp "${EMPTY_ARG}" t2_double_plus "${DATA}" CONTAINS t2_double_plus "${ERR}")
+add_case(t2_cpp_plus_abc t2_cpp "${EMPTY_ARG}" t2_plus_abc "${DATA}" CONTAINS t2_plus_abc "${ERR}")
 # нормальные входные данные
 add_case(t2_cpp_norm t2_cpp "${EMPTY_ARG}" t2_input "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_cpp_plus t2_cpp "${EMPTY_ARG}" t2_plus "${SUCCESS}" EQ t2_norm "${OUT}")
@@ -75,6 +79,8 @@ add_case(t3_c_x_y_z_4k t3_c "${EMPTY_ARG}" t3_x_y_z_4k "${DATA}" CONTAINS t3_x_y
 add_case(t3_c_inf_coord t3_c "${EMPTY_ARG}" t3_inf_coord "${DATA}" CONTAINS t3_inf_coord "${ERR}")
 add_case(t3_c_x_ky_z t3_c "${EMPTY_ARG}" t3_x_ky_z "${DATA}" CONTAINS t3_x_ky_z "${ERR}")
 add_case(t3_c_x_yk_z t3_c "${EMPTY_ARG}" t3_x_yk_z "${DATA}" CONTAINS t3_x_yk_z "${ERR}")
+add_case(t3_c_double_plus t3_c "${EMPTY_ARG}" t3_double_plus "${DATA}" CONTAINS t3_double_plus "${ERR}")
+add_case(t3_c_plus_abc t3_c "${EMPTY_ARG}" t3_plus_abc "${DATA}" CONTAINS t3_plus_abc "${ERR}")
 # нормальные входные данные
 add_case(t3_c_test1 t3_c "${EMPTY_ARG}" t3_test1 "${SUCCESS}" EQ t3_test1 "${OUT}")
 add_case(t3_c_test2 t3_c "${EMPTY_ARG}" t3_test2 "${SUCCESS}" EQ t3_test2 "${OUT}") 
@@ -96,6 +102,8 @@ add_case(t3_cpp_x_y_z_4k t3_cpp "${EMPTY_ARG}" t3_x_y_z_4k "${DATA}" CONTAINS t3
 add_case(t3_cpp_inf_coord t3_cpp "${EMPTY_ARG}" t3_inf_coord "${DATA}" CONTAINS t3_inf_coord "${ERR}")
 add_case(t3_cpp_x_ky_z t3_cpp "${EMPTY_ARG}" t3_x_ky_z "${DATA}" CONTAINS t3_x_ky_z "${ERR}")
 add_case(t3_cpp_x_yk_z t3_cpp "${EMPTY_ARG}" t3_x_yk_z "${DATA}" CONTAINS t3_x_yk_z "${ERR}")
+add_case(t3_cpp_double_plus t3_cpp "${EMPTY_ARG}" t3_double_plus "${DATA}" CONTAINS t3_double_plus "${ERR}")
+add_case(t3_cpp_plus_abc t3_cpp "${EMPTY_ARG}" t3_plus_abc "${DATA}" CONTAINS t3_plus_abc "${ERR}")
 # нормальные входные данные
 add_case(t3_cpp_test1 t3_cpp "${EMPTY_ARG}" t3_test1 "${SUCCESS}" EQ t3_test1 "${OUT}")
 add_case(t3_cpp_test2 t3_cpp "${EMPTY_ARG}" t3_test2 "${SUCCESS}" EQ t3_test2 "${OUT}") 
@@ -107,6 +115,9 @@ set(RAD_TOO_MUCH 2 3)
 set(RAD_SYMB 4ch)
 set(RAD_INF inf)
 set(RAD_NEG -10)
+set(RAD_PLUS_PLUS ++10)
+set(RAD_PLUS_ABC +abc)
+set(RAD_POSITIVE +10)
 set(RAD1 1)
 set(RAD5 5)
 set(RAD8 8)
@@ -125,6 +136,8 @@ add_case(t4_c_radius_too_much t4_c "${RAD_TOO_MUCH}" t4_bad_radius "${USAGE}" CO
 add_case(t4_c_radius_symbol t4_c "${RAD_SYMB}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_symbol "${ERR}")
 add_case(t4_c_radius_inf t4_c "${RAD_INF}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_inf "${ERR}")
 add_case(t4_c_radius_negative t4_c "${RAD_NEG}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_negative "${ERR}")
+add_case(t4_c_radius_plus_plus t4_c "${RAD_PLUS_PLUS}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_plus_plus "${ERR}")
+add_case(t4_c_radius_plus_abc t4_c "${RAD_PLUS_ABC}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_plus_abc "${ERR}")
 # плохие точки
 add_case(t4_c_symbol_coords t4_c "${RAD1}" t4_symbol_coords "${DATA}" CONTAINS t4_symbol_coords "${ERR}")
 add_case(t4_c_too_few_coords t4_c "${RAD1}" t4_too_few_coords "${DATA}" CONTAINS t4_too_few_coords "${ERR}")
@@ -136,11 +149,15 @@ add_case(t4_c_x_y_z_k4 t4_c "${RAD1}" t4_x_y_z_k4 "${DATA}" CONTAINS t4_x_y_z_k4
 add_case(t4_c_inf_coord t4_c "${RAD1}" t4_inf_coord "${DATA}" CONTAINS t4_inf_coord "${ERR}")
 add_case(t4_c_x_ky_z t4_c "${RAD1}" t4_x_ky_z "${DATA}" CONTAINS t4_x_ky_z "${ERR}")
 add_case(t4_c_x_yk_z t4_c "${RAD1}" t4_x_yk_z "${DATA}" CONTAINS t4_x_yk_z "${ERR}")
+add_case(t4_c_plus_plus_coord t4_c "${RAD1}" t4_plus_plus_coord "${DATA}" CONTAINS t4_plus_plus_coord "${ERR}")
+add_case(t4_c_plus_abc_coord t4_c "${RAD1}" t4_plus_abc_coord "${DATA}" CONTAINS t4_plus_abc_coord "${ERR}")
 # нормальные данные
 # единственная точка и она проходит
 add_case(t4_c_test1 t4_c "${RAD8}" t4_test1 "${SUCCESS}" EQ t4_test1 "${OUT}")
 # много точек и только одна проходит
 add_case(t4_c_test2 t4_c "${RAD10}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
+# как прошлый тест, но радиус со знаком "+". результат и поведение должны совпасть
+add_case(t4_c_plus t4_c "${RAD_POSITIVE}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
 # одна точка, но она не проходит
 add_case(t4_c_test3 t4_c "${RAD5}" t4_test3 "${SUCCESS}" EQ t4_test3 "${OUT}")
 # входные данные с минусом и экспонентой 
@@ -157,6 +174,8 @@ add_case(t4_cpp_radius_too_much t4_cpp "${RAD_TOO_MUCH}" t4_bad_radius "${USAGE}
 add_case(t4_cpp_radius_symbol t4_cpp "${RAD_SYMB}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_symbol "${ERR}")
 add_case(t4_cpp_radius_inf t4_cpp "${RAD_INF}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_inf "${ERR}")
 add_case(t4_cpp_radius_negative t4_cpp "${RAD_NEG}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_negative "${ERR}")
+add_case(t4_cpp_radius_plus_plus t4_cpp "${RAD_PLUS_PLUS}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_plus_plus "${ERR}")
+add_case(t4_cpp_radius_plus_abc t4_cpp "${RAD_PLUS_ABC}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_plus_abc "${ERR}")
 # плохие точки
 add_case(t4_cpp_symbol_coords t4_cpp "${RAD1}" t4_symbol_coords "${DATA}" CONTAINS t4_symbol_coords "${ERR}")
 add_case(t4_cpp_too_few_coords t4_cpp "${RAD1}" t4_too_few_coords "${DATA}" CONTAINS t4_too_few_coords "${ERR}")
@@ -168,8 +187,12 @@ add_case(t4_cpp_x_y_z_k4 t4_cpp "${RAD1}" t4_x_y_z_k4 "${DATA}" CONTAINS t4_x_y_
 add_case(t4_cpp_inf_coord t4_cpp "${RAD1}" t4_inf_coord "${DATA}" CONTAINS t4_inf_coord "${ERR}")
 add_case(t4_cpp_x_ky_z t4_cpp "${RAD1}" t4_x_ky_z "${DATA}" CONTAINS t4_x_ky_z "${ERR}")
 add_case(t4_cpp_x_yk_z t4_cpp "${RAD1}" t4_x_yk_z "${DATA}" CONTAINS t4_x_yk_z "${ERR}")
+add_case(t4_cpp_plus_plus_coord t4_cpp "${RAD1}" t4_plus_plus_coord "${DATA}" CONTAINS t4_plus_plus_coord "${ERR}")
+add_case(t4_cpp_plus_abc_coord t4_cpp "${RAD1}" t4_plus_abc_coord "${DATA}" CONTAINS t4_plus_abc_coord "${ERR}")
 # нормальные данные
 add_case(t4_cpp_test1 t4_cpp "${RAD8}" t4_test1 "${SUCCESS}" EQ t4_test1 "${OUT}")
 add_case(t4_cpp_test2 t4_cpp "${RAD10}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
+# как прошлый тест, но радиус со знаком "+". результат и поведение должны совпасть
+add_case(t4_cpp_plus t4_cpp "${RAD_POSITIVE}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
 add_case(t4_cpp_test3 t4_cpp "${RAD5}" t4_test3 "${SUCCESS}" EQ t4_test3 "${OUT}")
 add_case(t4_cpp_scientific t4_cpp "${RAD100}" t4_scientific "${SUCCESS}" EQ t4_scientific "${OUT}")
