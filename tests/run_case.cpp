@@ -6,6 +6,9 @@
 #ifdef _WIN32
 #include <windows.h>
 
+#include <format>
+#include <ranges>
+
 #else
 #include <fcntl.h>
 #include <sys/wait.h>
@@ -120,9 +123,14 @@ constexpr int kExecFailed = 127;
 
 #endif
 
+// индексы по которым имя исп.файла и начало арг.
+// вынесены т.к. исп. и в линукс, и в виндоус ветке
+constexpr int kExeIndex = 6;
+constexpr int kFirstArgIndex = 7;
+
 // run_case <ожидаемый_код> <файл_входа> <файл_stdout> <файл_stderr> -- <exe> [арг...]
 int main(int argc, char* argv[]) {
-    if (argc < 7) {
+    if (argc < kFirstArgIndex) {
         std::print(stderr,
                    "6 or more arg-s are needed: <expect_code> <file_input> <file_stdout> <file_stderr> -- <exe>. "
                    "Received: {}\n",
@@ -181,24 +189,25 @@ int main(int argc, char* argv[]) {
         si.hStdOutput = out.get();
         si.hStdError = err.get();
 
-        // строка вида "main.exe" arg1 arg2 ...; кавычки - от пробелов в пути
-        std::string cmdline = "\"" + std::string(argv[6]) + "\"";
-        for (int i = 7; i < argc; ++i) {
-            cmdline += ' ';
-            cmdline += argv[i];
+        // строка вида "main.exe" arg1 arg2 ...; кавычки - от распада из-за пробелов в пути
+        std::string cmdline = std::format("\"{}\"", argv[kExeIndex]);
+        // argv + kFirstArgIndex - указатель на первый аргумент. argc - kFirstArgIndex - кол-во аргументов
+        // std::views::counted даст последовательность из аргументов, если они есть
+        for (const char* arg : std::views::counted(argv + kFirstArgIndex, argc - kFirstArgIndex)) {
+            cmdline += std::format(" \"{}\"", arg);
         }
 
         // был отказ от CreateProcessW в CreateProcessA пользу чтобы не конверт. в char* -> wchar_t
         // плохо: не-ASCII пути зависят от кодировки. но у меня нет кириллицы в путях
-        // argv[6] - имя создаваемого процесса - аргумент-имя исполняемого файла
+        // argv[kExeIndex] - имя создаваемого процесса - аргумент-имя исполняемого файла
         // cmdline.data() - исполняемый файл и его аргументы командной строки
         // 3 и 4 NULL - нет своих параметров безопасности для процесса и потока
         // TRUE - этот процесс может наследовать. тут унаследует объекты ядра in/out/err от run_case
         // NULL - окружение по умолчанию - то есть от родителя
         // NULL - current working directory как у родителя
         // startup info = si, process information = pi
-        if (!CreateProcessA(argv[6], cmdline.data(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
-            print_win_error("run", argv[6]);
+        if (!CreateProcessA(argv[kExeIndex], cmdline.data(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+            print_win_error("run", argv[kExeIndex]);
             return 1;
         }
     } // здесь происходит удаление in/out/err через деструкторы для run_case
@@ -210,13 +219,13 @@ int main(int argc, char* argv[]) {
     // run_case блокируется и ждёт, пока не завершится процесс pi.hProcess
     // ждёт бесконечно, но ловит сбои ожидания и если они есть - бросит ошибку и завершится
     if (WaitForSingleObject(hproc.get(), INFINITE) != WAIT_OBJECT_0) {
-        print_win_error("reach the completion of", argv[6]);
+        print_win_error("reach the completion of", argv[kExeIndex]);
         return 1;
     }
     // GetExitCodeProcess - снять код завершения процесса pi.hProcess и положить в exit_code
     // проверка, если вдруг не удалось снять взять код завершения
     if (!GetExitCodeProcess(hproc.get(), &exit_code)) {
-        print_win_error("get the execution code", argv[6]);
+        print_win_error("get the execution code", argv[kExeIndex]);
         return 1;
     }
 
@@ -250,7 +259,7 @@ int main(int argc, char* argv[]) {
         pid = fork(); // копия родительского процесса run_case
         // действия если не получилось создать дочерний процесс (pid=-1)
         if (pid < 0) {
-            print_errno_error("create a child process to run", argv[6]);
+            print_errno_error("create a child process to run", argv[kExeIndex]);
             return 1;
         }
         // такой pid будет у ребёнка. в этом блоке - логика и действия ребёнка
@@ -265,11 +274,11 @@ int main(int argc, char* argv[]) {
             }
             // замена кода run_case на код main (или что передали) в ребёнке
             // перенаправленные потоки остаются как и были
-            execv(argv[6], &argv[6]);
+            execv(argv[kExeIndex], &argv[kExeIndex]);
 
             // поймать ошибку execv
             int errno_copy = errno;
-            std::print(stderr, "Can not run {}: {}\n", argv[6],
+            std::print(stderr, "Can not run {}: {}\n", argv[kExeIndex],
                        std::error_code(errno_copy, std::generic_category()).message());
             // завершить процесс ребёнка
             _exit(kExecFailed);
@@ -288,7 +297,7 @@ int main(int argc, char* argv[]) {
     // при waitpid < 0 не удалось дождаться именно завершения процесса с этим pid. вывод причины
     // упускается случай errno == EINTR. по идее, никто не должен послать сигналы тест. обвязке
     if (waitpid(pid, &status, 0) < 0) {
-        print_errno_error("wait for the process of", argv[6]);
+        print_errno_error("wait for the process of", argv[kExeIndex]);
         return 1;
     }
 

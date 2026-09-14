@@ -72,8 +72,12 @@ cmake --build build/debug --target clean
 #### тесты
 тесты на коды и выходные значения:
 ```
-ctest --test-dir build/debug
+ctest --test-dir build/debug [--rerun-failed] [--output-on-failure]
 ```
+опциональные аргументы:
+- `--output-on-failure` - вывести диагностику при падении
+- `--rerun-failed` - запустить только тесты, которые упали на прошлом прогоне
+
 
 тест на формат файлов:
 ```
