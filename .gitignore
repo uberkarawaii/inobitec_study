@@ -5,6 +5,4 @@
 *.dll
 *.pch
 *.exp
-*.txt
-!CMakeLists.txt
 build/
