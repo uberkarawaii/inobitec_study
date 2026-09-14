@@ -1,4 +1,4 @@
-﻿add_executable(run_case run_case.cpp)
+add_executable(run_case run_case.cpp)
 configure_target(run_case OFF)
 
 add_executable(check check.cpp)

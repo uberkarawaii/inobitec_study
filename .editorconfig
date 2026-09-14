@@ -4,6 +4,6 @@ root = true
 indent_style = space
 indent_size = 4
 
-# для .md файлов и CMakeLists.txt кодировка utf-8
-[*.md, CMakeLists.txt]
+# РґР»СЏ .md С„Р°Р№Р»РѕРІ Рё CMakeLists.txt РєРѕРґРёСЂРѕРІРєР° utf-8
+[{*.md,*.cmake,CMakeLists.txt}]
 charset = utf-8
