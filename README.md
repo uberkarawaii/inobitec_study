@@ -9,7 +9,8 @@
 - .gitignore - список типов файлов, которые не будут включаться в коммиты
 - CMakeLists.txt - корневой файл CMake. включает настроки проекта, менеджит дефолтные флаги `CMAKE_..._FLAGS_DEBUG`,
   включает ф-цию для построения команд компиляции и линка в зависимости от платформы и собираемой цели (задача VS обвязка),
-  и ф-цию добавления задач add_task, через которую они далее и добавляются 
+  и ф-цию добавления задач add_task, через которую они далее и добавляются. содержит собственную проверку наличия
+  генератора Ninja, и если его нет - падение будет с детальным сообщением, а не с коротким от CMake
 - common/CMakeLists.txt - построение библиотек (стат./динам.). по необходимости на линуксе привязывается libm.so; 
   добавляются константы времени компиляции COMMON_... с модификаторами PUBLIC/PRIVATE;
   включается в CMakeLists.txt перед добавлением задач.
@@ -41,20 +42,43 @@
 
 
 ### Как собрать и прогнать тесты через CMake
-#### сборка
-**среда: открыть x64 Native Tools prompt или вызвать vcvars64.bat**
-**windows-only мера для добавления папок с cmake/ninja в PATH. выполняется в начале каждой новой cmd:**
-```
-set "BT=D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools"
-set "PATH=%BT%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;%BT%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja;%PATH%"
-```
+**windows среда: открыть x64 Native Tools prompt или вызвать vcvars64.bat**
 
+**если windows среда не Native Tools (cmd/PowerShell): как связаться с cmake и ninja**
+
+Вариант А - занести в переменные среды. Заносится один раз при первом выполнении
+1. нажать Win+R
+2. ввести `sysdm.cpl`
+3. раздел "Дополнительно" -> "Переменные среды" -> "Переменные среды пользователя"
+4. выбрать переменную Path или PATH, "Изменить"
+5. в разделе для её изменения выбрать "Создать"
+6. прописать полный путь до cmake.exe 
+7. создать ещё одну записть и прописать полный путь до ninja.exe
+8. открыть новую x64 Native... и проверить, что `where cmake` и `where ninja` 
+  выдают те же пути, что были занесены в Path
+
+Вариант Б - изменение PATH для текущего процесса. Выполняется в начале каждой новой сессии
+```
+set "PATH=path\to\cmake;path\to\ninja;%PATH%"
+```
+Заглушку нужно заменить на абсолютные пути до cmake.exe и ninja.exe; для моей машины это
+
+`D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin`
+`D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja`
+
+#### сборка
 как сконфигурировать и сгенерировать служебные файлы: 
 ```
-cmake -B build/debug -G [generator] -DCMAKE_BUILD_TYPE=[Debug/Release]
+cmake [--fresh] -B build/debug -G <generator> -DCMAKE_BUILD_TYPE=<Debug/Release>
 ```
+Флаг --fresh опционален и есть в cmake 3.24 и выше. Нужен при повторных конфигурациях при смене текущего
+окружения. Т.е. он удаляет CMakeCache.txt и CMakeFiles/ и поиск инструментов проводится заново. 
+На CMake 3.22-3.23 тот же результат достигается удалением папки build
 
-рабочий пример с Ninja+Debug: `cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug`
+рабочий пример с Ninja+Debug: 
+```
+cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+```
 
 как собрать: 
 ```
@@ -67,7 +91,7 @@ cmake --build build/debug [--target t1_c/t1_cpp]
 cmake --build build/debug --target format
 ```
 
-как почистить: 
+как почистить артефакты сборки: 
 ```
 cmake --build build/debug --target clean
 ```

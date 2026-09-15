@@ -3,6 +3,21 @@
 # политика - как себя ведёт что-либо в CMake. если не указать версию, то default=OLD и будет warning, 
 # т.к. старые политики - для совместимости, но не обещают корретности
 cmake_minimum_required(VERSION 3.22)
+
+# проверка наличия ninja, если задан именно этот генератор. до проверки компилятора в project() 
+if(CMAKE_GENERATOR MATCHES "^Ninja")
+  # find_program ищет в PATH и кэширует результат в CMakeCache.txt как NINJA_EXECUTABLE
+  find_program(NINJA_EXECUTABLE NAMES ninja)
+  if(NOT NINJA_EXECUTABLE)
+    message(FATAL_ERROR
+      "The '${CMAKE_GENERATOR}' generator was selected, but ninja was not found. "
+      "Install ninja or add its directory to PATH")
+  endif()
+  # сообщение при конфигурации
+  message(STATUS "ninja: ${NINJA_EXECUTABLE}")
+# else отсутствует - пока что в проекте генератор - именно Ninja
+endif()
+
 # имя проекта сохранится в CMAKE_PROJECT_NAME
 # определяются яызки проекта: с с++; определится компилятор; 
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
