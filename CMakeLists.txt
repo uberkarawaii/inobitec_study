@@ -23,6 +23,17 @@ endif()
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
 project(inobitec_stud LANGUAGES C CXX)
 
+# какой инстанс vcpkg реально подключён - защита от тихой подмены инструмента
+# CMAKE_TOOLCHAIN_FILE путь к скрипт vcpkg.cmake
+# Z_VCPKG_ROOT_DIR корень vcpkg, вычисляется им самим. т.е. из какого инстанса идёт инструмент
+# триплет: профиль сборки. у меня сейчас x64-windows - x64, винда, динамич. линковка
+if(VCPKG_TARGET_TRIPLET)
+  message(STATUS "vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
+  if(DEFINED Z_VCPKG_ROOT_DIR)
+    message(STATUS "vcpkg instance : ${Z_VCPKG_ROOT_DIR}")
+  endif()
+  message(STATUS "vcpkg triplet  : ${VCPKG_TARGET_TRIPLET}")
+endif()
 
 # === СТАНДАРТЫ ===
 # стандарт языка Си

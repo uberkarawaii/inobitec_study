@@ -18,6 +18,11 @@
 - tests/cases.cmake - тест-кейсы к задачам 1-4 через add_case(...)
 - cmake/format.cmake - файл с cmake в скриптовом режиме, используется для целей `format` и `format-check`,
   подключается к корневому файлу CMakeLists.txt
+- vcpkg.json - манифест vcpkg. builtin-baseline sha - это состояние репо vcpkg на момент копирования, 
+  он в т.ч. фиксирует версию gtest в ../versions/baseline.json (текущий gtest baseline: 1.18.0).
+  **получить sha**: git -C D:\dev\vcpkg rev-parse HEAD; 
+  **поднять версию**: git -C D:\dev\vcpkg pull и получить SHA, занести в манифест
+- CMakePresets.json файл с пресетами конфигурации debug / release
 
 ### Прочее: 
 - /hello каталог с начальной задачей. выводит hello, world
@@ -40,6 +45,27 @@
 - /tests/expect - ожидаемые выводы при тестах на нормальных данных
 - /tests/input_data - входные данные для задач 
 
+### vcpkg-часть
+#### VCPKG_DEV_ROOT и VCPKG_ROOT
+создаются VCPKG_DEV_ROOT и VCPKG_ROOT в переменных среды пользователя. в них указывается путь к корню инстанса
+vcpkg, который получен через git clone. в разных средах переменные будут работать по-разному:
+- VCPKG_ROOT - у меня локально в x64 native command prompt это будет другой инструмент vcpkg, не тот, что 
+  я установила через git clone + bootstrap-скрипт. но VCPKG_ROOT нормально работает в обычных shell-ах
+- VCPKG_DEV_ROOT - для правильной версии vcpkg в x64 native command prompt
+после их создания надо открыть новую сессию консоли, иначе окружение не унаследуется и переменные
+не будут доступны
+
+#### пресеты
+теперь конфигурация идёт не через `cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=...`, 
+а через лист пресетов CMakePresets.json. посмотреть доступные пресеты:
+```
+cmake --list-presets
+```
+debug / release пресеты отличаются только подкаталогом сборки в build и кэшируемой переменной CMAKE_BUILD_TYPE
+
+#### расположения файлов при установлении связи с внешними библиотеками
+- зависимости -> build/<cfg>/vcpkg_installed
+- скачанное (инструменты и архивы портов) -> D:\dev\vcpkg\downloads и D:\dev\vcpkg\buildtrees (вне репозитория)
 
 ### Как собрать и прогнать тесты через CMake
 **windows среда: открыть x64 Native Tools prompt или вызвать vcvars64.bat**
@@ -69,15 +95,15 @@ set "PATH=path\to\cmake;path\to\ninja;%PATH%"
 #### сборка
 как сконфигурировать и сгенерировать служебные файлы: 
 ```
-cmake [--fresh] -B build/debug -G <generator> -DCMAKE_BUILD_TYPE=<Debug/Release>
+cmake [--fresh] --preset <debug/release>
 ```
 Флаг --fresh опционален и есть в cmake 3.24 и выше. Нужен при повторных конфигурациях при смене текущего
 окружения. Т.е. он удаляет CMakeCache.txt и CMakeFiles/ и поиск инструментов проводится заново. 
 На CMake 3.22-3.23 тот же результат достигается удалением папки build
 
-рабочий пример с Ninja+Debug: 
+рабочий пример с пресетом для debug-сборки: 
 ```
-cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --preset debug
 ```
 
 как собрать: 
