@@ -46,9 +46,11 @@
 - /tests/input_data - входные данные для задач 
 
 ### vcpkg-часть
-#### VCPKG_DEV_ROOT и VCPKG_ROOT
-создаются VCPKG_DEV_ROOT и VCPKG_ROOT в переменных среды пользователя. в них указывается путь к корню инстанса
-vcpkg, который получен через git clone. в разных средах переменные будут работать по-разному:
+#### установка vcpkg до первого прогона
+1. склонировать исходники и запустить bootstrap-скрипт для получения .exe
+`git clone https://github.com/microsoft/vcpkg.git D:\dev\vcpkg; if ($?) { & D:\dev\vcpkg\bootstrap-vcpkg.bat }`
+2. установить перем. среды пользователя VCPKG_DEV_ROOT и VCPKG_ROOT и в них указать указывается путь к корню инстанса
+  vcpkg, который получен через git clone. различия переменных:
 - VCPKG_ROOT - у меня локально в x64 native command prompt это будет другой инструмент vcpkg, не тот, что 
   я установила через git clone + bootstrap-скрипт. но VCPKG_ROOT нормально работает в обычных shell-ах
 - VCPKG_DEV_ROOT - для правильной версии vcpkg в x64 native command prompt

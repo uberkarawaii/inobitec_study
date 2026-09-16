@@ -4,6 +4,25 @@ configure_target(run_case OFF)
 add_executable(check check.cpp)
 configure_target(check OFF)
 
+# дымовая цель gtest
+# find_package с gtest именно тут т.к. корневому CMakeLists gtest не нужен
+# find_package(GTest - найди и прочитай описание пакета GTest
+# в описании сказано, как библиотека называется для CMake, где бинарники, headers
+# CONFIG - читай именно описание от автора библиотеки (GTestConfig.cmake), не "догадываться"
+# REQUIRED - если пошло некорректно - падаем. не идём тихо с ошибкой
+find_package(GTest CONFIG REQUIRED)
+# благодаря vcpkg GTestConfig.cmake найдётся. т.к. vcpkg.cmake Добавил build/<cfg>/vcpkg_installed/.../share
+# в список каталогов по которому CMake ведёт поиск
+
+# маленькая тестовая программа
+add_executable(gtest_smoke gtest_smoke.cpp)
+# конфигурируется как тестовая обвязка, не продукт для тестирования
+configure_target(gtest_smoke OFF)
+# GTest::gtest_main появилось на этапе find_package, как и др. импортированные цели 
+# (это пути к headers / .lib) 
+target_link_libraries(gtest_smoke PRIVATE GTest::gtest_main)
+add_test(NAME gtest_smoke COMMAND gtest_smoke)
+
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results")
 
 # test_name - имя таргета теста
