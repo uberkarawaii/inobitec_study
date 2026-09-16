@@ -1964,6 +1964,17 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   сам gtest_smoke.cpp подключает gtest, регистрирует тест и проверяет, что 2+2=4. главное чтобы он корректно
   связался с библиотекой gtest, взял оттуда main(), и т.д. чтобы цепочка прошла. не тест по моим задачам
 
+- проверка работоспособности под линуксом. клонирую и запускаю бутстрап скрипт
+  `git clone https://github.com/microsoft/vcpkg.git ~/dev/vcpkg && ~/dev/vcpkg/bootstrap-vcpkg.sh`
+  перем. окружения `export VCPKG_DEV_ROOT="$HOME/dev/vcpkg"` и проверка echo $VCPKG_DEV_ROOT выводит
+  /home/karavai/dev/vcpkg
+
+  vcpkg для нормальной установки нужно догрузить curl tar zip unzip. потом опять перезапуск bootstrap-vcpkg.sh
+  чтобы нормально установился. ещё раз упал, хотел установку pkg-config
+
+  повторяю cmake --fresh --preset debug. потом сборка и тесты, та же цепочка для release - проблем нет.
+  отдель прогнала сборку, удалив obj от gtest_smoke - warning-ов нет
+
 *Что заметила при работе с deepseek*
 - изначально он сказал, что bootstrap-vcpkg.bat будет собирать vcpkg.exe. потом поправился - так было раньше,
   сейчас качается готовый .exe
