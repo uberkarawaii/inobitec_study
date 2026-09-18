@@ -44,6 +44,10 @@ int main() {
             // одна из координат - не конечное число
             else if (result.error() == parse_not_finite)
                 std::cerr << "Строка " << i << ". Среди X Y Z обнаружена не конечная координата: " << temp << "\n";
+            // в точке есть число выходящее за диапазон допустимого
+            else if (result.error() == parse_out_of_range)
+                std::cerr << "Строка " << i
+                          << ". Среди X Y Z обнаружена координата, выходящая за допустимый диапазон: " << temp << "\n";
 
             return exit_code::data;
         }

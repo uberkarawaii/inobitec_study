@@ -42,7 +42,9 @@ COMMON_API std::expected<Point, int> parse_point(std::string_view s);
 // 2 - нечисловые данные
 // 3 - много координат
 // 4 - координата равна inf или nan
+// 5 - число за границами допустимого диапазона
 inline constexpr int parse_too_few = 1;
 inline constexpr int parse_not_number = 2;
 inline constexpr int parse_too_much = 3;
 inline constexpr int parse_not_finite = 4;
+inline constexpr int parse_out_of_range = 5;

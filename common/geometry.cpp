@@ -38,6 +38,10 @@ std::expected<Point, int> parse_point(std::string_view s) {
         if (ec == std::errc{} && ptr == ptr_end && j < 2)
             return std::unexpected(parse_too_few);
 
+        // если число было за границами допустимого диапазона
+        if (ec == std::errc::result_out_of_range)
+            return std::unexpected(parse_out_of_range);
+
         // если ec с ошибкой или распознавание слетело не на пробеле и не на конце, то это ошибка в данных
         if (ec != std::errc{} || (ptr != ptr_end && !std::isspace(static_cast<unsigned char>(*ptr)))) {
             return std::unexpected(parse_not_number);
@@ -62,6 +66,9 @@ std::expected<Point, int> parse_point(std::string_view s) {
         if (ptr_start != ptr_end) {
             double d{};
             const auto [ptr1, ec1] = std::from_chars(ptr_start, ptr_end, d);
+            // если число было за границами допустимого диапазона
+            if (ec1 == std::errc::result_out_of_range)
+                return std::unexpected(parse_out_of_range);
             // если ec1 выдаёт ошибку и указатель остановился не на пробельном и не на конечном символе, то дело в
             // лишнем символе
             if (ec1 != std::errc{} || (ptr1 != ptr_end && !std::isspace(static_cast<unsigned char>(*ptr1))))

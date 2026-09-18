@@ -31,6 +31,10 @@ COMMON_API int parse_point(char* str, struct Point* p);
 // 2 - нечисловые данные
 // 3 - много координат
 // 4 - не конечное число
-enum { PARSE_TOO_FEW = 1, PARSE_NOT_NUMBER = 2, PARSE_EXTRA = 3, PARSE_NOT_FINITE = 4 };
+// 5 - число за границами допустимого диапазона
+enum { PARSE_TOO_FEW = 1, PARSE_NOT_NUMBER = 2, PARSE_EXTRA = 3, PARSE_NOT_FINITE = 4, PARSE_OUT_OF_RANGE = 5 };
+
+// пропускает ведущ. пробелы и смотрит по префиксу - это 16ричное число?
+COMMON_API int is_hex_prefix(const char* ptr);
 
 #endif

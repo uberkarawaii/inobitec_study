@@ -1,3 +1,5 @@
+#include <ctype.h>
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,6 +61,11 @@ int get_points(struct Point** points, int* points_size, int* points_capacity) {
             else if (ex_code == PARSE_NOT_FINITE)
                 fprintf(stderr, "Строка %d. Среди X Y Z обнаружена не конечная координата: %s\n", i, s);
 
+            // в точке есть число выходящее за диапазон допустимого
+            else if (ex_code == PARSE_OUT_OF_RANGE)
+                fprintf(stderr, "Строка %d. Среди X Y Z обнаружена координата, выходящая за допустимый диапазон: %s\n",
+                        i, s);
+
             free(s);
             s = NULL;
             return data;
@@ -107,9 +114,21 @@ int main(int argc, char* argv[]) {
     }
 
     char* end_r;
+    errno = 0;
+    // распознать радиус. strtod сам скипнет ведущие пробелы
     double r = strtod(argv[1], &end_r);
-    if (*end_r != '\0') {
+    const char* tail = end_r;
+    // пропуск заключит. пробелов
+    while (*tail != '\0' && isspace((unsigned char)*tail))
+        ++tail;
+    // если распозн. ост. в начале, или в конце не пусто, или есть 16сс префикс - то это плохие символы
+    if (end_r == argv[1] || *tail != '\0' || is_hex_prefix(argv[1])) {
         fprintf(stderr, "Радиус должен быть числом. Получено: %s\n", argv[1]);
+        return usage;
+    }
+
+    if (errno == ERANGE && (r == 0.0 || !isfinite(r))) {
+        fprintf(stderr, "Радиус выходит за допустимый диапазон: %s\n", argv[1]);
         return usage;
     }
 

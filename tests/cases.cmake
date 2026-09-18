@@ -86,6 +86,24 @@ add_case(t3_c_test1 t3_c "${EMPTY_ARG}" t3_test1 "${SUCCESS}" EQ t3_test1 "${OUT
 add_case(t3_c_test2 t3_c "${EMPTY_ARG}" t3_test2 "${SUCCESS}" EQ t3_test2 "${OUT}") 
 add_case(t3_c_test3 t3_c "${EMPTY_ARG}" t3_test3 "${SUCCESS}" EQ t3_test3 "${OUT}")
 add_case(t3_c_scientific t3_c "${EMPTY_ARG}" t3_scientific "${SUCCESS}" EQ t3_scientific "${OUT}")
+# (hex / overflow / подформа записи)
+add_case(t3_c_hex_coord t3_c "${EMPTY_ARG}" t3_hex_coord "${DATA}" CONTAINS t3_hex_coord "${ERR}")
+add_case(t3_c_hex_coord_upper t3_c "${EMPTY_ARG}" t3_hex_coord_upper "${DATA}" CONTAINS t3_hex_coord_upper "${ERR}")
+add_case(t3_c_hex_extra_coord t3_c "${EMPTY_ARG}" t3_hex_extra_coord "${DATA}" CONTAINS t3_hex_extra_coord "${ERR}")
+add_case(t3_c_overflow_coord t3_c "${EMPTY_ARG}" t3_overflow_coord "${DATA}" CONTAINS t3_overflow_coord "${ERR}")
+add_case(t3_c_underflow_coord t3_c "${EMPTY_ARG}" t3_underflow_coord "${DATA}" CONTAINS t3_underflow_coord "${ERR}")
+add_case(t3_c_subnormal_coord t3_c "${EMPTY_ARG}" t3_subnormal_coord "${SUCCESS}" EQ t3_subnormal_coord "${OUT}")
+# вывод совпадает с t3_test1: та же точка (1.5, 2.5, 3.5), отличается только ведущий пробел во входе
+add_case(t3_c_leading_spaces t3_c "${EMPTY_ARG}" t3_leading_spaces "${SUCCESS}" EQ t3_test1 "${OUT}")
+add_case(t3_c_exp_plus t3_c "${EMPTY_ARG}" t3_exp_plus "${SUCCESS}" EQ t3_exp_plus "${OUT}")
+add_case(t3_c_exp_upper t3_c "${EMPTY_ARG}" t3_exp_upper "${SUCCESS}" EQ t3_exp_upper "${OUT}")
+add_case(t3_c_exp_negative t3_c "${EMPTY_ARG}" t3_exp_negative "${SUCCESS}" EQ t3_exp_negative "${OUT}")
+add_case(t3_c_infinity_coord t3_c "${EMPTY_ARG}" t3_infinity_coord "${DATA}" CONTAINS t3_infinity_coord "${ERR}")
+add_case(t3_c_nan_payload_coord t3_c "${EMPTY_ARG}" t3_nan_payload_coord "${DATA}" CONTAINS t3_nan_payload_coord "${ERR}")
+add_case(t3_c_comma_coord t3_c "${EMPTY_ARG}" t3_comma_coord "${DATA}" CONTAINS t3_comma_coord "${ERR}")
+add_case(t3_c_dot_trailing_coord t3_c "${EMPTY_ARG}" t3_dot_trailing_coord "${SUCCESS}" EQ t3_dot_trailing_coord "${OUT}")
+add_case(t3_c_dot_leading_coord t3_c "${EMPTY_ARG}" t3_dot_leading_coord "${SUCCESS}" EQ t3_dot_leading_coord "${OUT}")
+
 
 # === T3 CPP TESTS ===
 # тест на io-fail - только под UNIX
@@ -109,6 +127,23 @@ add_case(t3_cpp_test1 t3_cpp "${EMPTY_ARG}" t3_test1 "${SUCCESS}" EQ t3_test1 "$
 add_case(t3_cpp_test2 t3_cpp "${EMPTY_ARG}" t3_test2 "${SUCCESS}" EQ t3_test2 "${OUT}") 
 add_case(t3_cpp_test3 t3_cpp "${EMPTY_ARG}" t3_test3 "${SUCCESS}" EQ t3_test3 "${OUT}")
 add_case(t3_cpp_scientific t3_cpp "${EMPTY_ARG}" t3_scientific "${SUCCESS}" EQ t3_scientific "${OUT}")
+# hex / overflow / подформа записи
+add_case(t3_cpp_hex_coord t3_cpp "${EMPTY_ARG}" t3_hex_coord "${DATA}" CONTAINS t3_hex_coord "${ERR}")
+add_case(t3_cpp_hex_coord_upper t3_cpp "${EMPTY_ARG}" t3_hex_coord_upper "${DATA}" CONTAINS t3_hex_coord_upper "${ERR}")
+add_case(t3_cpp_hex_extra_coord t3_cpp "${EMPTY_ARG}" t3_hex_extra_coord "${DATA}" CONTAINS t3_hex_extra_coord "${ERR}")
+add_case(t3_cpp_overflow_coord t3_cpp "${EMPTY_ARG}" t3_overflow_coord "${DATA}" CONTAINS t3_overflow_coord "${ERR}")
+add_case(t3_cpp_underflow_coord t3_cpp "${EMPTY_ARG}" t3_underflow_coord "${DATA}" CONTAINS t3_underflow_coord "${ERR}")
+add_case(t3_cpp_subnormal_coord t3_cpp "${EMPTY_ARG}" t3_subnormal_coord "${SUCCESS}" EQ t3_subnormal_coord "${OUT}")
+# вывод совпадает с t3_test1: та же точка (1.5, 2.5, 3.5), отличается только ведущий пробел во входе
+add_case(t3_cpp_leading_spaces t3_cpp "${EMPTY_ARG}" t3_leading_spaces "${SUCCESS}" EQ t3_test1 "${OUT}")
+add_case(t3_cpp_exp_plus t3_cpp "${EMPTY_ARG}" t3_exp_plus "${SUCCESS}" EQ t3_exp_plus "${OUT}")
+add_case(t3_cpp_exp_upper t3_cpp "${EMPTY_ARG}" t3_exp_upper "${SUCCESS}" EQ t3_exp_upper "${OUT}")
+add_case(t3_cpp_exp_negative t3_cpp "${EMPTY_ARG}" t3_exp_negative "${SUCCESS}" EQ t3_exp_negative "${OUT}")
+add_case(t3_cpp_infinity_coord t3_cpp "${EMPTY_ARG}" t3_infinity_coord "${DATA}" CONTAINS t3_infinity_coord "${ERR}")
+add_case(t3_cpp_nan_payload_coord t3_cpp "${EMPTY_ARG}" t3_nan_payload_coord "${DATA}" CONTAINS t3_nan_payload_coord "${ERR}")
+add_case(t3_cpp_comma_coord t3_cpp "${EMPTY_ARG}" t3_comma_coord "${DATA}" CONTAINS t3_comma_coord "${ERR}")
+add_case(t3_cpp_dot_trailing_coord t3_cpp "${EMPTY_ARG}" t3_dot_trailing_coord "${SUCCESS}" EQ t3_dot_trailing_coord "${OUT}")
+add_case(t3_cpp_dot_leading_coord t3_cpp "${EMPTY_ARG}" t3_dot_leading_coord "${SUCCESS}" EQ t3_dot_leading_coord "${OUT}")
 
 # === РАДИУСЫ ===
 set(RAD_TOO_MUCH 2 3)
@@ -123,6 +158,18 @@ set(RAD5 5)
 set(RAD8 8)
 set(RAD10 10)
 set(RAD100 100)
+set(RAD_HEX 0x10)
+set(RAD_HEX_UPPER 0X10)
+set(RAD_OVERFLOW 1e400)
+set(RAD_UNDERFLOW 1e-400)
+# для координат с большим модулем (exp_plus=300, exp_upper=100)
+set(RAD400 400)
+# радиусы с пробелами в начале
+set(RAD_SPACE "   10")
+set(RAD_SPACE_HEX "   0x10")
+set(RAD_SPACE_PLUS "   +10")
+# с пробелом в конце 
+set(RAD_SPACE_END "10   ")
 
 # === T4 C TESTS ===
 # тест на io-fail - только под UNIX
@@ -138,6 +185,12 @@ add_case(t4_c_radius_inf t4_c "${RAD_INF}" t4_bad_radius "${USAGE}" CONTAINS t4_
 add_case(t4_c_radius_negative t4_c "${RAD_NEG}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_negative "${ERR}")
 add_case(t4_c_radius_plus_plus t4_c "${RAD_PLUS_PLUS}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_plus_plus "${ERR}")
 add_case(t4_c_radius_plus_abc t4_c "${RAD_PLUS_ABC}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_plus_abc "${ERR}")
+add_case(t4_c_radius_hex t4_c "${RAD_HEX}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_hex "${ERR}")
+add_case(t4_c_radius_hex_upper t4_c "${RAD_HEX_UPPER}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_hex_upper "${ERR}")
+add_case(t4_c_radius_overflow t4_c "${RAD_OVERFLOW}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_overflow "${ERR}")
+add_case(t4_c_radius_underflow t4_c "${RAD_UNDERFLOW}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_underflow "${ERR}")
+add_case(t4_c_rad_space_hex t4_c "${RAD_SPACE_HEX}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_space_hex "${ERR}")
+
 # плохие точки
 add_case(t4_c_symbol_coords t4_c "${RAD1}" t4_symbol_coords "${DATA}" CONTAINS t4_symbol_coords "${ERR}")
 add_case(t4_c_too_few_coords t4_c "${RAD1}" t4_too_few_coords "${DATA}" CONTAINS t4_too_few_coords "${ERR}")
@@ -158,10 +211,32 @@ add_case(t4_c_test1 t4_c "${RAD8}" t4_test1 "${SUCCESS}" EQ t4_test1 "${OUT}")
 add_case(t4_c_test2 t4_c "${RAD10}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
 # как прошлый тест, но радиус со знаком "+". результат и поведение должны совпасть
 add_case(t4_c_plus t4_c "${RAD_POSITIVE}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
+# как прошлый тест, но радиус с пробелами в начале. результат и поведение должны совпасть
+add_case(t4_c_rad_leading_space t4_c "${RAD_SPACE}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
+# как прошлый тест, но радиус с пробелами в конце. результат и поведение должны совпасть
+add_case(t4_c_rad_space_end t4_c "${RAD_SPACE_END}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
 # одна точка, но она не проходит
 add_case(t4_c_test3 t4_c "${RAD5}" t4_test3 "${SUCCESS}" EQ t4_test3 "${OUT}")
 # входные данные с минусом и экспонентой 
 add_case(t4_c_scientific t4_c "${RAD100}" t4_scientific "${SUCCESS}" EQ t4_scientific "${OUT}")
+# пробелы + знак "+": успех, радиус 10 - результат как в t4_test2
+add_case(t4_c_rad_space_plus t4_c "${RAD_SPACE_PLUS}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
+# (hex / overflow / подформа записи)
+add_case(t4_c_hex_coord t4_c "${RAD1}" t4_hex_coord "${DATA}" CONTAINS t4_hex_coord "${ERR}")
+add_case(t4_c_hex_coord_upper t4_c "${RAD1}" t4_hex_coord_upper "${DATA}" CONTAINS t4_hex_coord_upper "${ERR}")
+add_case(t4_c_hex_extra_coord t4_c "${RAD1}" t4_hex_extra_coord "${DATA}" CONTAINS t4_hex_extra_coord "${ERR}")
+add_case(t4_c_overflow_coord t4_c "${RAD1}" t4_overflow_coord "${DATA}" CONTAINS t4_overflow_coord "${ERR}")
+add_case(t4_c_underflow_coord t4_c "${RAD1}" t4_underflow_coord "${DATA}" CONTAINS t4_underflow_coord "${ERR}")
+add_case(t4_c_subnormal_coord t4_c "${RAD1}" t4_subnormal_coord "${SUCCESS}" EQ t4_subnormal_coord "${OUT}")
+add_case(t4_c_leading_spaces t4_c "${RAD5}" t4_leading_spaces "${SUCCESS}" EQ t4_leading_spaces "${OUT}")
+add_case(t4_c_exp_plus t4_c "${RAD400}" t4_exp_plus "${SUCCESS}" EQ t4_exp_plus "${OUT}")
+add_case(t4_c_exp_upper t4_c "${RAD400}" t4_exp_upper "${SUCCESS}" EQ t4_exp_upper "${OUT}")
+add_case(t4_c_exp_negative t4_c "${RAD1}" t4_exp_negative "${SUCCESS}" EQ t4_exp_negative "${OUT}")
+add_case(t4_c_infinity_coord t4_c "${RAD1}" t4_infinity_coord "${DATA}" CONTAINS t4_infinity_coord "${ERR}")
+add_case(t4_c_nan_payload_coord t4_c "${RAD1}" t4_nan_payload_coord "${DATA}" CONTAINS t4_nan_payload_coord "${ERR}")
+add_case(t4_c_comma_coord t4_c "${RAD1}" t4_comma_coord "${DATA}" CONTAINS t4_comma_coord "${ERR}")
+add_case(t4_c_dot_trailing_coord t4_c "${RAD8}" t4_dot_trailing_coord "${SUCCESS}" EQ t4_dot_trailing_coord "${OUT}")
+add_case(t4_c_dot_leading_coord t4_c "${RAD5}" t4_dot_leading_coord "${SUCCESS}" EQ t4_dot_leading_coord "${OUT}")
 
 # === T4 CPP TESTS ===
 # тест на io-fail - только под UNIX
@@ -176,6 +251,12 @@ add_case(t4_cpp_radius_inf t4_cpp "${RAD_INF}" t4_bad_radius "${USAGE}" CONTAINS
 add_case(t4_cpp_radius_negative t4_cpp "${RAD_NEG}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_negative "${ERR}")
 add_case(t4_cpp_radius_plus_plus t4_cpp "${RAD_PLUS_PLUS}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_plus_plus "${ERR}")
 add_case(t4_cpp_radius_plus_abc t4_cpp "${RAD_PLUS_ABC}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_plus_abc "${ERR}")
+add_case(t4_cpp_radius_hex t4_cpp "${RAD_HEX}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_hex "${ERR}")
+add_case(t4_cpp_radius_hex_upper t4_cpp "${RAD_HEX_UPPER}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_hex_upper "${ERR}")
+add_case(t4_cpp_radius_overflow t4_cpp "${RAD_OVERFLOW}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_overflow "${ERR}")
+add_case(t4_cpp_radius_underflow t4_cpp "${RAD_UNDERFLOW}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_underflow "${ERR}")
+add_case(t4_cpp_rad_space_hex t4_cpp "${RAD_SPACE_HEX}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_space_hex "${ERR}")
+
 # плохие точки
 add_case(t4_cpp_symbol_coords t4_cpp "${RAD1}" t4_symbol_coords "${DATA}" CONTAINS t4_symbol_coords "${ERR}")
 add_case(t4_cpp_too_few_coords t4_cpp "${RAD1}" t4_too_few_coords "${DATA}" CONTAINS t4_too_few_coords "${ERR}")
@@ -194,5 +275,27 @@ add_case(t4_cpp_test1 t4_cpp "${RAD8}" t4_test1 "${SUCCESS}" EQ t4_test1 "${OUT}
 add_case(t4_cpp_test2 t4_cpp "${RAD10}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
 # как прошлый тест, но радиус со знаком "+". результат и поведение должны совпасть
 add_case(t4_cpp_plus t4_cpp "${RAD_POSITIVE}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
+# как прошлый тест, но радиус с пробелами в начале. результат и поведение должны совпасть
+add_case(t4_cpp_rad_leading_space t4_cpp "${RAD_SPACE}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
+# как прошлый тест, но радиус с пробелами в конце. результат и поведение должны совпасть
+add_case(t4_cpp_rad_space_end t4_cpp "${RAD_SPACE_END}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
 add_case(t4_cpp_test3 t4_cpp "${RAD5}" t4_test3 "${SUCCESS}" EQ t4_test3 "${OUT}")
 add_case(t4_cpp_scientific t4_cpp "${RAD100}" t4_scientific "${SUCCESS}" EQ t4_scientific "${OUT}")
+# пробелы + знак "+": успех, радиус 10 - результат как в t4_test2
+add_case(t4_cpp_rad_space_plus t4_cpp "${RAD_SPACE_PLUS}" t4_test2 "${SUCCESS}" EQ t4_test2 "${OUT}")
+# (hex / overflow / подформа записи)
+add_case(t4_cpp_hex_coord t4_cpp "${RAD1}" t4_hex_coord "${DATA}" CONTAINS t4_hex_coord "${ERR}")
+add_case(t4_cpp_hex_coord_upper t4_cpp "${RAD1}" t4_hex_coord_upper "${DATA}" CONTAINS t4_hex_coord_upper "${ERR}")
+add_case(t4_cpp_hex_extra_coord t4_cpp "${RAD1}" t4_hex_extra_coord "${DATA}" CONTAINS t4_hex_extra_coord "${ERR}")
+add_case(t4_cpp_overflow_coord t4_cpp "${RAD1}" t4_overflow_coord "${DATA}" CONTAINS t4_overflow_coord "${ERR}")
+add_case(t4_cpp_underflow_coord t4_cpp "${RAD1}" t4_underflow_coord "${DATA}" CONTAINS t4_underflow_coord "${ERR}")
+add_case(t4_cpp_subnormal_coord t4_cpp "${RAD1}" t4_subnormal_coord "${SUCCESS}" EQ t4_subnormal_coord "${OUT}")
+add_case(t4_cpp_leading_spaces t4_cpp "${RAD5}" t4_leading_spaces "${SUCCESS}" EQ t4_leading_spaces "${OUT}")
+add_case(t4_cpp_exp_plus t4_cpp "${RAD400}" t4_exp_plus "${SUCCESS}" EQ t4_exp_plus "${OUT}")
+add_case(t4_cpp_exp_upper t4_cpp "${RAD400}" t4_exp_upper "${SUCCESS}" EQ t4_exp_upper "${OUT}")
+add_case(t4_cpp_exp_negative t4_cpp "${RAD1}" t4_exp_negative "${SUCCESS}" EQ t4_exp_negative "${OUT}")
+add_case(t4_cpp_infinity_coord t4_cpp "${RAD1}" t4_infinity_coord "${DATA}" CONTAINS t4_infinity_coord "${ERR}")
+add_case(t4_cpp_nan_payload_coord t4_cpp "${RAD1}" t4_nan_payload_coord "${DATA}" CONTAINS t4_nan_payload_coord "${ERR}")
+add_case(t4_cpp_comma_coord t4_cpp "${RAD1}" t4_comma_coord "${DATA}" CONTAINS t4_comma_coord "${ERR}")
+add_case(t4_cpp_dot_trailing_coord t4_cpp "${RAD8}" t4_dot_trailing_coord "${SUCCESS}" EQ t4_dot_trailing_coord "${OUT}")
+add_case(t4_cpp_dot_leading_coord t4_cpp "${RAD5}" t4_dot_leading_coord "${SUCCESS}" EQ t4_dot_leading_coord "${OUT}")

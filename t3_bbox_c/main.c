@@ -75,6 +75,11 @@ int main() {
             else if (ex_code == PARSE_NOT_FINITE)
                 fprintf(stderr, "—трока %d. —реди X Y Z обнаружена не конечна€ координата: %s\n", i, s);
 
+            // в точке есть число выход€щее за диапазон допустимого
+            else if (ex_code == PARSE_OUT_OF_RANGE)
+                fprintf(stderr, "—трока %d. —реди X Y Z обнаружена координата, выход€ща€ за допустимый диапазон: %s\n",
+                        i, s);
+
             free(s);
             s = NULL;
             free(points);
