@@ -1,6 +1,8 @@
 #include "string_utils.h"
 
 #include <ctype.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,4 +57,32 @@ char* trim_string(char* s, int* len) {
     }
 
     return s;
+}
+
+// распознавание целого числа
+int parse_int32(const char* s, int32_t* out) {
+    // ведущий + допустим только если сразу за ним цифра: strtol принял бы и "+-5",
+    // сдвинуть + руками надо (from_chars не умеет плюс), но тогда "+-5" надо отсечь
+    const char* first = s;
+    if (*first == '+') {
+        ++first;
+        if (!isdigit((unsigned char)*first))
+            return INT_PARSE_NOT_NUMBER;
+    }
+
+    errno = 0;
+    char* end = NULL;
+    long v = strtol(first, &end, 10);
+
+    // Windows: long == int32, спасёт только ERANGE (значение уже clamp'нуто)
+    // Linux:   long 64-битный, ERANGE нет, спасёт сравнение с INT32_*
+    if (errno == ERANGE || v < INT32_MIN || v > INT32_MAX)
+        return INT_PARSE_OUT_OF_RANGE;
+
+    // число обязано занимать всю строку: "5x", "5.5", "0x10", "" - не число
+    if (end == first || *end != '\0')
+        return INT_PARSE_NOT_NUMBER;
+
+    *out = (int32_t)v;
+    return 0;
 }

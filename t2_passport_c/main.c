@@ -1,5 +1,5 @@
-#include <ctype.h>
-#include <locale.h>
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -55,28 +55,32 @@ int main() {
         fprintf(stderr, "Пустой ввод вместо кол-ва вершин\n");
         return data;
     }
-    // указатель на символ, на котором остановится распознавание числа
-    char* end_ptr;
-    long int N = strtol(clean_s_num, &end_ptr, 10);
-    // если этот указатель на что-то указывает (а пробелов к этому моменту уже нет)
-    // то значит в строке есть недопустимые для целого числа символы
-    if (*end_ptr != 0) {
+    // распознавание числа библиотечной ф-цией из string_utils
+    int32_t N = 0;
+    int code = parse_int32(clean_s_num, &N);
+    if (code == INT_PARSE_OUT_OF_RANGE) {
+        fprintf(stderr, "Кол-во вершин не помещается в 32-битное целое. Получено: %s\n", clean_s_num);
+        free(s);
+        free(s_num);
+        return data;
+    }
+    if (code == INT_PARSE_NOT_NUMBER) {
         fprintf(stderr, "Кол-во вершин должно быть целым числом. Получено: %s\n", clean_s_num);
         free(s);
         free(s_num);
         return data;
     }
-    // число вершин не м.б. менее 1, проверяем это
     if (N < 1) {
+        fprintf(stderr, "Кол-во вершин должно быть положительным. Получено: %" PRId32 "\n", N);
         free(s);
         free(s_num);
-        fprintf(stderr, "Кол-во вершин должно быть положительным. Получено: %ld\n", N);
         return usage;
     }
+
     // массив словоформ со склонением
     const char* words[] = {"вершина", "вершины", "вершин"};
     // форматный вывод со склонением
-    printf("Фигура «%s»: %ld %s.\n", clean_s, N, words[get_vertex_name(N)]);
+    printf("Фигура «%s»: %" PRId32 " %s.\n", clean_s, N, words[get_vertex_name(N)]);
     free(s);
     free(s_num);
     return 0;

@@ -22,17 +22,23 @@ inline constexpr int radius_not_positive = 3;
 inline constexpr int radius_out_of_range = 4;
 // получение радиуса в виде числа
 std::expected<double, int> get_radius(std::string_view r_line) {
-    // пропуск ведущих и концевых пробелов
+    // указат. на начало и конец
     const char* first = r_line.data();
     const char* last = r_line.data() + r_line.size();
+
+    // пропуск ведущих и концевых пробелов
     while (first != last && std::isspace(static_cast<unsigned char>(*first)))
         ++first;
     while (last != first && std::isspace(static_cast<unsigned char>(last[-1])))
         --last;
 
-    // возможно первый знак +, тогда сдвиг начала, чтобы from_chars смог нормально прочитать
-    if (first != last && *first == '+')
+    // если после плюса идёт минус - выходим, т.к. это плохой симол
+    // остальные плохие символы и так выхзовут падение далее
+    if (first != last && *first == '+') {
         ++first;
+        if (first != last && *first == '-')
+            return std::unexpected(radius_not_number);
+    }
 
     double R = 0;
     auto [ptr, ec] = std::from_chars(first, last, R);

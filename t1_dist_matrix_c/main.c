@@ -3,6 +3,7 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,14 +31,17 @@ int main(void) {
         return no_input;
     }
 
-    // указат на указат на 1й символ, который strtol не сможет расшифровать
-    char* endptr;
-    long int N = strtol(clean_n, &endptr, 10);
-    if (*endptr != '\n' && *endptr != '\0') {
+    // распознавание - через библиотеч. ф-цию из string_utils
+    int32_t N = 0;
+    int code = parse_int32(clean_n, &N);
+    if (code == INT_PARSE_OUT_OF_RANGE) {
+        fprintf(stderr, "N не помещается в 32-битное целое. Получено: %s", clean_n);
+        return data;
+    }
+    if (code == INT_PARSE_NOT_NUMBER) {
         fprintf(stderr, "N должно быть целым числом. Получено: %s", clean_n);
         return data;
     }
-
     if (N < MIN_SIZE || N > MAX_SIZE) {
         fprintf(stderr, "N должно быть в диапазоне [3;20]. Получено: %s", clean_n);
         return usage;

@@ -1,9 +1,6 @@
 #include <array>
-#include <charconv>
 #include <iostream>
 #include <string>
-#include <string_view>
-#include <system_error>
 
 #include "../common/exit_codes.hpp"
 #include "../common/string_utils.hpp"
@@ -44,24 +41,23 @@ int main() {
         return exit_code::data;
     }
 
-    // возможно первый знак +, тогда сдвиг начала, чтобы from_chars смог нормально прочитать
-    const char* first = vertexes.data();
-    if (*first == '+')
-        ++first;
-
-    int V = 0;
-    // ptr - указат., где остановлен парсинг. ec - error code.
-    // в случае успешного чтения ec проинциализирована пустым инициализатором. это и есть std::errc()
-    const auto [ptr, ec] = std::from_chars(first, vertexes.data() + vertexes.size(), V);
-    if (ec != std::errc{} || ptr != vertexes.data() + vertexes.size()) {
+    auto parsed = parse_int32(vertexes);
+    if (!parsed) {
+        if (parsed.error() == int_parse_out_of_range) {
+            std::cerr << "Кол-во вершин не помещается в 32-битное целое. Получено: " << vertexes << "\n";
+            return exit_code::data;
+        }
+        // при любой др. ошибке - эта ветка (ожидаемо - плохой символ. но для страховки, чтобы исп. не ушло дальше)
         std::cerr << "Кол-во вершин должно быть целым числом. Получено: " << vertexes << "\n";
         return exit_code::data;
     }
-
+    // к-во вершин
+    const int V = *parsed;
     if (V < 1) {
         std::cerr << "Кол-во вершин должно быть положительным. Получено: " << V << "\n";
         return exit_code::usage;
     }
+
     // массив словоформ . через get_vertex_name(V) будет индекс для верной формы из этого массива
     std::array words{"вершина", "вершины", "вершин"};
 

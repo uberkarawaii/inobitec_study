@@ -29,9 +29,14 @@ std::expected<Point, int> parse_point(std::string_view s) {
             return std::unexpected(parse_too_few);
 
         // возможно первый знак +, тогда сдвиг начала, чтобы from_chars смог нормально прочитать
+        // если за плюсом идёт минус - так нельзя, такой случай - плохой символ.
+        // другие плохие симв за плюсом и так вызовут падение далее
         const char* first = ptr_start;
-        if (*first == '+')
+        if (*first == '+') {
             ++first;
+            if (first != ptr_end && *first == '-')
+                return std::unexpected(parse_not_number);
+        }
 
         const auto [ptr, ec] = std::from_chars(first, ptr_end, dots[j]);
         // распознавание было удачным и указатель на конце, хотя 3 числа не было прочитано
@@ -64,6 +69,13 @@ std::expected<Point, int> parse_point(std::string_view s) {
 
         // если после пропуска начало == конец, то там были одни пробелы. иначе - осталось что-то ещё
         if (ptr_start != ptr_end) {
+            // если что-то с + то его скип, и смотрим что дальше. если минус - сразу выход, так нельзя
+            //  из-за остальных плохих символов - последствия в др. ветках
+            if (*ptr_start == '+') {
+                ++ptr_start;
+                if (ptr_start != ptr_end && *ptr_start == '-')
+                    return std::unexpected(parse_not_number);
+            }
             double d{};
             const auto [ptr1, ec1] = std::from_chars(ptr_start, ptr_end, d);
             // если число было за границами допустимого диапазона

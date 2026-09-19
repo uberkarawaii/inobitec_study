@@ -1,4 +1,3 @@
-#include <charconv>
 #include <cmath>
 #include <iostream>
 #include <numbers>
@@ -23,19 +22,23 @@ int main() {
         std::cerr << "ѕолучен пустой ввод вместо целого N\n";
         return exit_code::no_in;
     }
-    // возможно, первый знак в числе "+". чтобы from_chars не упал от этого, - пропуск "+"
-    const char* first = lineN.data();
-    if (*first == '+')
-        ++first;
 
     // распознавание N и проверка на ошибки распознавани€
-    int N = 0;
-    const std::from_chars_result res = std::from_chars(first, lineN.data() + lineN.size(), N);
-    if (res.ec != std::errc{} || res.ptr != lineN.data() + lineN.size()) {
+    auto parsed = parse_int32(lineN);
+    if (!parsed) {
+        if (parsed.error() == int_parse_out_of_range) {
+            std::cerr << "N не помещаетс€ в 32-битное целое. ѕолучено: " << lineN << '\n';
+            return exit_code::data;
+        }
+        // при любой другой ошибке (ожидаемо при плохом токене, но дл€ страховки, чтобы вдруг не пошло дальше)
         std::cerr << "N должно быть целым числом. ѕолучено: " << lineN << '\n';
         return exit_code::data;
     }
 
+    // полученное число
+    const int N = *parsed;
+
+    // провер€ем диапазон
     if (N < 3 || N > 20) {
         std::cerr << "N должно быть в диапазоне [3;20]. ѕолучено: " << lineN << '\n';
         return exit_code::usage;
