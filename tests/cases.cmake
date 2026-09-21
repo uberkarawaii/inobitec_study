@@ -214,6 +214,16 @@ set(RAD_SPACE_HEX "   0x10")
 set(RAD_SPACE_PLUS "   +10")
 # с пробелом в конце 
 set(RAD_SPACE_END "10   ")
+# пустой радиус: строка только из пробелов (после обрезки — пусто)
+set(RAD_SPACES [=[   ]=])
+# радиус — одна строка с пробелом внутри: не число
+set(RAD_INNER_SPACE [=[2 3]=])
+# радиус — одна строка с пробелом и кавычкой внутри: не число
+set(RAD_INNER_QUOTE [=[2" 3]=])
+# радиус — строка с хвостовым обратным слешем: не число
+set(RAD_TRAILING_BACKSLASH [=[10\]=])
+# радиус — строка с несколькими кавычками: не число
+set(RAD_MULTI_QUOTE [=[2"3"]=])
 
 # === T4 C TESTS ===
 # тест на io-fail - только под UNIX
@@ -235,6 +245,11 @@ add_case(t4_c_radius_hex_upper t4_c "${RAD_HEX_UPPER}" t4_bad_radius "${USAGE}" 
 add_case(t4_c_radius_overflow t4_c "${RAD_OVERFLOW}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_overflow "${ERR}")
 add_case(t4_c_radius_underflow t4_c "${RAD_UNDERFLOW}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_underflow "${ERR}")
 add_case(t4_c_rad_space_hex t4_c "${RAD_SPACE_HEX}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_space_hex "${ERR}")
+add_case(t4_c_radius_spaces t4_c "${RAD_SPACES}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_spaces "${ERR}")
+add_case(t4_c_radius_inner_space t4_c "${RAD_INNER_SPACE}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_inner_space "${ERR}")
+add_case(t4_c_radius_inner_quote t4_c "${RAD_INNER_QUOTE}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_inner_quote "${ERR}")
+add_case(t4_c_radius_trailing_backslash t4_c "${RAD_TRAILING_BACKSLASH}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_trailing_backslash "${ERR}")
+add_case(t4_c_radius_multi_quote t4_c "${RAD_MULTI_QUOTE}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_multi_quote "${ERR}")
 
 # плохие точки
 add_case(t4_c_symbol_coords t4_c "${RAD1}" t4_symbol_coords "${DATA}" CONTAINS t4_symbol_coords "${ERR}")
@@ -304,6 +319,11 @@ add_case(t4_cpp_radius_hex_upper t4_cpp "${RAD_HEX_UPPER}" t4_bad_radius "${USAG
 add_case(t4_cpp_radius_overflow t4_cpp "${RAD_OVERFLOW}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_overflow "${ERR}")
 add_case(t4_cpp_radius_underflow t4_cpp "${RAD_UNDERFLOW}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_underflow "${ERR}")
 add_case(t4_cpp_rad_space_hex t4_cpp "${RAD_SPACE_HEX}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_space_hex "${ERR}")
+add_case(t4_cpp_radius_spaces t4_cpp "${RAD_SPACES}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_spaces "${ERR}")
+add_case(t4_cpp_radius_inner_space t4_cpp "${RAD_INNER_SPACE}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_inner_space "${ERR}")
+add_case(t4_cpp_radius_inner_quote t4_cpp "${RAD_INNER_QUOTE}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_inner_quote "${ERR}")
+add_case(t4_cpp_radius_trailing_backslash t4_cpp "${RAD_TRAILING_BACKSLASH}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_trailing_backslash "${ERR}")
+add_case(t4_cpp_radius_multi_quote t4_cpp "${RAD_MULTI_QUOTE}" t4_bad_radius "${USAGE}" CONTAINS t4_radius_multi_quote "${ERR}")
 
 # плохие точки
 add_case(t4_cpp_symbol_coords t4_cpp "${RAD1}" t4_symbol_coords "${DATA}" CONTAINS t4_symbol_coords "${ERR}")

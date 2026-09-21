@@ -79,6 +79,42 @@ win_handle open_io_file(const char* path, DWORD desired_access, DWORD creation_d
     return win_handle{h};
 }
 
+// полный quoting
+// ќдин аргумент -> фрагмент командной строки Windows, который CRT ребЄнка
+// разберЄт ровно в этот аргумент (MS Learn "Parsing C++ command-line arguments").
+// ¬нутренн€€ " -> \"; р€д \ пр€мо перед " или перед концом удваиваетс€, чтобы
+// не "съесть" закрывающую кавычку.
+std::string quote_arg(std::string_view arg) {
+    std::string out;
+    // всегда оборачивает в кавычки
+    out += '"';
+    std::size_t backslashes = 0;
+    for (char c : arg) {
+        // экранированный слеш. если попалс€ он, то пока только ++счЄтчик. т.к. важно, что после
+        if (c == '\\') {
+            ++backslashes;
+            // если после \ кавычка, обычна€, не делиминер.
+            // тогда все \ запис. в х2, т.к. перед кавычкой парсер читает их пачками по 2шт
+            // потом одиночный \ т.к. перед кавычкой должен быть один
+        } else if (c == '"') {
+            out.append(backslashes * 2 + 1, '\\');
+            out += '"';
+            // счЄт подр€д идущих бэкслешей сбрасываетс€
+            backslashes = 0;
+        } else {
+            // не перед кавычкой парсер не будет есть по два слеша. поэтому без удвоени€
+            out.append(backslashes, '\\');
+            out += c;
+            backslashes = 0;
+        }
+    }
+    // конец строки. после точно будет кавычка-делиминер, поэтому она нужна без слеша перед ней
+    // но сами слеши удваиваютс€ т.к. они перед кавычкой
+    out.append(backslashes * 2, '\\');
+    out += '"';
+    return out;
+}
+
 #else
 // класс-обЄртка дл€ файловго дескриптора
 class posix_fd {
@@ -189,12 +225,14 @@ int main(int argc, char* argv[]) {
         si.hStdOutput = out.get();
         si.hStdError = err.get();
 
-        // строка вида "main.exe" arg1 arg2 ...; кавычки - от распада из-за пробелов в пути
-        std::string cmdline = std::format("\"{}\"", argv[kExeIndex]);
+        // строка вида "main.exe" arg1 arg2 ...; проход€т через полный quoting - так не будет проблем от бэкслешей и
+        // кавычек
+        std::string cmdline = quote_arg(argv[kExeIndex]);
         // argv + kFirstArgIndex - указатель на первый аргумент. argc - kFirstArgIndex - кол-во аргументов
         // std::views::counted даст последовательность из аргументов, если они есть
         for (const char* arg : std::views::counted(argv + kFirstArgIndex, argc - kFirstArgIndex)) {
-            cmdline += std::format(" \"{}\"", arg);
+            cmdline += ' ';
+            cmdline += quote_arg(arg);
         }
 
         // был отказ от CreateProcessW в CreateProcessA пользу чтобы не конверт. в char* -> wchar_t

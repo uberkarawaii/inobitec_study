@@ -16,10 +16,12 @@
 // 2 - не конечное число
 // 3 - не положительный радиус
 // 4 - радиус за допустимым диапазоном типа
+// 5 - радиус пуст (он был пустой строкой)
 inline constexpr int radius_not_number = 1;
 inline constexpr int radius_not_finite = 2;
 inline constexpr int radius_not_positive = 3;
 inline constexpr int radius_out_of_range = 4;
+inline constexpr int radius_empty = 5;
 // получение радиуса в виде числа
 std::expected<double, int> get_radius(std::string_view r_line) {
     // указат. на начало и конец
@@ -31,6 +33,9 @@ std::expected<double, int> get_radius(std::string_view r_line) {
         ++first;
     while (last != first && std::isspace(static_cast<unsigned char>(last[-1])))
         --last;
+
+    if (first == last)
+        return std::unexpected(radius_empty);
 
     // если после плюса идёт минус - выходим, т.к. это плохой симол
     // остальные плохие символы и так выхзовут падение далее
@@ -149,6 +154,8 @@ int main(int argc, char* argv[]) {
             std::cerr << "Радиус должен быть положительным. Получено: " << r_line << "\n";
         else if (parsedR.error() == radius_out_of_range)
             std::cerr << "Радиус выходит за допустимый диапазон: " << r_line << "\n";
+        else if (parsedR.error() == radius_empty)
+            std::cerr << "Ожидался радиус; получена строка без значения\n";
         return exit_code::usage;
     }
     double R = *parsedR;

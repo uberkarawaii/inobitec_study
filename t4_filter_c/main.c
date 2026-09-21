@@ -113,6 +113,11 @@ int main(int argc, char* argv[]) {
         return usage;
     }
 
+    if (is_empty(argv[1])) {
+        fprintf(stderr, "ќжидалс€ радиус; получена строка без значени€\n");
+        return usage;
+    }
+
     char* end_r;
     errno = 0;
     // распознать радиус. strtod сам скипнет ведущие пробелы
