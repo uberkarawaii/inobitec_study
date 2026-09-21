@@ -47,9 +47,10 @@ int is_empty(const char* s) {
 // срез пробелов по бокам
 char* trim_string(char* s, int* len) {
     // пропуск начальных пробелов
-    size_t gap = strspn(s, " \t\n\r");
-    *len -= (int)gap;
-    s += gap;
+    while (*len > 0 && isspace((unsigned char)*s)) {
+        ++s;
+        --(*len);
+    }
     // конец строки
     while (*len > 0 && isspace((unsigned char)s[*len - 1])) {
         --(*len);
@@ -57,6 +58,22 @@ char* trim_string(char* s, int* len) {
     }
 
     return s;
+}
+
+int is_hex_prefix(const char* ptr) {
+    // пропуск пробелов руками, т.к. надо проверить префикс
+    ptr += strspn(ptr, " \t\n\r");
+    if (*ptr == '\0')
+        return 0;
+    // если только префикс типа 0x, то падение и так будет. здесь проверка на 0xчисло
+    int pad = 0;
+    // +/- перед hex числом - допустимо
+    if (*ptr == '+' || *ptr == '-')
+        ++pad;
+    // если есть \0, то остановка будет точно на нём. и после - выход из if
+    if (*(ptr + pad) == '0' && (*(ptr + pad + 1) == 'x' || *(ptr + pad + 1) == 'X'))
+        return 1;
+    return 0;
 }
 
 // распознавание целого числа
@@ -67,7 +84,7 @@ int parse_int32(const char* s, int32_t* out) {
     if (*first == '+') {
         ++first;
         if (!isdigit((unsigned char)*first))
-            return INT_PARSE_NOT_NUMBER;
+            return NUMBER_NOT_NUMBER;
     }
 
     errno = 0;
@@ -77,11 +94,11 @@ int parse_int32(const char* s, int32_t* out) {
     // Windows: long == int32, спасёт только ERANGE (значение уже clamp'нуто)
     // Linux:   long 64-битный, ERANGE нет, спасёт сравнение с INT32_*
     if (errno == ERANGE || v < INT32_MIN || v > INT32_MAX)
-        return INT_PARSE_OUT_OF_RANGE;
+        return NUMBER_OUT_OF_RANGE;
 
     // число обязано занимать всю строку: "5x", "5.5", "0x10", "" - не число
     if (end == first || *end != '\0')
-        return INT_PARSE_NOT_NUMBER;
+        return NUMBER_NOT_NUMBER;
 
     *out = (int32_t)v;
     return 0;

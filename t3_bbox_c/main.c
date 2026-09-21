@@ -4,6 +4,7 @@
 
 #include "../common/exit_codes.h"
 #include "../common/geometry.h"
+#include "../common/parse_codes.h"
 #include "../common/string_utils.h"
 
 int main() {
@@ -60,23 +61,23 @@ int main() {
         // при ненулевом коде ошибки - его обработка
         if (ex_code != 0) {
             // недостаточно данных
-            if (ex_code == PARSE_TOO_FEW)
+            if (ex_code == NUMBER_TOO_FEW)
                 fprintf(stderr, "—трока %d - недостаточно координат. ќжидалось X Y Z, получено: %s\n", i, s);
 
             // нечисловые данные
-            else if (ex_code == PARSE_NOT_NUMBER)
+            else if (ex_code == NUMBER_NOT_NUMBER)
                 fprintf(stderr, "—трока %d. Ќечисловые данные: %s\n", i, s);
 
             // слишком много координат
-            else if (ex_code == PARSE_EXTRA)
+            else if (ex_code == NUMBER_TOO_MUCH)
                 fprintf(stderr, "—трока %d - слишком много координат. ќжидалось X Y Z, получено: %s\n", i, s);
 
             // одна из координат это inf или Nan
-            else if (ex_code == PARSE_NOT_FINITE)
+            else if (ex_code == NUMBER_NOT_FINITE)
                 fprintf(stderr, "—трока %d. —реди X Y Z обнаружена не конечна€ координата: %s\n", i, s);
 
             // в точке есть число выход€щее за диапазон допустимого
-            else if (ex_code == PARSE_OUT_OF_RANGE)
+            else if (ex_code == NUMBER_OUT_OF_RANGE)
                 fprintf(stderr, "—трока %d. —реди X Y Z обнаружена координата, выход€ща€ за допустимый диапазон: %s\n",
                         i, s);
 

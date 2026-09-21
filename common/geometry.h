@@ -17,6 +17,8 @@
 #define COMMON_API
 #endif
 
+#include "parse_codes.h"
+
 struct Point {
     double x;
     double y;
@@ -25,16 +27,7 @@ struct Point {
 
 // распознавание точки. возвращает код из enum-ы
 // срабатывает первая ошибка при движении справа налево
+// parse_point использует is_hex_prefix из string_utils
 COMMON_API int parse_point(char* str, struct Point* p);
-
-// 1 - мало координат
-// 2 - нечисловые данные
-// 3 - много координат
-// 4 - не конечное число
-// 5 - число за границами допустимого диапазона
-enum { PARSE_TOO_FEW = 1, PARSE_NOT_NUMBER = 2, PARSE_EXTRA = 3, PARSE_NOT_FINITE = 4, PARSE_OUT_OF_RANGE = 5 };
-
-// пропускает ведущ. пробелы и смотрит по префиксу - это 16ричное число?
-COMMON_API int is_hex_prefix(const char* ptr);
 
 #endif

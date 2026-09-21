@@ -9,6 +9,7 @@
 
 #include "../common/exit_codes.hpp"
 #include "../common/geometry.hpp"
+#include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
 int main() {
@@ -32,20 +33,20 @@ int main() {
         auto result = parse_point(temp);
         if (!result) {
             // мало аргументов
-            if (result.error() == parse_too_few)
+            if (result.error() == number_error::too_few)
                 std::cerr << "—трока " << i << " - недостаточно координат. ќжидалось X Y Z, получено: " << temp << "\n";
             // нечисловые данные
-            else if (result.error() == parse_not_number)
+            else if (result.error() == number_error::not_number)
                 std::cerr << "—трока " << i << ". Ќечисловые данные: " << temp << "\n";
             // слишком много координат
-            else if (result.error() == parse_too_much)
+            else if (result.error() == number_error::too_much)
                 std::cerr << "—трока " << i << " - слишком много координат. ќжидалось X Y Z, получено: " << temp
                           << "\n";
             // одна из координат - не конечное число
-            else if (result.error() == parse_not_finite)
+            else if (result.error() == number_error::not_finite)
                 std::cerr << "—трока " << i << ". —реди X Y Z обнаружена не конечна€ координата: " << temp << "\n";
             // в точке есть число выход€щее за диапазон допустимого
-            else if (result.error() == parse_out_of_range)
+            else if (result.error() == number_error::out_of_range)
                 std::cerr << "—трока " << i
                           << ". —реди X Y Z обнаружена координата, выход€ща€ за допустимый диапазон: " << temp << "\n";
 

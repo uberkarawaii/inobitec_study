@@ -26,6 +26,8 @@
 #include <expected>
 #include <string_view>
 
+#include "parse_codes.hpp"
+
 // убрать пробелы слева и справа
 COMMON_API void trim_str(std::string& s);
 
@@ -33,8 +35,4 @@ COMMON_API void trim_str(std::string& s);
 COMMON_API int is_empty(const std::string& s);
 
 // разбор целого (десятичное); строка уже обрезана от пробелов
-COMMON_API std::expected<std::int32_t, int> parse_int32(std::string_view s);
-
-// коды; отдельные имена, чтобы не сталкиваться с parse_* из geometry.hpp
-inline constexpr int int_parse_not_number = 1;
-inline constexpr int int_parse_out_of_range = 2;
+COMMON_API std::expected<std::int32_t, number_error> parse_int32(std::string_view s);

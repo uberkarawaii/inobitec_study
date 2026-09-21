@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "../common/exit_codes.h"
+#include "../common/parse_codes.h"
 #include "../common/string_utils.h"
 
 int get_vertex_name(int N) {
@@ -58,13 +59,13 @@ int main() {
     // распознавание числа библиотечной ф-цией из string_utils
     int32_t N = 0;
     int code = parse_int32(clean_s_num, &N);
-    if (code == INT_PARSE_OUT_OF_RANGE) {
+    if (code == NUMBER_OUT_OF_RANGE) {
         fprintf(stderr, "Кол-во вершин не помещается в 32-битное целое. Получено: %s\n", clean_s_num);
         free(s);
         free(s_num);
         return data;
     }
-    if (code == INT_PARSE_NOT_NUMBER) {
+    if (code == NUMBER_NOT_NUMBER) {
         fprintf(stderr, "Кол-во вершин должно быть целым числом. Получено: %s\n", clean_s_num);
         free(s);
         free(s_num);

@@ -7,6 +7,7 @@
 
 #include "../common/exit_codes.hpp"
 #include "../common/geometry.hpp"
+#include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
 int main() {
@@ -26,7 +27,7 @@ int main() {
     // распознавание N и проверка на ошибки распознавани€
     auto parsed = parse_int32(lineN);
     if (!parsed) {
-        if (parsed.error() == int_parse_out_of_range) {
+        if (parsed.error() == number_error::out_of_range) {
             std::cerr << "N не помещаетс€ в 32-битное целое. ѕолучено: " << lineN << '\n';
             return exit_code::data;
         }

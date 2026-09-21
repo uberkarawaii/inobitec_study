@@ -6,6 +6,7 @@
 
 #include "../common/exit_codes.h"
 #include "../common/geometry.h"
+#include "../common/parse_codes.h"
 #include "../common/string_utils.h"
 
 int get_points(struct Point** points, int* points_size, int* points_capacity) {
@@ -46,23 +47,23 @@ int get_points(struct Point** points, int* points_size, int* points_capacity) {
 
         if (ex_code != 0) {
             // если мало аргументов
-            if (ex_code == PARSE_TOO_FEW)
+            if (ex_code == NUMBER_TOO_FEW)
                 fprintf(stderr, "Строка %d - недостаточно координат. Ожидалось X Y Z, получено: %s\n", i, s);
 
             // если значение нечисловое
-            else if (ex_code == PARSE_NOT_NUMBER)
+            else if (ex_code == NUMBER_NOT_NUMBER)
                 fprintf(stderr, "Строка %d. Нечисловые данные: %s\n", i, s);
 
             // слишком много аргументов
-            else if (ex_code == PARSE_EXTRA)
+            else if (ex_code == NUMBER_TOO_MUCH)
                 fprintf(stderr, "Строка %d - слишком много координат. Ожидалось X Y Z, получено: %s\n", i, s);
 
             // одна из координат это inf или Nan
-            else if (ex_code == PARSE_NOT_FINITE)
+            else if (ex_code == NUMBER_NOT_FINITE)
                 fprintf(stderr, "Строка %d. Среди X Y Z обнаружена не конечная координата: %s\n", i, s);
 
             // в точке есть число выходящее за диапазон допустимого
-            else if (ex_code == PARSE_OUT_OF_RANGE)
+            else if (ex_code == NUMBER_OUT_OF_RANGE)
                 fprintf(stderr, "Строка %d. Среди X Y Z обнаружена координата, выходящая за допустимый диапазон: %s\n",
                         i, s);
 
@@ -103,6 +104,30 @@ int get_points(struct Point** points, int* points_size, int* points_capacity) {
     return 0;
 }
 
+int parse_radius(const char* s, double* out) {
+    if (is_empty(s))
+        return NUMBER_EMPTY;
+
+    errno = 0;
+    char* end = NULL;
+    double r = strtod(s, &end);
+    const char* tail = end;
+    while (*tail != '\0' && isspace((unsigned char)*tail))
+        ++tail;
+
+    if (end == s || *tail != '\0' || is_hex_prefix(s))
+        return NUMBER_NOT_NUMBER;
+    if (errno == ERANGE && (r == 0.0 || !isfinite(r)))
+        return NUMBER_OUT_OF_RANGE;
+    if (!isfinite(r))
+        return NUMBER_NOT_FINITE;
+    if (r <= 0)
+        return NUMBER_NOT_POSITIVE;
+
+    *out = r;
+    return NUMBER_OK;
+}
+
 int main(int argc, char* argv[]) {
     // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
     if (argc != 2) {
@@ -113,36 +138,29 @@ int main(int argc, char* argv[]) {
         return usage;
     }
 
-    if (is_empty(argv[1])) {
+    double r = 0;
+    const int r_code = parse_radius(argv[1], &r);
+    if (r_code == NUMBER_EMPTY) {
         fprintf(stderr, "Ожидался радиус; получена строка без значения\n");
         return usage;
     }
 
-    char* end_r;
-    errno = 0;
-    // распознать радиус. strtod сам скипнет ведущие пробелы
-    double r = strtod(argv[1], &end_r);
-    const char* tail = end_r;
-    // пропуск заключит. пробелов
-    while (*tail != '\0' && isspace((unsigned char)*tail))
-        ++tail;
-    // если распозн. ост. в начале, или в конце не пусто, или есть 16сс префикс - то это плохие символы
-    if (end_r == argv[1] || *tail != '\0' || is_hex_prefix(argv[1])) {
+    if (r_code == NUMBER_NOT_NUMBER) {
         fprintf(stderr, "Радиус должен быть числом. Получено: %s\n", argv[1]);
         return usage;
     }
 
-    if (errno == ERANGE && (r == 0.0 || !isfinite(r))) {
+    if (r_code == NUMBER_OUT_OF_RANGE) {
         fprintf(stderr, "Радиус выходит за допустимый диапазон: %s\n", argv[1]);
         return usage;
     }
 
-    if (!isfinite(r)) {
+    if (r_code == NUMBER_NOT_FINITE) {
         fprintf(stderr, "Радиус должен быть конечным числом. Получено: %s\n", argv[1]);
         return usage;
     }
 
-    if (r <= 0) {
+    if (r_code == NUMBER_NOT_POSITIVE) {
         fprintf(stderr, "Радиус должен быть положительным. Получено: %s\n", argv[1]);
         return usage;
     }

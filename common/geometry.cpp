@@ -10,7 +10,7 @@
 #include <system_error>
 
 // распознавание x y z
-std::expected<Point, int> parse_point(std::string_view s) {
+std::expected<Point, number_error> parse_point(std::string_view s) {
     // чтение double чисел из строки
     std::array<double, 3> dots{};
     // указатель на (начало строки)
@@ -26,7 +26,7 @@ std::expected<Point, int> parse_point(std::string_view s) {
         // если указатель начала указывает на конец - а при чтении 3 точек этого не должно произойти
         // т.к. их 3 штуки, то значит нет полного X Y Z
         if (ptr_start == ptr_end)
-            return std::unexpected(parse_too_few);
+            return std::unexpected(number_error::too_few);
 
         // возможно первый знак +, тогда сдвиг начала, чтобы from_chars смог нормально прочитать
         // если за плюсом идёт минус - так нельзя, такой случай - плохой символ.
@@ -35,26 +35,26 @@ std::expected<Point, int> parse_point(std::string_view s) {
         if (*first == '+') {
             ++first;
             if (first != ptr_end && *first == '-')
-                return std::unexpected(parse_not_number);
+                return std::unexpected(number_error::not_number);
         }
 
         const auto [ptr, ec] = std::from_chars(first, ptr_end, dots[j]);
         // распознавание было удачным и указатель на конце, хотя 3 числа не было прочитано
         if (ec == std::errc{} && ptr == ptr_end && j < 2)
-            return std::unexpected(parse_too_few);
+            return std::unexpected(number_error::too_few);
 
         // если число было за границами допустимого диапазона
         if (ec == std::errc::result_out_of_range)
-            return std::unexpected(parse_out_of_range);
+            return std::unexpected(number_error::out_of_range);
 
         // если ec с ошибкой или распознавание слетело не на пробеле и не на конце, то это ошибка в данных
         if (ec != std::errc{} || (ptr != ptr_end && !std::isspace(static_cast<unsigned char>(*ptr)))) {
-            return std::unexpected(parse_not_number);
+            return std::unexpected(number_error::not_number);
         }
 
         // проверка, что это не nan/inf
         if (!std::isfinite(dots[j]))
-            return std::unexpected(parse_not_finite);
+            return std::unexpected(number_error::not_finite);
         // начальный указатель для след.итерац. становится туда, где остановилось распознавание в этой итерации
         ptr_start = ptr;
 
@@ -74,20 +74,20 @@ std::expected<Point, int> parse_point(std::string_view s) {
             if (*ptr_start == '+') {
                 ++ptr_start;
                 if (ptr_start != ptr_end && *ptr_start == '-')
-                    return std::unexpected(parse_not_number);
+                    return std::unexpected(number_error::not_number);
             }
             double d{};
             const auto [ptr1, ec1] = std::from_chars(ptr_start, ptr_end, d);
             // если число было за границами допустимого диапазона
             if (ec1 == std::errc::result_out_of_range)
-                return std::unexpected(parse_out_of_range);
+                return std::unexpected(number_error::out_of_range);
             // если ec1 выдаёт ошибку и указатель остановился не на пробельном и не на конечном символе, то дело в
             // лишнем символе
             if (ec1 != std::errc{} || (ptr1 != ptr_end && !std::isspace(static_cast<unsigned char>(*ptr1))))
-                return std::unexpected(parse_not_number);
+                return std::unexpected(number_error::not_number);
             // иначе - там лишнее число
             else
-                return std::unexpected(parse_too_much);
+                return std::unexpected(number_error::too_much);
         }
     }
 

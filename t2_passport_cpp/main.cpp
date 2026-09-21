@@ -3,6 +3,7 @@
 #include <string>
 
 #include "../common/exit_codes.hpp"
+#include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
 // форма слова "вершина" со склонением.
@@ -43,7 +44,7 @@ int main() {
 
     auto parsed = parse_int32(vertexes);
     if (!parsed) {
-        if (parsed.error() == int_parse_out_of_range) {
+        if (parsed.error() == number_error::out_of_range) {
             std::cerr << " ол-во вершин не помещаетс€ в 32-битное целое. ѕолучено: " << vertexes << "\n";
             return exit_code::data;
         }

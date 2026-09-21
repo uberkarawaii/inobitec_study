@@ -10,6 +10,7 @@
 
 #include "../common/exit_codes.h"
 #include "../common/geometry.h"
+#include "../common/parse_codes.h"
 #include "../common/string_utils.h"
 
 #define MAX_SIZE 20
@@ -34,11 +35,11 @@ int main(void) {
     // распознавание - через библиотеч. ф-цию из string_utils
     int32_t N = 0;
     int code = parse_int32(clean_n, &N);
-    if (code == INT_PARSE_OUT_OF_RANGE) {
+    if (code == NUMBER_OUT_OF_RANGE) {
         fprintf(stderr, "N не помещается в 32-битное целое. Получено: %s", clean_n);
         return data;
     }
-    if (code == INT_PARSE_NOT_NUMBER) {
+    if (code == NUMBER_NOT_NUMBER) {
         fprintf(stderr, "N должно быть целым числом. Получено: %s", clean_n);
         return data;
     }

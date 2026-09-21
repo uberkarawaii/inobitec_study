@@ -19,6 +19,8 @@
 
 #include <stdint.h>
 
+#include "parse_codes.h"
+
 // массив символов из входного потока до \0 через динамич. массив
 COMMON_API char* get_string(int* len);
 
@@ -28,13 +30,13 @@ COMMON_API int is_empty(const char* s);
 // срез пробелов по бокам
 COMMON_API char* trim_string(char* s, int* len);
 
+// пропускает ведущ. пробелы и смотрит по префиксу - это 16ричное число?
+COMMON_API int is_hex_prefix(const char* ptr);
+
 // разбор целого (десятичное); строка уже обрезана от пробелов
 // 0 - успех
-// INT_PARSE_NOT_NUMBER  - не число
-// INT_PARSE_OUT_OF_RANGE - не помещается в int32
+// NUMBER_NOT_NUMBER  - не число
+// NUMBER_OUT_OF_RANGE - не помещается в int32
 COMMON_API int parse_int32(const char* s, int32_t* out);
-
-// коды именно для целочисленного разбора, чтобы не сталкиваться с PARSE_* из geometry
-enum { INT_PARSE_NOT_NUMBER = 1, INT_PARSE_OUT_OF_RANGE = 2 };
 
 #endif

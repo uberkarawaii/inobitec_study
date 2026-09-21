@@ -3,6 +3,8 @@
 #include <expected>
 #include <string_view>
 
+#include "parse_codes.hpp"
+
 // geom.hpp включается и в geom.cpp, и в main.cpp
 // из geom.cpp будет сделана dll, так что при сборке geom.cpp его ф-ции будут помечены для экспорта
 // внесения в таблицу адресов (.lib)
@@ -36,15 +38,4 @@ struct Point {
 
 // распознавание x y z
 // возвращает либо Point, либо код ошибки (произойдёт первая ошибка при движении справа налево)
-COMMON_API std::expected<Point, int> parse_point(std::string_view s);
-
-// 1 - мало координат
-// 2 - нечисловые данные
-// 3 - много координат
-// 4 - координата равна inf или nan
-// 5 - число за границами допустимого диапазона
-inline constexpr int parse_too_few = 1;
-inline constexpr int parse_not_number = 2;
-inline constexpr int parse_too_much = 3;
-inline constexpr int parse_not_finite = 4;
-inline constexpr int parse_out_of_range = 5;
+COMMON_API std::expected<Point, number_error> parse_point(std::string_view s);

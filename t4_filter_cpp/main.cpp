@@ -10,20 +10,11 @@
 
 #include "../common/exit_codes.hpp"
 #include "../common/geometry.hpp"
+#include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
-// 1 - несчисловой символ
-// 2 - не конечное число
-// 3 - не положительный радиус
-// 4 - радиус за допустимым диапазоном типа
-// 5 - радиус пуст (он был пустой строкой)
-inline constexpr int radius_not_number = 1;
-inline constexpr int radius_not_finite = 2;
-inline constexpr int radius_not_positive = 3;
-inline constexpr int radius_out_of_range = 4;
-inline constexpr int radius_empty = 5;
 // получение радиуса в виде числа
-std::expected<double, int> get_radius(std::string_view r_line) {
+std::expected<double, number_error> parse_radius(std::string_view r_line) {
     // указат. на начало и конец
     const char* first = r_line.data();
     const char* last = r_line.data() + r_line.size();
@@ -35,14 +26,14 @@ std::expected<double, int> get_radius(std::string_view r_line) {
         --last;
 
     if (first == last)
-        return std::unexpected(radius_empty);
+        return std::unexpected(number_error::empty);
 
     // если после плюса идЄт минус - выходим, т.к. это плохой симол
     // остальные плохие символы и так выхзовут падение далее
     if (first != last && *first == '+') {
         ++first;
         if (first != last && *first == '-')
-            return std::unexpected(radius_not_number);
+            return std::unexpected(number_error::not_number);
     }
 
     double R = 0;
@@ -50,19 +41,19 @@ std::expected<double, int> get_radius(std::string_view r_line) {
 
     // число за границами диапазона типа
     if (ec == std::errc::result_out_of_range)
-        return std::unexpected(radius_out_of_range);
+        return std::unexpected(number_error::out_of_range);
 
     // если парс остановилс€ не на конце или возникла ошибка - там нечисловой символ
     if (ec != std::errc() || ptr != last)
-        return std::unexpected(radius_not_number);
+        return std::unexpected(number_error::not_number);
 
     // deepseek посоветовал сделать провеку на конечность числа
     // т.к. fromchars читает nan и бесконечность без проблем, как число
     if (!std::isfinite(R))
-        return std::unexpected(radius_not_finite);
+        return std::unexpected(number_error::not_finite);
     // проверка положительности радиуса
     if (R <= 0)
-        return std::unexpected(radius_not_positive);
+        return std::unexpected(number_error::not_positive);
 
     return R;
 }
@@ -87,24 +78,24 @@ std::expected<std::vector<Point>, int> get_points() {
         auto result = parse_point(temp);
         if (!result) {
             // мало аргументов
-            if (result.error() == parse_too_few)
+            if (result.error() == number_error::too_few)
                 std::cerr << "—трока " << i << " - недостаточно координат. ќжидалось X Y Z, получено: " << temp << "\n";
 
             // нечисловые данные
-            else if (result.error() == parse_not_number)
+            else if (result.error() == number_error::not_number)
                 std::cerr << "—трока " << i << ". Ќечисловые данные: " << temp << "\n";
 
             // слишком много координат
-            else if (result.error() == parse_too_much)
+            else if (result.error() == number_error::too_much)
                 std::cerr << "—трока " << i << " - слишком много координат. ќжидалось X Y Z, получено: " << temp
                           << "\n";
 
             // одна из координат - не конечное число
-            else if (result.error() == parse_not_finite)
+            else if (result.error() == number_error::not_finite)
                 std::cerr << "—трока " << i << ". —реди X Y Z обнаружена не конечна€ координата: " << temp << "\n";
 
             // в точке есть число выход€щее за диапазон допустимого
-            else if (result.error() == parse_out_of_range)
+            else if (result.error() == number_error::out_of_range)
                 std::cerr << "—трока " << i
                           << ". —реди X Y Z обнаружена координата, выход€ща€ за допустимый диапазон: " << temp << "\n";
 
@@ -144,17 +135,17 @@ int main(int argc, char* argv[]) {
     std::string_view r_line{argv[1]};
 
     // распознавание числа и проверка, что это число
-    auto parsedR = get_radius(r_line);
+    auto parsedR = parse_radius(r_line);
     if (!parsedR) {
-        if (parsedR.error() == radius_not_number)
+        if (parsedR.error() == number_error::not_number)
             std::cerr << "–адиус должен быть числом. ѕолучено: " << r_line << "\n";
-        else if (parsedR.error() == radius_not_finite)
+        else if (parsedR.error() == number_error::not_finite)
             std::cerr << "–адиус должен быть конечным числом. ѕолучено: " << r_line << "\n";
-        else if (parsedR.error() == radius_not_positive)
+        else if (parsedR.error() == number_error::not_positive)
             std::cerr << "–адиус должен быть положительным. ѕолучено: " << r_line << "\n";
-        else if (parsedR.error() == radius_out_of_range)
+        else if (parsedR.error() == number_error::out_of_range)
             std::cerr << "–адиус выходит за допустимый диапазон: " << r_line << "\n";
-        else if (parsedR.error() == radius_empty)
+        else if (parsedR.error() == number_error::empty)
             std::cerr << "ќжидалс€ радиус; получена строка без значени€\n";
         return exit_code::usage;
     }
