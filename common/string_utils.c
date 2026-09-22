@@ -61,7 +61,7 @@ char* trim_string(char* s, int* len) {
 }
 
 int is_hex_prefix(const char* ptr) {
-    // пропуск пробелов руками, т.к. надо проверить префикс. через isspace, 
+    // пропуск пробелов руками, т.к. надо проверить префикс. через isspace,
     // не ручной набор пробел. символов. иначе ассиметрия с с++
     while (isspace((unsigned char)*ptr))
         ++ptr;

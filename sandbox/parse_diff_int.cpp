@@ -41,20 +41,52 @@ const char* ec_name(std::errc e) {
     return "other";
 }
 
-constexpr int kSentinel = -123456789;  // to see if from_chars touches value
+constexpr int kSentinel = -123456789; // to see if from_chars touches value
 
-}  // namespace
+} // namespace
 
 int main() {
     const std::vector<std::string> cases = {
-        "",          " ",           "5",            " 5",          "5 ",           "+5",
-        "+ 5",       "-5",          "- 5",          "5.5",         ".5",           "5x",
-        "x5",        "010",         "0",            "0x10",        "0X10",         "2147483647",
-        "2147483648","2147483649",  "3000000000",   "9223372036854775807", "9223372036854775808",
-        "-2147483648","-2147483649","-3000000000",  "-9223372036854775808", "-9223372036854775809",
-        "99999999999999999999999",   "+5 ",         "  +5",        "  -5",
-        "++5",       "+-5",         "-+5",          "+abc",        "-abc",         "+",
-        "-",         "+.5",
+        "",
+        " ",
+        "5",
+        " 5",
+        "5 ",
+        "+5",
+        "+ 5",
+        "-5",
+        "- 5",
+        "5.5",
+        ".5",
+        "5x",
+        "x5",
+        "010",
+        "0",
+        "0x10",
+        "0X10",
+        "2147483647",
+        "2147483648",
+        "2147483649",
+        "3000000000",
+        "9223372036854775807",
+        "9223372036854775808",
+        "-2147483648",
+        "-2147483649",
+        "-3000000000",
+        "-9223372036854775808",
+        "-9223372036854775809",
+        "99999999999999999999999",
+        "+5 ",
+        "  +5",
+        "  -5",
+        "++5",
+        "+-5",
+        "-+5",
+        "+abc",
+        "-abc",
+        "+",
+        "-",
+        "+.5",
     };
 
     std::printf("sizeof(int)=%zu sizeof(long)=%zu sizeof(int32_t)=%zu\n\n", sizeof(int), sizeof(long),
@@ -87,11 +119,10 @@ int main() {
         const bool skip_full = (ec_skip == std::errc{}) && (p_skip == last);
         const bool skip_changed = (skip != kSentinel);
 
-        std::printf(
-            "in=%-26s | strtol: v=%-20ld conv=%d full=%d ERANGE=%d rem=%-10s "
-            "| fc-raw: ec=%-16s v=%-11d full=%d chg=%d | fc+skip: ec=%-16s v=%-11d full=%d chg=%d\n",
-            quote(s).c_str(), v, st_conv, st_full, st_erange, quote(end).c_str(), ec_name(ec_raw), raw, raw_full,
-            raw_changed, ec_name(ec_skip), skip, skip_full, skip_changed);
+        std::printf("in=%-26s | strtol: v=%-20ld conv=%d full=%d ERANGE=%d rem=%-10s "
+                    "| fc-raw: ec=%-16s v=%-11d full=%d chg=%d | fc+skip: ec=%-16s v=%-11d full=%d chg=%d\n",
+                    quote(s).c_str(), v, st_conv, st_full, st_erange, quote(end).c_str(), ec_name(ec_raw), raw,
+                    raw_full, raw_changed, ec_name(ec_skip), skip, skip_full, skip_changed);
     }
 
     return 0;
