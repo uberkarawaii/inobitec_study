@@ -10,6 +10,7 @@
 
 #include "parse_codes.hpp"
 
+// при переводе на isspace - новые вспомогат. методы
 namespace {
 std::size_t find_first_not_space(const std::string& s) {
     std::size_t i = 0;
