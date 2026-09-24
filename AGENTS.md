@@ -2801,6 +2801,61 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
 	 44 - t1_cpp_float_stderr (Failed)
 
   ```
+  
+- то же самое гоняю на виртуалке с теми же командами
+  просто тесты 
+  ```
+  100% tests passed, 0 tests failed out of 510
+
+  Total Test time (real) =   2.95 sec
+  ```
+  намеренно порчу один байт в эталоне N->M t1_abc
+  ```
+  ...
+    6/510 Test   #6: t1_c_abc_stderr ...........................***Failed    0.00 sec
+  check failed: --equal
+  result   : /home/karavai/test/inobitec_study/build/debug/tests/results/t1_c_abc.err (41 bytes, normalized)
+  expected : /home/karavai/test/inobitec_study/tests/expect/t1_abc (41 bytes, normalized)
+  first difference at byte 0 (normalization: CR removed, trailing LFs stripped)
+    expected: "M \xE4\xEE\xEB\xE6\xED\xEE \xE1\xFB\xF2\xFC \xF6\xE5\xEB\xFB\xEC \xF7\xE8\xF1\xEB\xEE\xEC. \xCF\xEE\xEB\xF3\xF7\xE5\xED\xEE: abc"
+    result  : "N \xE4\xEE\xEB\xE6\xED\xEE \xE1\xFB\xF2\xFC \xF6\xE5\xEB\xFB\xEC \xF7\xE8\xF1\xEB\xEE\xEC. \xCF\xEE\xEB\xF3\xF7\xE5\xED\xEE: abc"
+  ...
+  то же с с++
+  ...
+  99% tests passed, 2 tests failed out of 510
+
+  Total Test time (real) =   2.95 sec
+
+  The following tests FAILED:
+	  6 - t1_c_abc_stderr (Failed)
+	 42 - t1_cpp_abc_stderr (Failed)
+  ```
+  повтор на релизной сборке. когда чисто 
+  ```
+  100% tests passed, 0 tests failed out of 510
+
+  Total Test time (real) =   1.42 sec
+  ```
+  когда попортила байт, также как в тот раз
+  ```
+  ...
+    6/510 Test   #6: t1_c_abc_stderr ...........................***Failed    0.00 sec
+  check failed: --equal
+  result   : /home/karavai/test/inobitec_study/build/release/tests/results/t1_c_abc.err (41 bytes, normalized)
+  expected : /home/karavai/test/inobitec_study/tests/expect/t1_abc (41 bytes, normalized)
+  first difference at byte 0 (normalization: CR removed, trailing LFs stripped)
+    expected: "M \xE4\xEE\xEB\xE6\xED\xEE \xE1\xFB\xF2\xFC \xF6\xE5\xEB\xFB\xEC \xF7\xE8\xF1\xEB\xEE\xEC. \xCF\xEE\xEB\xF3\xF7\xE5\xED\xEE: abc"
+    result  : "N \xE4\xEE\xEB\xE6\xED\xEE \xE1\xFB\xF2\xFC \xF6\xE5\xEB\xFB\xEC \xF7\xE8\xF1\xEB\xEE\xEC. \xCF\xEE\xEB\xF3\xF7\xE5\xED\xEE: abc"
+  то же с cpp
+  ...
+  99% tests passed, 2 tests failed out of 510
+
+  Total Test time (real) =   1.40 sec
+
+  The following tests FAILED:
+	  6 - t1_c_abc_stderr (Failed)
+	 42 - t1_cpp_abc_stderr (Failed)
+  ```
 
 *Что заметила при работе с deepseek*
 - попросила перечитать "известные ограничения..." readme. видимо он забыл, что check теперь будет везде писать 
