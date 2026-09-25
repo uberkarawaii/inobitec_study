@@ -3131,14 +3131,32 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   неудобно набирать. поэтому сделаю в CMakePresets.json секцию с пресетами для таких команд. - для юнит-тестов
   зафиксировала это в ридми
 
-- коммит + проверяю всё на виртуалке
+- коммит + проверяю всё на виртуалке: ctest --preset full 
+  `100% tests passed, 0 tests failed out of 519 Total Test time (real) =   3.11 sec`
+  ctest --preset full-release 
+  `100% tests passed, 0 tests failed out of 519 Total Test time (real) =   1.56 sec`
 
-- далее про чистые ф-ции которые не живут в common. мой вопрос ии - по политике курса такие ф-ции стоит выносить? 
-  ии: да, нужно. не обёртки над stl, не однострочники. а ф-ции с реальной логикой / математикой, написанные
-  под специфичную цель. ии советует кандидатов на вынос, цитата:
-  - get_vertex_name (склонение) — t2, C и C++. Реальная логика (3 ветки + особый случай 11–14).
-  - геометрическое ядро (расстояние, центроид, вершина N-угольника) — t1/t3, инлайн в main. Реальная математика.
-  - parse_radius — уже вынесена (t4), можно дописать ей юнит-тест.
+  негатив. контроль. на одном примере: unit/trim_string.c меняю ожидание обрезки abc с abc на abs
+  ```
+    7/9 Test #517: is_hex_prefix_c ..................   Passed    0.01 sec
+    Start 518: trim_string_cpp
+  8/9 Test #518: trim_string_cpp ..................   Passed    0.01 sec
+      Start 519: trim_string_c
+  9/9 Test #519: trim_string_c ....................***Failed    0.01 sec
+  FAIL: "  abc  " -> "abc", want "abs"
+  trim_string_c: 1 failures
+
+
+  89% tests passed, 1 tests failed out of 9
+
+  Total Test time (real) =   0.09 sec
+
+  The following tests FAILED:
+    519 - trim_string_c (Failed)
+  ```
+  исправляю, тот же прогон: `100% tests passed, 0 tests failed out of 9 Total Test time (real) =   0.10 sec`
+
+
 
   
 *Что заметила при работе с deepseek*
