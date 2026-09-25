@@ -9,18 +9,25 @@
 
 // распознавание точки. только для непустых строк
 // коды возможных ошибок:
-int parse_point(char* str, struct Point* p) {
+int parse_point(const char* str, struct Point* p) {
     // указатель на начало строки
-    char* pointer = str;
+    const char* pointer = str;
     // пустой указатель, туда будет попадать конец распознавания числа
     char* end = NULL;
 
     int i = 0;
     double d[3];
-    while (i < 3 && *pointer != '\0') {
+    while (i < 3) {
+        // пропускаем начальные пробелы и смотрим - не пуста ли строка?
+        while (isspace((unsigned char)*pointer))
+            ++pointer;
+        if (*pointer == '\0')
+            break;
+
         // проверка префикса 16сс. если есть - воспринимаем как некорректное
         if (is_hex_prefix(pointer))
             return NUMBER_NOT_NUMBER;
+
         // ошибка в ноль до попытки распознать
         errno = 0;
         // попытка распознать число

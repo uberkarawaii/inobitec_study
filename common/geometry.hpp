@@ -34,6 +34,9 @@ struct Point {
     double x;
     double y;
     double z;
+    // дефолт. реализация == (посимв. сравнение) то же , что и x == o.x && y == o.y && z == o.z
+    // неявно становится inline - т.е. не будет конфликтов при include geometry.hpp в main.cpp и geometry.cpp
+    bool operator==(const Point&) const = default;
 };
 
 // распознавание x y z

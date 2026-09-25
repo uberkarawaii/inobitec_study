@@ -23,6 +23,9 @@ configure_target(gtest_smoke OFF)
 target_link_libraries(gtest_smoke PRIVATE GTest::gtest_main)
 add_test(NAME gtest_smoke COMMAND gtest_smoke)
 
+# первичная версия юнит-теста - внутри пока только для parse_point (c/cpp)
+add_subdirectory(unit)
+
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results")
 
 # test_name - имя таргета теста

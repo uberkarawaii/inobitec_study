@@ -28,6 +28,6 @@ struct Point {
 // распознавание точки. возвращает код из enum-ы
 // срабатывает первая ошибка при движении справа налево
 // parse_point использует is_hex_prefix из string_utils
-COMMON_API int parse_point(char* str, struct Point* p);
+COMMON_API int parse_point(const char* str, struct Point* p);
 
 #endif
