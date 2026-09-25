@@ -22,29 +22,26 @@ int main(void) {
         fprintf(stderr, "Получен пустой ввод вместо целого N");
         return no_input;
     }
-    // очистка строки от пробельных символов по краям
-    int len = (int)strlen(lineN);
-    char* clean_n = trim_string(lineN, &len);
 
-    // проверка строки на пустоту после очистки от пробельных символов
-    if (is_empty(clean_n)) {
+    // распознавание - через библиотеч. ф-цию из string_utils
+    int32_t N = 0;
+    int code = parse_int32(lineN, &N);
+
+    if (code == NUMBER_EMPTY) {
         fprintf(stderr, "Получен пустой ввод вместо целого N");
         return no_input;
     }
 
-    // распознавание - через библиотеч. ф-цию из string_utils
-    int32_t N = 0;
-    int code = parse_int32(clean_n, &N);
     if (code == NUMBER_OUT_OF_RANGE) {
-        fprintf(stderr, "N не помещается в 32-битное целое. Получено: %s", clean_n);
+        fprintf(stderr, "N не помещается в 32-битное целое. Получено: %s", lineN);
         return data;
     }
     if (code == NUMBER_NOT_NUMBER) {
-        fprintf(stderr, "N должно быть целым числом. Получено: %s", clean_n);
+        fprintf(stderr, "N должно быть целым числом. Получено: %s", lineN);
         return data;
     }
     if (N < MIN_SIZE || N > MAX_SIZE) {
-        fprintf(stderr, "N должно быть в диапазоне [3;20]. Получено: %s", clean_n);
+        fprintf(stderr, "N должно быть в диапазоне [3;20]. Получено: %s", lineN);
         return usage;
     }
 

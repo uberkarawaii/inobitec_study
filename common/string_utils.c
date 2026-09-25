@@ -80,26 +80,35 @@ int is_hex_prefix(const char* ptr) {
 
 // распознавание целого числа
 int parse_int32(const char* s, int32_t* out) {
+    // указат на начало и конец
+    const char *start = s, *end = s + (int)strlen(s);
+    while (isspace((unsigned char)*start) && *start != '\0')
+        ++start;
+    while (end > start && isspace((unsigned char)*(end - 1)))
+        --end;
+    // теперь указатели по краям содержимого. если его нет и они в одном месте - строка пустая
+    if (start == end)
+        return NUMBER_EMPTY;
+
     // ведущий + допустим только если сразу за ним цифра: strtol принял бы и "+-5",
     // сдвинуть + руками надо (from_chars не умеет плюс), но тогда "+-5" надо отсечь
-    const char* first = s;
-    if (*first == '+') {
-        ++first;
-        if (!isdigit((unsigned char)*first))
+    if (*start == '+') {
+        ++start;
+        if (!isdigit((unsigned char)*start))
             return NUMBER_NOT_NUMBER;
     }
 
     errno = 0;
-    char* end = NULL;
-    long v = strtol(first, &end, 10);
+    char* end_recogn = NULL;
+    long v = strtol(start, &end_recogn, 10);
 
     // Windows: long == int32, спасёт только ERANGE (значение уже clamp'нуто)
     // Linux:   long 64-битный, ERANGE нет, спасёт сравнение с INT32_*
     if (errno == ERANGE || v < INT32_MIN || v > INT32_MAX)
         return NUMBER_OUT_OF_RANGE;
 
-    // число обязано занимать всю строку: "5x", "5.5", "0x10", "" - не число
-    if (end == first || *end != '\0')
+    // если конец распозн. от strtol не там же, где найденный конец данных end, то есть лишние символы
+    if (end_recogn != end)
         return NUMBER_NOT_NUMBER;
 
     *out = (int32_t)v;

@@ -35,7 +35,7 @@ int main() {
         free(s);
         // clean_s освободится автоматически, т.к. s окружающее его было освобождено
         fprintf(stderr, "Пустой ввод вместо имени фигуры\n");
-        return data;
+        return no_input;
     }
     // считывание след. строки с числом вершин
     int len_num;
@@ -47,26 +47,26 @@ int main() {
         fprintf(stderr, "EOF вместо числа вершин\n");
         return no_input;
     }
-    // очистка от пробелов
-    char* clean_s_num = trim_string(s_num, &len_num);
-    // если после очистки от пробелов длина = 0, то получается вся строка была из пробелов
-    if (len_num == 0) {
-        free(s);
-        free(s_num);
-        fprintf(stderr, "Пустой ввод вместо кол-ва вершин\n");
-        return data;
-    }
+
     // распознавание числа библиотечной ф-цией из string_utils
     int32_t N = 0;
-    int code = parse_int32(clean_s_num, &N);
+    int code = parse_int32(s_num, &N);
+
+    if (code == NUMBER_EMPTY) {
+        fprintf(stderr, "Пустой ввод вместо кол-ва вершин\n");
+        free(s);
+        free(s_num);
+        return no_input;
+    }
+
     if (code == NUMBER_OUT_OF_RANGE) {
-        fprintf(stderr, "Кол-во вершин не помещается в 32-битное целое. Получено: %s\n", clean_s_num);
+        fprintf(stderr, "Кол-во вершин не помещается в 32-битное целое. Получено: %s\n", s_num);
         free(s);
         free(s_num);
         return data;
     }
     if (code == NUMBER_NOT_NUMBER) {
-        fprintf(stderr, "Кол-во вершин должно быть целым числом. Получено: %s\n", clean_s_num);
+        fprintf(stderr, "Кол-во вершин должно быть целым числом. Получено: %s\n", s_num);
         free(s);
         free(s_num);
         return data;

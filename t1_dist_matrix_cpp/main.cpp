@@ -13,13 +13,7 @@
 int main() {
     std::string lineN;
     // считывание строки, проверка на пустоту
-    if (!std::getline(std::cin, lineN) || lineN.empty()) {
-        std::cerr << "Получен пустой ввод вместо целого N\n";
-        return exit_code::no_in;
-    }
-    // очистка от боковых пробельных символов и проверка на пустоту
-    trim_str(lineN);
-    if (lineN.empty()) {
+    if (!std::getline(std::cin, lineN)) {
         std::cerr << "Получен пустой ввод вместо целого N\n";
         return exit_code::no_in;
     }
@@ -30,6 +24,9 @@ int main() {
         if (parsed.error() == number_error::out_of_range) {
             std::cerr << "N не помещается в 32-битное целое. Получено: " << lineN << '\n';
             return exit_code::data;
+        } else if (parsed.error() == number_error::empty) {
+            std::cerr << "Получен пустой ввод вместо целого N\n";
+            return exit_code::no_in;
         }
         // при любой другой ошибке (ожидаемо при плохом токене, но для страховки, чтобы вдруг не пошло дальше)
         std::cerr << "N должно быть целым числом. Получено: " << lineN << '\n';

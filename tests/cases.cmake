@@ -58,9 +58,9 @@ add_case(t1_cpp_leading_zero t1_cpp "${EMPTY_ARG}" t1_leading_zero "${SUCCESS}" 
 # === T2 C TESTS ===
 # входные данные с ошибками
 add_case(t2_c_eof_name t2_c "${EMPTY_ARG}" t2_eof_name "${NO_INPUT}" EQ t2_eof_name "${ERR}")
-add_case(t2_c_empty_name t2_c "${EMPTY_ARG}" t2_empty_name "${DATA}" EQ t2_empty_name "${ERR}")
+add_case(t2_c_empty_name t2_c "${EMPTY_ARG}" t2_empty_name "${NO_INPUT}" EQ t2_empty_name "${ERR}")
 add_case(t2_c_eof_vertexes t2_c "${EMPTY_ARG}" t2_eof_vertexes "${NO_INPUT}" EQ t2_eof_vertexes "${ERR}")
-add_case(t2_c_empty_vertexes t2_c "${EMPTY_ARG}" t2_empty_vertexes "${DATA}" EQ t2_empty_vertexes "${ERR}")
+add_case(t2_c_empty_vertexes t2_c "${EMPTY_ARG}" t2_empty_vertexes "${NO_INPUT}" EQ t2_empty_vertexes "${ERR}")
 add_case(t2_c_fractional_vertexes t2_c "${EMPTY_ARG}" t2_fractional_vertexes "${DATA}" EQ t2_fractional_vertexes "${ERR}")
 add_case(t2_c_nan_vertexes t2_c "${EMPTY_ARG}" t2_nan_vertexes "${DATA}" EQ t2_nan_vertexes "${ERR}")
 add_case(t2_c_negative_vertexes t2_c "${EMPTY_ARG}" t2_negative_vertexes "${USAGE}" EQ t2_negative_vertexes "${ERR}")
@@ -82,9 +82,9 @@ add_case(t2_c_leading_zero t2_c "${EMPTY_ARG}" t2_leading_zero "${SUCCESS}" EQ t
 # === T2 CPP TESTS ===
 # входные данные с ошибками
 add_case(t2_cpp_eof_name t2_cpp "${EMPTY_ARG}" t2_eof_name "${NO_INPUT}" EQ t2_eof_name "${ERR}")
-add_case(t2_cpp_empty_name t2_cpp "${EMPTY_ARG}" t2_empty_name "${DATA}" EQ t2_empty_name "${ERR}")
+add_case(t2_cpp_empty_name t2_cpp "${EMPTY_ARG}" t2_empty_name "${NO_INPUT}" EQ t2_empty_name "${ERR}")
 add_case(t2_cpp_eof_vertexes t2_cpp "${EMPTY_ARG}" t2_eof_vertexes "${NO_INPUT}" EQ t2_eof_vertexes "${ERR}")
-add_case(t2_cpp_empty_vertexes t2_cpp "${EMPTY_ARG}" t2_empty_vertexes "${DATA}" EQ t2_empty_vertexes "${ERR}")
+add_case(t2_cpp_empty_vertexes t2_cpp "${EMPTY_ARG}" t2_empty_vertexes "${NO_INPUT}" EQ t2_empty_vertexes "${ERR}")
 add_case(t2_cpp_fractional_vertexes t2_cpp "${EMPTY_ARG}" t2_fractional_vertexes "${DATA}" EQ t2_fractional_vertexes "${ERR}")
 add_case(t2_cpp_nan_vertexes t2_cpp "${EMPTY_ARG}" t2_nan_vertexes "${DATA}" EQ t2_nan_vertexes "${ERR}")
 add_case(t2_cpp_negative_vertexes t2_cpp "${EMPTY_ARG}" t2_negative_vertexes "${USAGE}" EQ t2_negative_vertexes "${ERR}")

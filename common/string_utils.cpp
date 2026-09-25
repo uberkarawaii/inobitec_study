@@ -51,6 +51,15 @@ int is_empty(const std::string& s) {
 
 // распознавание целого числа
 std::expected<std::int32_t, number_error> parse_int32(std::string_view s) {
+    // пропуск краевых пробелов
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front())))
+        s.remove_prefix(1);
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back())))
+        s.remove_suffix(1);
+    // если после очистки символов больше нет, строка пустая
+    if (s.empty())
+        return std::unexpected(number_error::empty);
+
     const char* first = s.data();
     const char* last = s.data() + s.size();
 

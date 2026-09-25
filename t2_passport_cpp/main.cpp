@@ -18,6 +18,7 @@ int get_vertex_name(int N) {
 }
 
 int main() {
+    // проверка что имя фигуры - не пустое
     std::string name;
     if (!std::getline(std::cin, name)) {
         std::cerr << "EOF вместо имени фигуры\n";
@@ -27,19 +28,13 @@ int main() {
     trim_str(name);
     if (name.empty()) {
         std::cerr << "Пустой ввод вместо имени фигуры\n";
-        return exit_code::data;
+        return exit_code::no_in;
     }
-
+    // так же и для к-ва вершин. далее, распознавание этого числа
     std::string vertexes;
     if (!std::getline(std::cin, vertexes)) {
         std::cerr << "EOF вместо числа вершин\n";
         return exit_code::no_in;
-    }
-
-    trim_str(vertexes);
-    if (vertexes.empty()) {
-        std::cerr << "Пустой ввод вместо кол-ва вершин\n";
-        return exit_code::data;
     }
 
     auto parsed = parse_int32(vertexes);
@@ -47,6 +42,9 @@ int main() {
         if (parsed.error() == number_error::out_of_range) {
             std::cerr << "Кол-во вершин не помещается в 32-битное целое. Получено: " << vertexes << "\n";
             return exit_code::data;
+        } else if (parsed.error() == number_error::empty) {
+            std::cerr << "Пустой ввод вместо кол-ва вершин\n";
+            return exit_code::no_in;
         }
         // при любой др. ошибке - эта ветка (ожидаемо - плохой символ. но для страховки, чтобы исп. не ушло дальше)
         std::cerr << "Кол-во вершин должно быть целым числом. Получено: " << vertexes << "\n";

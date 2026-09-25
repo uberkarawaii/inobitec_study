@@ -2871,13 +2871,15 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
 
 # 2026-09-25
 *Что сделано*
-- с ии начала диалог по юнит-тесту/тестам (слой 6а). тестирование будет только тех ф-ций common/ в которые что-то 
-  подаётся через аргументы ф-ции (и где нет чтения потока, например stdin). ии предложил две правки до начала 
+- с ии начала диалог по юнит-тесту/тестам (слой 6а). тестирование будет только тех ф-ций common/ которые
+  юнит-тестируемы: детерминированные и не имеют чтения stdin/файлов/глобального состояния. 
+  ии предложил две правки до начала 
   написания юнит тестов, которые я принимаю:
   - на с++ нету operator== у Point - а он будет нужен для сравнения, тк std::expected хочет его при != 
   - в parse_point(char* str, ... советует const char* str, т.к. строка внутри не меняется. если оставить, 
     то потом в юнит тесте когда я вызову parse_point("1 2 3"...) а "1 2 3" - по факту не может изменяться, то
     будет предупреждение. то есть, мне либо надо будет заводить буфер, копировать (чтобы можно было "поменять" эту строку), либо честно сказать, что я её не меняю, т.к. так и есть. 
+
 - пока на юнит-тест беру только parse_point. возможно, далее нужно будет вынести get_vertex_name(t2), parse_radius(t4)?
   геом. ядро (t1-t3) т.к. они находятся в main соотв. задач, а не в common/ , но про это подумаю после юнит-тестов
   для всего что уже есть в common/
@@ -2942,6 +2944,202 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   100% tests passed, 0 tests failed out of 2
   Total Test time (real) =   0.08 sec
   ```
+
+- отрицательный контроль. сначала на винде. 
+  убираю обрезку пробелов на Си (то расхождение что было до этого) пересборка и
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R parse_point --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+    Start 503: parse_point_cpp
+  1/2 Test #503: parse_point_cpp ..................   Passed    0.12 sec
+    Start 504: parse_point_c
+  2/2 Test #504: parse_point_c ....................***Failed    0.11 sec
+  FAIL err: "   "
+  parse_point_c: 1 failures
+  50% tests passed, 1 tests failed out of 2
+
+  Total Test time (real) =   0.28 sec
+
+  The following tests FAILED:
+        504 - parse_point_c (Failed)
+  Errors while running CTest
+  ```
+  вернула, при той же команде чисто `100% tests passed, 0 tests failed out of 2 Total Test time (real) =   0.27 sec`
+
+  теперь на линуксе то же самое: сборка и ctest --test-dir build/debug -R parse_point --output-on-failure
+  ```
+  Test project /home/karavai/test/inobitec_study/build/debug
+    Start 511: parse_point_cpp
+  1/2 Test #511: parse_point_cpp ..................   Passed    0.01 sec
+    Start 512: parse_point_c
+  2/2 Test #512: parse_point_c ....................***Failed    0.01 sec
+  FAIL err: "   "
+  parse_point_c: 1 failures
+
+
+  50% tests passed, 1 tests failed out of 2
+
+  Total Test time (real) =   0.03 sec
+
+  The following tests FAILED:
+	512 - parse_point_c (Failed)
+  ```
+  возвращаю условия для нормального возврата пробела. снова сборка и ctest --test-dir build/debug -R parse_point --output-on-failure `100% tests passed, 0 tests failed out of 2 Total Test time (real) =   0.03 sec`
+
+  и попробовала в parse_point.c check_ok("1 2 3", 1, 2, 4); (4 вместо 3 в конце).
+  виндоус
+  ```
+    c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R parse_point --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 503: parse_point_cpp
+  1/2 Test #503: parse_point_cpp ..................   Passed    0.11 sec
+      Start 504: parse_point_c
+  2/2 Test #504: parse_point_c ....................***Failed    0.12 sec
+  FAIL ok: "1 2 3"
+  parse_point_c: 1 failures
+
+
+  50% tests passed, 1 tests failed out of 2
+
+  Total Test time (real) =   0.28 sec
+
+  The following tests FAILED:
+          504 - parse_point_c (Failed)
+  Errors while running CTest
+  ```
+  убираю намеренную ошибку, собираю, той же командой тест `100% tests passed, 0 tests failed out of 2`
+
+  линукс
+  ```
+    Test project /home/karavai/test/inobitec_study/build/debug
+      Start 511: parse_point_cpp
+  1/2 Test #511: parse_point_cpp ..................   Passed    0.01 sec
+      Start 512: parse_point_c
+  2/2 Test #512: parse_point_c ....................***Failed    0.01 sec
+  FAIL ok: "1 2 3"
+  parse_point_c: 1 failures
+
+
+  50% tests passed, 1 tests failed out of 2
+
+  Total Test time (real) =   0.03 sec
+
+  The following tests FAILED:
+    512 - parse_point_c (Failed)
+
+  ```
+
+- пересохранила tests/unit/CMakeLists.txt в utf8
+
+- следующие ф-ции для юнит-тестирования: parse_int32, is_empty, trim_string и только на Си - is_hex_prefix. на плюсах
+  from_chars - и так отвергнет 0х...; в parse_32 ии заметил такое же расхождение как было в parse_point, только для С++ стороны - сама ф-ция не пропускает ведущие пробелы. исправлю это
+
+  и вот получается, что и parse_point пропускает пробелы, и parse32 Тоже. и в Main до их вызова тоже пропуск пробелов.
+  я хочу вынести проверку "число пустое?" в методы распознавания чисел. а не оставлять в main()  т.к. теперь оно там 
+  ненужно
+
+  внесла все исправления для определения случая "пустое число" t1-t2 в методе распознавания самого числа, а не в
+  main. далее формат, сборка, ctest --test-dir build/debug `100% tests passed, 0 tests failed out of 511
+  Total Test time (real) =  32.76 sec`. то же на релизе ctest --test-dir build/release 
+  `100% tests passed, 0 tests failed out of 511 Total Test time (real) =   7.98 sec`
+
+- ии нашёл ещё расхождение, тоже его исправлю (второе приведу к 66):
+  - t1: пустое N → no_in (66).
+  - t2: пустое имя/число вершин → data (65).
+  исправила, теперь t2 в этих случаях - 66, и изменила cases.cmake с учётом этого
+
+- подумала что t1-t2 теперь ловят пустоту методами распознавания чисел. а t3-t4? возможно метод распозн. точек -
+  ловит, а радиуса - не всегда. вопрос к ии: нет, я не права. радиус-пустота - внутри метода ловится, а вот метод распозн. точек не ловит пустоту. но там пустая строка - не "ошибка" там так можно. и если все пустые - это отловится.
+  так что тут нечего "исправлять". 
+
+- говорю ии добавить все тест-кейсы внутрь новых юнит-тестов. добавляет, прогоняю ctest --test-dir build/debug
+  `100% tests passed, 0 tests failed out of 511 Total Test time (real) =  34.82 sec`. релиз тесты
+  `100% tests passed, 0 tests failed out of 511 Total Test time (real) =   7.27 sec`
+
+  теперь негативный контроль. намеренно порчу данные вот так
+  - is_empty c/cpp check("abc", 0);->check("abc", 1);
+  - is_hex_prefix check("-0X10", 1);->check("-0X10", 0);
+  - parse_int32 c/cpp check_ok("5", 5);->check_ok("5", 6);
+  - trim_string c/cpp check(" a ", "a"); -> check(" a ", "b");
+  
+  ctest --test-dir build/debug -R "parse_point|parse_int32|is_empty|is_hex_prefix|trim_string" --output-on-failure
+
+  ```
+      Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 503: parse_point_cpp
+  1/9 Test #503: parse_point_cpp ..................   Passed    0.10 sec
+      Start 504: parse_point_c
+  2/9 Test #504: parse_point_c ....................   Passed    0.10 sec
+      Start 505: parse_int32_cpp
+  3/9 Test #505: parse_int32_cpp ..................***Failed    0.09 sec
+  FAIL ok: "5"
+  parse_int32_cpp: 1 failures
+
+      Start 506: parse_int32_c
+  4/9 Test #506: parse_int32_c ....................***Failed    0.10 sec
+  FAIL ok: "5"
+  parse_int32_c: 1 failures
+
+      Start 507: is_empty_cpp
+  5/9 Test #507: is_empty_cpp .....................***Failed    0.10 sec
+  FAIL: "abc"
+  is_empty_cpp: 1 failures
+
+      Start 508: is_empty_c
+  6/9 Test #508: is_empty_c .......................***Failed    0.10 sec
+  FAIL: "abc"
+  is_empty_c: 1 failures
+
+      Start 509: is_hex_prefix_c
+  7/9 Test #509: is_hex_prefix_c ..................***Failed    0.10 sec
+  FAIL: "-0X10"
+  is_hex_prefix_c: 1 failures
+
+      Start 510: trim_string_cpp
+  8/9 Test #510: trim_string_cpp ..................***Failed    0.09 sec
+  FAIL: got "a", want "b"
+  trim_string_cpp: 1 failures
+
+      Start 511: trim_string_c
+  9/9 Test #511: trim_string_c ....................***Failed    0.09 sec
+  FAIL: " a " -> "a"
+  trim_string_c: 1 failures
+
+
+  22% tests passed, 7 tests failed out of 9
+
+  Total Test time (real) =   0.93 sec
+
+  The following tests FAILED:
+    505 - parse_int32_cpp (Failed)
+    506 - parse_int32_c (Failed)
+    507 - is_empty_cpp (Failed)
+    508 - is_empty_c (Failed)
+    509 - is_hex_prefix_c (Failed)
+    510 - trim_string_cpp (Failed)
+    511 - trim_string_c (Failed)
+  ```
+  падает что надо, ии ещё раз просмотрел итог - подтвердил. 
+  
+  исправила, ещё раз прогон тех же тестов
+  `100% tests passed, 0 tests failed out of 9 Total Test time (real) =   1.08 sec`
+
+- по прошлому выводу видно что у trim_string есть ассиметрия по языкам. надо свести к одному. теперь будет 
+  вывод такой, что и вход есть, и реальный выход, и ожидаемый. 
+  
+- такую команду ctest --test-dir build/* -R "parse_point|parse_int32|is_empty|is_hex_prefix|trim_string"
+  неудобно набирать. поэтому сделаю в CMakePresets.json секцию с пресетами для таких команд. - для юнит-тестов
+  зафиксировала это в ридми
+
+- коммит + проверяю всё на виртуалке
+
+- далее про чистые ф-ции которые не живут в common. мой вопрос ии - по политике курса такие ф-ции стоит выносить? 
+  ии: да, нужно. не обёртки над stl, не однострочники. а ф-ции с реальной логикой / математикой, написанные
+  под специфичную цель. ии советует кандидатов на вынос, цитата:
+  - get_vertex_name (склонение) — t2, C и C++. Реальная логика (3 ветки + особый случай 11–14).
+  - геометрическое ядро (расстояние, центроид, вершина N-угольника) — t1/t3, инлайн в main. Реальная математика.
+  - parse_radius — уже вынесена (t4), можно дописать ей юнит-тест.
+
   
 *Что заметила при работе с deepseek*
 - ошибся, сказав, что strtod имеет сигнатуру strtod(char* s ...), но потом поправился после уточняющего вопроса - там

@@ -16,5 +16,29 @@
       "toolchainFile": "$env{VCPKG_DEV_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     }
+  ],
+  "testPresets": [
+  {
+    "name": "unit",
+    "configurePreset": "debug",
+    "output": { "outputOnFailure": true },
+    "filter": { "include": { "name": "parse_point|parse_int32|is_empty|is_hex_prefix|trim_string" } }
+  },
+  {
+    "name": "unit-release",
+    "configurePreset": "release",
+    "output": { "outputOnFailure": true },
+    "filter": { "include": { "name": "parse_point|parse_int32|is_empty|is_hex_prefix|trim_string" } }
+  },
+  {
+    "name": "full",
+    "configurePreset": "debug",
+    "output": { "outputOnFailure": true }
+  },
+  {
+    "name": "full-release",
+    "configurePreset": "release",
+    "output": { "outputOnFailure": true }
+  }
   ]
-}
+} 
