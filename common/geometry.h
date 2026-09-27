@@ -38,7 +38,7 @@ COMMON_API double point_distance(struct Point a, struct Point b);
 // по контракту предполагается, что набор точек будет непустым и N - положительным
 COMMON_API struct Point centroid(const struct Point* pts, int n);
 
-//
+// для получения вершин правильного N-угольника
 COMMON_API struct Point polygon_vertex(int i, int n);
 
 #endif

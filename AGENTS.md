@@ -3286,6 +3286,131 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
 
   правлю всё что сама испортила. опять ctest --preset unit `100% tests passed, 0 tests failed out of 19 Total Test time (real) =   2.16 sec`. и смотрю что на релизе всё проходит ctest --preset full-release `100% tests passed, 0 tests failed out of 521 Total Test time (real) =   7.43 sec`. 
 
+- негативный контроль на vm. испортила те же самые вещи (кроме centroid.c, там got (5,-2,1), want (5,-2,3));
+  ctest --preset unit 
+  ```
+    Test project /home/karavai/test/inobitec_study/build/debug
+  1/19 - 9/19 ok
+        Start 520: point_distance_cpp
+  10/19 Test #520: point_distance_cpp ...............***Failed    0.01 sec
+  FAIL: (0.000,0.000,0.000)-(0.000,0.000,0.000) -> 0.000, want 0.100
+  point_distance_cpp: 1 failures
+
+        Start 521: point_distance_c
+  11/19 Test #521: point_distance_c .................***Failed    0.01 sec
+  FAIL: (0.000,0.000,0.000)-(0.000,0.000,0.000) -> 0.000, want 0.100
+  point_distance_c: 1 failures
+
+        Start 522: centroid_cpp
+  12/19 Test #522: centroid_cpp .....................***Failed    0.01 sec
+  FAIL: got (5.000,-2.000,3.000), want (5.000,-2.000,1.000)
+  centroid_cpp: 1 failures
+
+        Start 523: centroid_c
+  13/19 Test #523: centroid_c .......................***Failed    0.01 sec
+  FAIL: got (5.000,-2.000,1.000), want (5.000,-2.000,3.000)
+  centroid_c: 1 failures
+
+        Start 524: polygon_vertex_cpp
+  14/19 Test #524: polygon_vertex_cpp ...............***Failed    0.01 sec
+  FAIL: i=0 n=4 -> (1.000000,0.000000,0.000000), want (1.000000,1.000000,0)
+  polygon_vertex_cpp: 1 failures
+
+        Start 525: polygon_vertex_c
+  15/19 Test #525: polygon_vertex_c .................***Failed    0.01 sec
+  FAIL: i=0 n=4 -> (1.000000,0.000000,0.000000), want (1.000000,1.000000,0)
+  polygon_vertex_c: 1 failures
+
+        Start 526: parse_radius_cpp
+  16/19 Test #526: parse_radius_cpp .................***Failed    0.01 sec
+  FAIL ok: "5"
+  parse_radius_cpp: 1 failures
+
+        Start 527: parse_radius_c
+  17/19 Test #527: parse_radius_c ...................***Failed    0.01 sec
+  FAIL ok: "5" -> 0, 5.000
+  parse_radius_c: 1 failures
+
+        Start 528: vertex_form_index_cpp
+  18/19 Test #528: vertex_form_index_cpp ............***Failed    0.01 sec
+  FAIL: 1 -> 0, want 1
+  vertex_form_index_cpp: 1 failures
+
+        Start 529: vertex_form_index_c
+  19/19 Test #529: vertex_form_index_c ..............***Failed    0.01 sec
+  FAIL: 1 -> 0, want 1
+  vertex_form_index_c: 1 failures
+
+  47% tests passed, 10 tests failed out of 19
+
+  Total Test time (real) =   0.16 sec
+
+  The following tests FAILED:
+    520 - point_distance_cpp (Failed)
+    521 - point_distance_c (Failed)
+    522 - centroid_cpp (Failed)
+    523 - centroid_c (Failed)
+    524 - polygon_vertex_cpp (Failed)
+    525 - polygon_vertex_c (Failed)
+    526 - parse_radius_cpp (Failed)
+    527 - parse_radius_c (Failed)
+    528 - vertex_form_index_cpp (Failed)
+    529 - vertex_form_index_c (Failed)
+  ```
+  исправляю то что сама испортила, сборка, прогон ctest --preset unit
+  `100% tests passed, 0 tests failed out of 19 Total Test time (real) =   0.15 sec`
+
+  и полный прогон ctest --preset full `100% tests passed, 0 tests failed out of 529 Total Test time (real) =   3.36 sec`
+  то же самое на релизе ctest --preset full-release `100% tests passed, 0 tests failed out of 529 Total Test time (real) =   1.45 sec`
+
+- по "найди ещё хоть одно" ии советует сделать негатив. тест который покажет что в polygon_vertex z не влияет на 
+  x/y проверки коорд, но если контракт "z=0" будет нарушен, то всё упадёт. проверю это на с/с++ сторонах
+  `{...sin(i * 2 * M_PI / n), 0};->{...sin(i * 2 * M_PI / n), 1};` + `Point{..., 0};->Point{..., 1};`
+
+  ctest --preset unit 
+  ```
+          Start 516: polygon_vertex_cpp
+  14/19 Test #516: polygon_vertex_cpp ...............***Failed    0.11 sec
+  FAIL: i=0 n=4 -> (1.000000,0.000000,1.000000), want (1.000000,0.000000,0)
+  FAIL: i=1 n=4 -> (0.000000,1.000000,1.000000), want (0.000000,1.000000,0)
+  FAIL: i=2 n=4 -> (-1.000000,0.000000,1.000000), want (-1.000000,0.000000,0)
+  FAIL: i=3 n=4 -> (-0.000000,-1.000000,1.000000), want (0.000000,-1.000000,0)
+  FAIL: i=0 n=3 -> (1.000000,0.000000,1.000000), want (1.000000,0.000000,0)
+  FAIL: i=1 n=3 -> (-0.500000,0.866025,1.000000), want (-0.500000,0.866025,0)
+  FAIL: i=2 n=3 -> (-0.500000,-0.866025,1.000000), want (-0.500000,-0.866025,0)
+  polygon_vertex_cpp: 7 failures
+
+        Start 517: polygon_vertex_c
+  15/19 Test #517: polygon_vertex_c .................***Failed    0.10 sec
+  FAIL: i=0 n=4 -> (1.000000,0.000000,1.000000), want (1.000000,0.000000,0)
+  FAIL: i=1 n=4 -> (0.000000,1.000000,1.000000), want (0.000000,1.000000,0)
+  FAIL: i=2 n=4 -> (-1.000000,0.000000,1.000000), want (-1.000000,0.000000,0)
+  FAIL: i=3 n=4 -> (-0.000000,-1.000000,1.000000), want (0.000000,-1.000000,0)
+  FAIL: i=0 n=3 -> (1.000000,0.000000,1.000000), want (1.000000,0.000000,0)
+  FAIL: i=1 n=3 -> (-0.500000,0.866025,1.000000), want (-0.500000,0.866025,0)
+  FAIL: i=2 n=3 -> (-0.500000,-0.866025,1.000000), want (-0.500000,-0.866025,0)
+  polygon_vertex_c: 7 failures
+
+        Start 518: parse_radius_cpp
+  16/19 Test #518: parse_radius_cpp .................   Passed    0.11 sec
+        Start 519: parse_radius_c
+  17/19 Test #519: parse_radius_c ...................   Passed    0.10 sec
+        Start 520: vertex_form_index_cpp
+  18/19 Test #520: vertex_form_index_cpp ............   Passed    0.10 sec
+        Start 521: vertex_form_index_c
+  19/19 Test #521: vertex_form_index_c ..............   Passed    0.10 sec
+
+  89% tests passed, 2 tests failed out of 19
+
+  Total Test time (real) =   2.03 sec
+
+  The following tests FAILED:
+    516 - polygon_vertex_cpp (Failed)
+    517 - polygon_vertex_c (Failed)
+  ``` 
+  возвращаю, опять прогон ctest --preset unit:
+  `100% tests passed, 0 tests failed out of 19 Total Test time (real) =   2.18 sec`
+
 
 ## 8. Диалоги с DeepSeek
 

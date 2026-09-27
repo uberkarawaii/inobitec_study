@@ -52,4 +52,5 @@ COMMON_API double point_distance(const Point&, const Point&);
 // по контракту предполагатся что набор точек будет непустым
 COMMON_API Point centroid(std::span<const Point> pts);
 
+// для получения вершин правильного N-угольника
 COMMON_API Point polygon_vertex(int i, int n);

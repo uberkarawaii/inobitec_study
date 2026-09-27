@@ -109,26 +109,3 @@ target_link_libraries(vertex_form_index_c PRIVATE string_utils_c_static)
 configure_target(vertex_form_index_c ON)
 add_test(NAME vertex_form_index_c COMMAND vertex_form_index_c)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

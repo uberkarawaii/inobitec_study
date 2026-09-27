@@ -105,5 +105,5 @@ struct Point centroid(const struct Point* pts, int n) {
     return c;
 }
 
-//
+// для получения вершин правильного N-угольника
 struct Point polygon_vertex(int i, int n) { return (struct Point){cos(i * 2 * M_PI / n), sin(i * 2 * M_PI / n), 0}; }
