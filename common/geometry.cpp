@@ -5,6 +5,8 @@
 #include <charconv>
 #include <cmath>
 #include <expected>
+#include <numbers>
+#include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -92,4 +94,25 @@ std::expected<Point, number_error> parse_point(std::string_view s) {
     }
 
     return Point{dots[0], dots[1], dots[2]};
+}
+
+// расст. м-у двумя точками. предполагается, что обе точки валидные
+double point_distance(const Point& a, const Point& b) { return std::hypot(a.x - b.x, a.y - b.y, a.z - b.z); }
+
+// построение центроида по набору точек
+// пустой вход не преполагается по контракту
+// span - указат. на первый элем + длина, сколько всего элементов. const Point - не меняем точки, только читаем
+Point centroid(std::span<const Point> pts) {
+    Point sum{0, 0, 0};
+    for (const Point& p : pts) {
+        sum.x += p.x;
+        sum.y += p.y;
+        sum.z += p.z;
+    }
+    return Point{sum.x / pts.size(), sum.y / pts.size(), sum.z / pts.size()};
+}
+
+Point polygon_vertex(int i, int n) {
+    double perm_angle = 2 * std::numbers::pi * i / n;
+    return Point{std::cos(perm_angle), std::sin(perm_angle), 0};
 }

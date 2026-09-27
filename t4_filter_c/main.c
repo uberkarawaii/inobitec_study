@@ -104,30 +104,6 @@ int get_points(struct Point** points, int* points_size, int* points_capacity) {
     return 0;
 }
 
-int parse_radius(const char* s, double* out) {
-    if (is_empty(s))
-        return NUMBER_EMPTY;
-
-    errno = 0;
-    char* end = NULL;
-    double r = strtod(s, &end);
-    const char* tail = end;
-    while (*tail != '\0' && isspace((unsigned char)*tail))
-        ++tail;
-
-    if (end == s || *tail != '\0' || is_hex_prefix(s))
-        return NUMBER_NOT_NUMBER;
-    if (errno == ERANGE && (r == 0.0 || !isfinite(r)))
-        return NUMBER_OUT_OF_RANGE;
-    if (!isfinite(r))
-        return NUMBER_NOT_FINITE;
-    if (r <= 0)
-        return NUMBER_NOT_POSITIVE;
-
-    *out = r;
-    return NUMBER_OK;
-}
-
 int main(int argc, char* argv[]) {
     // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
     if (argc != 2) {
@@ -182,7 +158,7 @@ int main(int argc, char* argv[]) {
     } else
         // вывод точек, у которых расст. до центра < r
         for (int i = 0; i < points_size; ++i) {
-            if (sqrt(points[i].x * points[i].x + points[i].y * points[i].y + points[i].z * points[i].z) < r)
+            if (point_distance(points[i], (struct Point){0, 0, 0}) < r)
                 printf("%.3f %.3f %.3f\n", points[i].x, points[i].y, points[i].z);
         }
 

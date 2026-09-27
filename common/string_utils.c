@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -113,4 +114,38 @@ int parse_int32(const char* s, int32_t* out) {
 
     *out = (int32_t)v;
     return 0;
+}
+
+int parse_radius(const char* s, double* out) {
+    if (is_empty(s))
+        return NUMBER_EMPTY;
+
+    errno = 0;
+    char* end = NULL;
+    double r = strtod(s, &end);
+    const char* tail = end;
+    while (*tail != '\0' && isspace((unsigned char)*tail))
+        ++tail;
+
+    if (end == s || *tail != '\0' || is_hex_prefix(s))
+        return NUMBER_NOT_NUMBER;
+    if (errno == ERANGE && (r == 0.0 || !isfinite(r)))
+        return NUMBER_OUT_OF_RANGE;
+    if (!isfinite(r))
+        return NUMBER_NOT_FINITE;
+    if (r <= 0)
+        return NUMBER_NOT_POSITIVE;
+
+    *out = r;
+    return NUMBER_OK;
+}
+
+// получение формы слова "вершина" в зависимости от того, сколько их штук
+int vertex_form_index(int N) {
+    if ((N / 10) % 10 != 1 && N % 10 == 1)
+        return 0;
+    else if ((N / 10) % 10 != 1 && N % 10 >= 2 && N % 10 <= 4)
+        return 1;
+    else
+        return 2;
 }

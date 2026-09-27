@@ -13,51 +13,6 @@
 #include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
-// получение радиуса в виде числа
-std::expected<double, number_error> parse_radius(std::string_view r_line) {
-    // указат. на начало и конец
-    const char* first = r_line.data();
-    const char* last = r_line.data() + r_line.size();
-
-    // пропуск ведущих и концевых пробелов
-    while (first != last && std::isspace(static_cast<unsigned char>(*first)))
-        ++first;
-    while (last != first && std::isspace(static_cast<unsigned char>(last[-1])))
-        --last;
-
-    if (first == last)
-        return std::unexpected(number_error::empty);
-
-    // если после плюса идёт минус - выходим, т.к. это плохой симол
-    // остальные плохие символы и так выхзовут падение далее
-    if (first != last && *first == '+') {
-        ++first;
-        if (first != last && *first == '-')
-            return std::unexpected(number_error::not_number);
-    }
-
-    double R = 0;
-    auto [ptr, ec] = std::from_chars(first, last, R);
-
-    // число за границами диапазона типа
-    if (ec == std::errc::result_out_of_range)
-        return std::unexpected(number_error::out_of_range);
-
-    // если парс остановился не на конце или возникла ошибка - там нечисловой символ
-    if (ec != std::errc() || ptr != last)
-        return std::unexpected(number_error::not_number);
-
-    // deepseek посоветовал сделать провеку на конечность числа
-    // т.к. fromchars читает nan и бесконечность без проблем, как число
-    if (!std::isfinite(R))
-        return std::unexpected(number_error::not_finite);
-    // проверка положительности радиуса
-    if (R <= 0)
-        return std::unexpected(number_error::not_positive);
-
-    return R;
-}
-
 // отдаёт вектор с точками; при ошибке печатает сообщение и возвращает его код
 std::expected<std::vector<Point>, int> get_points() {
     std::vector<Point> points;
@@ -160,7 +115,7 @@ int main(int argc, char* argv[]) {
 
     // если без ошибок, можно дальше обращаться к *result
     // что оставляем
-    auto is_point_suitable = [R](const Point& p) { return std::hypot(p.x, p.y, p.z) < R; };
+    auto is_point_suitable = [R](const Point& p) { return point_distance(p, {0, 0, 0}) < R; };
     // что делаем
     auto show_format = [](const Point& p) { return std::format("{:.3f} {:.3f} {:.3f}\n", p.x, p.y, p.z); };
     // перед выводом в result складывается всё что проходит по фильтру, в виде форматированной строки

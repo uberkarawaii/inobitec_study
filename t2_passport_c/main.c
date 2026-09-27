@@ -7,15 +7,6 @@
 #include "../common/parse_codes.h"
 #include "../common/string_utils.h"
 
-int get_vertex_name(int N) {
-    if ((N / 10) % 10 != 1 && N % 10 == 1)
-        return 0;
-    else if ((N / 10) % 10 != 1 && N % 10 >= 2 && N % 10 <= 4)
-        return 1;
-    else
-        return 2;
-}
-
 int main() {
     //  считывание строки полностью
     int len_name;
@@ -81,7 +72,7 @@ int main() {
     // массив словоформ со склонением
     const char* words[] = {"вершина", "вершины", "вершин"};
     // форматный вывод со склонением
-    printf("Фигура «%s»: %" PRId32 " %s.\n", clean_s, N, words[get_vertex_name(N)]);
+    printf("Фигура «%s»: %" PRId32 " %s.\n", clean_s, N, words[vertex_form_index(N)]);
     free(s);
     free(s_num);
     return 0;

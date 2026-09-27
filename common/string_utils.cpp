@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
 #include <expected>
 #include <string>
@@ -82,4 +83,60 @@ std::expected<std::int32_t, number_error> parse_int32(std::string_view s) {
         return std::unexpected(number_error::not_number);
 
     return v;
+}
+
+// получение радиуса в виде числа
+std::expected<double, number_error> parse_radius(std::string_view r_line) {
+    // указат. на начало и конец
+    const char* first = r_line.data();
+    const char* last = r_line.data() + r_line.size();
+
+    // пропуск ведущих и концевых пробелов
+    while (first != last && std::isspace(static_cast<unsigned char>(*first)))
+        ++first;
+    while (last != first && std::isspace(static_cast<unsigned char>(last[-1])))
+        --last;
+
+    if (first == last)
+        return std::unexpected(number_error::empty);
+
+    // если после плюса идёт минус - выходим, т.к. это плохой симол
+    // остальные плохие символы и так выхзовут падение далее
+    if (first != last && *first == '+') {
+        ++first;
+        if (first != last && *first == '-')
+            return std::unexpected(number_error::not_number);
+    }
+
+    double R = 0;
+    auto [ptr, ec] = std::from_chars(first, last, R);
+
+    // число за границами диапазона типа
+    if (ec == std::errc::result_out_of_range)
+        return std::unexpected(number_error::out_of_range);
+
+    // если парс остановился не на конце или возникла ошибка - там нечисловой символ
+    if (ec != std::errc() || ptr != last)
+        return std::unexpected(number_error::not_number);
+
+    // deepseek посоветовал сделать провеку на конечность числа
+    // т.к. fromchars читает nan и бесконечность без проблем, как число
+    if (!std::isfinite(R))
+        return std::unexpected(number_error::not_finite);
+    // проверка положительности радиуса
+    if (R <= 0)
+        return std::unexpected(number_error::not_positive);
+
+    return R;
+}
+
+// форма слова "вершина" со склонением.
+// функция отдаёт индекс, по которому в массиве лежит нужная форма слова
+int vertex_form_index(int N) {
+    if (N % 10 == 1 && N % 100 / 10 != 1)
+        return 0;
+    else if (N % 10 >= 2 && N % 10 <= 4 && N % 100 / 10 != 1)
+        return 1;
+    else
+        return 2;
 }

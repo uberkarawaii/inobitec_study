@@ -6,17 +6,6 @@
 #include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
-// форма слова "вершина" со склонением.
-// функция отдаёт индекс, по которому в массиве лежит нужная форма слова
-int get_vertex_name(int N) {
-    if (N % 10 == 1 && N % 100 / 10 != 1)
-        return 0;
-    else if (N % 10 >= 2 && N % 10 <= 4 && N % 100 / 10 != 1)
-        return 1;
-    else
-        return 2;
-}
-
 int main() {
     // проверка что имя фигуры - не пустое
     std::string name;
@@ -57,10 +46,10 @@ int main() {
         return exit_code::usage;
     }
 
-    // массив словоформ . через get_vertex_name(V) будет индекс для верной формы из этого массива
+    // массив словоформ . через vertex_form_index(V) будет индекс для верной формы из этого массива
     std::array words{"вершина", "вершины", "вершин"};
 
-    std::cout << "Фигура «" << name << "»: " << V << " " << words[get_vertex_name(V)] << ".\n";
+    std::cout << "Фигура «" << name << "»: " << V << " " << words[vertex_form_index(V)] << ".\n";
 
     return 0;
 }

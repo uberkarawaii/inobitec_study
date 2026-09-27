@@ -22,13 +22,13 @@
     "name": "unit",
     "configurePreset": "debug",
     "output": { "outputOnFailure": true },
-    "filter": { "include": { "name": "parse_point|parse_int32|is_empty|is_hex_prefix|trim_string" } }
+    "filter": { "include": { "name": "parse_point|parse_int32|is_empty|is_hex_prefix|trim_string|centroid|point_distance|polygon_vertex|parse_radius|vertex_form_index" } }
   },
   {
     "name": "unit-release",
     "configurePreset": "release",
     "output": { "outputOnFailure": true },
-    "filter": { "include": { "name": "parse_point|parse_int32|is_empty|is_hex_prefix|trim_string" } }
+    "filter": { "include": { "name": "parse_point|parse_int32|is_empty|is_hex_prefix|trim_string|centroid|point_distance|polygon_vertex|parse_radius|vertex_form_index" } }
   },
   {
     "name": "full",

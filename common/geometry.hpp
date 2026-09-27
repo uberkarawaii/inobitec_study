@@ -1,6 +1,7 @@
 #pragma once
 
 #include <expected>
+#include <span>
 #include <string_view>
 
 #include "parse_codes.hpp"
@@ -42,3 +43,13 @@ struct Point {
 // распознавание x y z
 // возвращает либо Point, либо код ошибки (произойдёт первая ошибка при движении справа налево)
 COMMON_API std::expected<Point, number_error> parse_point(std::string_view s);
+
+// расст. м-у двумя точками в 3д
+// предполагается, что обе точки валидные
+COMMON_API double point_distance(const Point&, const Point&);
+
+// среднее арифметическое набора точек
+// по контракту предполагатся что набор точек будет непустым
+COMMON_API Point centroid(std::span<const Point> pts);
+
+COMMON_API Point polygon_vertex(int i, int n);

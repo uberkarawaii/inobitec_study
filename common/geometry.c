@@ -2,7 +2,12 @@
 
 #include <ctype.h>
 #include <errno.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 #include <stdlib.h>
 
 #include "string_utils.h"
@@ -79,3 +84,26 @@ int parse_point(const char* str, struct Point* p) {
 
     return 0;
 }
+
+// расст м-у двумя точками. предполагается, что обе точки валидные
+double point_distance(struct Point a, struct Point b) {
+    return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z));
+}
+
+// построение центроида по набору точек
+// пустой вход и не-положительное N не преполагается по контракту
+struct Point centroid(const struct Point* pts, int n) {
+    struct Point c = {0, 0, 0};
+    for (int i = 0; i < n; ++i) {
+        c.x += pts[i].x;
+        c.y += pts[i].y;
+        c.z += pts[i].z;
+    }
+    c.x /= n;
+    c.y /= n;
+    c.z /= n;
+    return c;
+}
+
+//
+struct Point polygon_vertex(int i, int n) { return (struct Point){cos(i * 2 * M_PI / n), sin(i * 2 * M_PI / n), 0}; }

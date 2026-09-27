@@ -3156,9 +3156,23 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   ```
   исправляю, тот же прогон: `100% tests passed, 0 tests failed out of 9 Total Test time (real) =   0.10 sec`
 
+- далее про чистые ф-ции которые не живут в common. мой вопрос ии - по политике курса такие ф-ции стоит выносить? 
+  ии: да, нужно. не обёртки над stl, не однострочники. а ф-ции с реальной логикой / математикой, написанные
+  под специфичную цель. ии советует кандидатов на вынос, цитата:
+  - get_vertex_name (склонение) — t2, C и C++. Реальная логика (3 ветки + особый случай 11–14).
+  - геометрическое ядро (расстояние, центроид, вершина N-угольника) — t1/t3, инлайн в main. Реальная математика.
+  - parse_radius — уже вынесена (t4), можно дописать ей юнит-тест.
 
+- новая сессия на юнит тесты pure func-s которые будут вытащены из main c/cpp самих задач. 
+  - с ии изначально разговор был - выносить или нет vertex_form в отдельный модуль? я за то, что оно 
+    того не стоит - то есть ради одной ф-ции целый модуль. ии потом сказал да, это будет многовато. 
+    но и занесение в string_utils тоже компромисс, тк она туда не совсем вяжется. мне больше 
+    наравится второе, тк перове - создание целого модуля без нужны, зависимости без особого смылса
+  - t1 перейдёт на point_distance (3D) т.к. 2д - част. случай 3д и это следвует принципу "повторил - вынеси"
+    тут как раз есть повторение. 
 
-  
+  выношу - str utils c/cpp parse_radius; vertex_form_index
+
 *Что заметила при работе с deepseek*
 - ошибся, сказав, что strtod имеет сигнатуру strtod(char* s ...), но потом поправился после уточняющего вопроса - там
   const char* s
@@ -3171,6 +3185,106 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   [IO.File]::ReadAllBytes($f) ; [Text.Encoding]::GetEncoding(1251).GetString($b) [IO.File]::ReadAllText($p, $cp)
   а не через edit/write. 
   надо взять это на заметку и явно говорить: правь вот так и читай так через bash/ps, не edit/write
+
+# 2026-09-27
+*Что сделано*
+- в geometry вынесены double point_distance(...), struct Point centroid(...), struct Point polygon_vertex(...) - 
+  здесь нет проверок на пустые точки, т.к. точки формируются в main, предварительно. и проверка на пустоту тоже
+  происходит предварительно. потому юнит-тесты не будут проверять на пустоту или отрицательность (в случае 
+  центроида кол-во должно быть положительным). т.к. все проверки произошли предварительно. 
+
+  ф-ция centroid - её вынесение имеет бОльший смысл на Си-стороне. но на с++ стороне также сделано вынесение 
+  для симметрии. также, в  point_distance предполагается, что обе точки валидные - т.к. они уже были сформированы 
+  а значит и проверены. в centroid предполагается то же самое, и на си стороне также предполагается, что N - кол-во
+  точек, положительное и валидное. т.к. предварительно эти точки были прочитаны, проверены, посчитаны. потому и N воспринимается как валидное. 
+
+  после переносов - формат, и сборка, прогон ctest --preset full `100% tests passed, 0 tests failed out of 511 Total Test time (real) =  34.91 sec`. в t1-t4 в соотв. местах задействую вынесенные ф-ции. опять формат, билд, прогон,
+  ctest --preset full `100% tests passed, 0 tests failed out of 511 Total Test time (real) =  31.69 sec`
+
+- на каждую вынесенную ф-цию делаю программу в tests/unit: point_distance, centroid, polygon_vertex, parse_radius,
+  vertex_form_index. в CMakeLists.txt добавляю add_test с предварительным добавлением exe, линковкой, настройкой флагов,
+  для всех программ юнит-тестов. формат, пересборка, запуск ctest --preset full `100% tests passed, 0 tests failed out of 521 Total Test time (real) =  34.48 sec`. CMakePresets.json - добавляю в unit* имена всех новых юнит-тестов
+
+- негативный контроль
+  - centroid меняю точку want: {5, -2, 3}->{5, -2, 1}
+  - point_distance где нулевое расстояние, меняю его на 0.1
+  - polygon_vertex check(0, 4, 1, 0) -> check(0, 4, 1, 1)
+  - parse_radius check_ok("5", 5.0) -> check_ok("5", 5.5)
+  - vertex_form_index check(1, 0) -> check(1, 1)
+  ctest --preset unit
+  ```
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+        Start 503: parse_point_cpp
+  1/19 - 9/19 - OK
+        Start 512: point_distance_cpp
+  10/19 Test #512: point_distance_cpp ...............***Failed    0.09 sec
+  FAIL: (0.000,0.000,0.000)-(0.000,0.000,0.000) -> 0.000, want 0.100
+  point_distance_cpp: 1 failures
+
+        Start 513: point_distance_c
+  11/19 Test #513: point_distance_c .................***Failed    0.10 sec
+  FAIL: (0.000,0.000,0.000)-(0.000,0.000,0.000) -> 0.000, want 0.100
+  point_distance_c: 1 failures
+
+        Start 514: centroid_cpp
+  12/19 Test #514: centroid_cpp .....................***Failed    0.09 sec
+  FAIL: got (5.000,-2.000,3.000), want (5.000,-2.000,1.000)
+  centroid_cpp: 1 failures
+
+        Start 515: centroid_c
+  13/19 Test #515: centroid_c .......................***Failed    0.10 sec
+  FAIL: got (5.000,-2.000,3.000), want (5.000,-2.000,1.000)
+  centroid_c: 1 failures
+
+        Start 516: polygon_vertex_cpp
+  14/19 Test #516: polygon_vertex_cpp ...............***Failed    0.10 sec
+  FAIL: i=0 n=4 -> (1.000000,0.000000,0.000000), want (1.000000,1.000000,0)
+  polygon_vertex_cpp: 1 failures
+
+        Start 517: polygon_vertex_c
+  15/19 Test #517: polygon_vertex_c .................***Failed    0.11 sec
+  FAIL: i=0 n=4 -> (1.000000,0.000000,0.000000), want (1.000000,1.000000,0)
+  polygon_vertex_c: 1 failures
+
+        Start 518: parse_radius_cpp
+  16/19 Test #518: parse_radius_cpp .................***Failed    0.11 sec
+  FAIL ok: "5"
+  parse_radius_cpp: 1 failures
+
+        Start 519: parse_radius_c
+  17/19 Test #519: parse_radius_c ...................***Failed    0.11 sec
+  FAIL ok: "5" -> 0, 5.000
+  parse_radius_c: 1 failures
+
+        Start 520: vertex_form_index_cpp
+  18/19 Test #520: vertex_form_index_cpp ............***Failed    0.10 sec
+  FAIL: 1 -> 0, want 1
+  vertex_form_index_cpp: 1 failures
+
+        Start 521: vertex_form_index_c
+  19/19 Test #521: vertex_form_index_c ..............***Failed    0.10 sec
+  FAIL: 1 -> 0, want 1
+  vertex_form_index_c: 1 failures
+
+
+  47% tests passed, 10 tests failed out of 19
+
+  Total Test time (real) =   1.99 sec
+
+  The following tests FAILED:
+    512 - point_distance_cpp (Failed)
+    513 - point_distance_c (Failed)
+    514 - centroid_cpp (Failed)
+    515 - centroid_c (Failed)
+    516 - polygon_vertex_cpp (Failed)
+    517 - polygon_vertex_c (Failed)
+    518 - parse_radius_cpp (Failed)
+    519 - parse_radius_c (Failed)
+    520 - vertex_form_index_cpp (Failed)
+    521 - vertex_form_index_c (Failed)
+  ```
+
+  правлю всё что сама испортила. опять ctest --preset unit `100% tests passed, 0 tests failed out of 19 Total Test time (real) =   2.16 sec`. и смотрю что на релизе всё проходит ctest --preset full-release `100% tests passed, 0 tests failed out of 521 Total Test time (real) =   7.43 sec`. 
 
 
 ## 8. Диалоги с DeepSeek

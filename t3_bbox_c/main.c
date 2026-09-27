@@ -20,9 +20,6 @@ int main() {
         return io_fail;
     }
 
-    // центроид
-    struct Point center = {.x = 0, .y = 0, .z = 0};
-
     // счётчик для вывода ошибок
     int i = 0;
     while (1) {
@@ -104,11 +101,6 @@ int main() {
             points = tmp;
         }
 
-        // суммирование точек в центроид
-        center.x += p.x;
-        center.y += p.y;
-        center.z += p.z;
-
         // освобождение s т.к. в неё положится новая строка
         free(s);
         s = NULL;
@@ -122,16 +114,13 @@ int main() {
         return no_input;
     }
 
-    // деление накопленных в центроиде чисел на кол-во точек
-    center.x /= points_size;
-    center.y /= points_size;
-    center.z /= points_size;
-
+    // центроид
+    struct Point center = centroid(points, points_size);
+    // среднее расст. до центроида
+    double d = 0;
     // границы - минимумы и максимумы
     double max[3] = {points[0].x, points[0].y, points[0].z};
     double min[3] = {points[0].x, points[0].y, points[0].z};
-    // среднее расстояние до центроида
-    double d = 0;
 
     i = 0;
     for (; i < points_size; ++i) {
@@ -149,9 +138,7 @@ int main() {
         if (min[2] > points[i].z)
             min[2] = points[i].z;
 
-        d += sqrt((points[i].x - center.x) * (points[i].x - center.x) +
-                  (points[i].y - center.y) * (points[i].y - center.y) +
-                  (points[i].z - center.z) * (points[i].z - center.z));
+        d += point_distance(points[i], center);
     }
 
     // деление накопленного расстояния на кол-во точек

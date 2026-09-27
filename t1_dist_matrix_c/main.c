@@ -1,8 +1,3 @@
-#define _USE_MATH_DEFINES
-#include <math.h>
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,8 +43,7 @@ int main(void) {
     // вершины. Х и У это косинусы и синусы от углов
     struct Point points[MAX_SIZE];
     for (int i = 0; i < N; ++i) {
-        points[i].x = cos(i * 2 * M_PI / N);
-        points[i].y = sin(i * 2 * M_PI / N);
+        points[i] = polygon_vertex(i, N);
     }
 
     for (int i = 0; i < N; ++i) {
@@ -57,7 +51,7 @@ int main(void) {
             if (i == j)
                 printf("%8.3f", 0.0);
             else
-                printf("%8.3f", sqrt(pow(points[i].x - points[j].x, 2) + pow(points[i].y - points[j].y, 2)));
+                printf("%8.3f", point_distance(points[i], points[j]));
         }
         printf("\n");
     }

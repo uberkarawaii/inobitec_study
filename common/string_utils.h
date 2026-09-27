@@ -39,4 +39,10 @@ COMMON_API int is_hex_prefix(const char* ptr);
 // NUMBER_OUT_OF_RANGE - не помещается в int32
 COMMON_API int parse_int32(const char* s, int32_t* out);
 
+// выделение числа (радиуса) из  переданной строки
+COMMON_API int parse_radius(const char* s, double* out);
+
+// получение формы слова "вершина" в зависимости от того, сколько их штук
+COMMON_API int vertex_form_index(int N);
+
 #endif

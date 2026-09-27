@@ -1,6 +1,4 @@
-#include <cmath>
 #include <iostream>
-#include <numbers>
 #include <print>
 #include <string>
 #include <vector>
@@ -43,11 +41,8 @@ int main() {
     }
 
     std::vector<Point> points(N);
-    double perm_angle;
     for (int i = 0; i < N; ++i) {
-        perm_angle = 2 * std::numbers::pi * i / N;
-        points[i].x = std::cos(perm_angle);
-        points[i].y = std::sin(perm_angle);
+        points[i] = polygon_vertex(i, N);
     }
 
     for (int i = 0; i < N; ++i) {
@@ -55,7 +50,7 @@ int main() {
             if (i == j)
                 std::print("{:8.3f}", 0.0);
             else
-                std::print("{:8.3f}", std::hypot(points[i].x - points[j].x, points[i].y - points[j].y));
+                std::print("{:8.3f}", point_distance(points[i], points[j]));
         }
         std::print("\n");
     }

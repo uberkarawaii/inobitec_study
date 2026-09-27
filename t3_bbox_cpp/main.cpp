@@ -78,13 +78,12 @@ int main() {
     Point min_border{std::ranges::min(xs), std::ranges::min(ys), std::ranges::min(zs)};
 
     // центр - сумма по всем ос€м делЄнна€ на кол-во точек
-    Point center{std::reduce(xs.begin(), xs.end()) / points.size(), std::reduce(ys.begin(), ys.end()) / points.size(),
-                 std::reduce(zs.begin(), zs.end()) / points.size()};
+    Point center = centroid(points);
 
     // вычисление среднего рассто€ни€ от точек до центроида
     double dist = 0;
     for (const auto& p : points) {
-        dist += std::hypot(p.x - center.x, p.y - center.y, p.z - center.z);
+        dist += point_distance(p, center);
     }
     dist = dist / points.size();
 

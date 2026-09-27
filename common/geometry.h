@@ -30,4 +30,15 @@ struct Point {
 // parse_point использует is_hex_prefix из string_utils
 COMMON_API int parse_point(const char* str, struct Point* p);
 
+// вычисл€ет расст. м-у двум€ точками в 3д
+// предполагаетс€, что обе точки валидные
+COMMON_API double point_distance(struct Point a, struct Point b);
+
+// среднее арифметическое набора точек
+// по контракту предполагаетс€, что набор точек будет непустым и N - положительным
+COMMON_API struct Point centroid(const struct Point* pts, int n);
+
+//
+COMMON_API struct Point polygon_vertex(int i, int n);
+
 #endif

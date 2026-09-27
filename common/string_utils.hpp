@@ -36,3 +36,10 @@ COMMON_API int is_empty(const std::string& s);
 
 // разбор целого (десятичное); строка уже обрезана от пробелов
 COMMON_API std::expected<std::int32_t, number_error> parse_int32(std::string_view s);
+
+// получение радиуса в виде числа
+COMMON_API std::expected<double, number_error> parse_radius(std::string_view r_line);
+
+// форма слова "вершина" со склонением.
+// функция отдаёт индекс, по которому в массиве лежит нужная форма слова
+COMMON_API int vertex_form_index(int N);

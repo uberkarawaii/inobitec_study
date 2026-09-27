@@ -52,3 +52,83 @@ add_executable(trim_string_c trim_string.c)
 target_link_libraries(trim_string_c PRIVATE string_utils_c_static)
 configure_target(trim_string_c ON)
 add_test(NAME trim_string_c COMMAND trim_string_c)
+
+# вынесенные в common ф-ции, которые до этого были внутри задач (или в виде ф-ций, или даже не вынесенные)
+# point_distance (geometry)
+add_executable(point_distance_cpp point_distance.cpp)
+target_link_libraries(point_distance_cpp PRIVATE common_cpp_static)
+configure_target(point_distance_cpp ON)
+add_test(NAME point_distance_cpp COMMAND point_distance_cpp)
+
+add_executable(point_distance_c point_distance.c)
+target_link_libraries(point_distance_c PRIVATE common_c_static)
+configure_target(point_distance_c ON)
+add_test(NAME point_distance_c COMMAND point_distance_c)
+
+# centroid (geometry)
+add_executable(centroid_cpp centroid.cpp)
+target_link_libraries(centroid_cpp PRIVATE common_cpp_static)
+configure_target(centroid_cpp ON)
+add_test(NAME centroid_cpp COMMAND centroid_cpp)
+
+add_executable(centroid_c centroid.c)
+target_link_libraries(centroid_c PRIVATE common_c_static)
+configure_target(centroid_c ON)
+add_test(NAME centroid_c COMMAND centroid_c)
+
+# polygon_vertex (geometry)
+add_executable(polygon_vertex_cpp polygon_vertex.cpp)
+target_link_libraries(polygon_vertex_cpp PRIVATE common_cpp_static)
+configure_target(polygon_vertex_cpp ON)
+add_test(NAME polygon_vertex_cpp COMMAND polygon_vertex_cpp)
+
+add_executable(polygon_vertex_c polygon_vertex.c)
+target_link_libraries(polygon_vertex_c PRIVATE common_c_static)
+configure_target(polygon_vertex_c ON)
+add_test(NAME polygon_vertex_c COMMAND polygon_vertex_c)
+
+# parse_radius (string_utils)
+add_executable(parse_radius_cpp parse_radius.cpp)
+target_link_libraries(parse_radius_cpp PRIVATE string_utils_cpp_static)
+configure_target(parse_radius_cpp ON)
+add_test(NAME parse_radius_cpp COMMAND parse_radius_cpp)
+
+add_executable(parse_radius_c parse_radius.c)
+target_link_libraries(parse_radius_c PRIVATE string_utils_c_static)
+configure_target(parse_radius_c ON)
+add_test(NAME parse_radius_c COMMAND parse_radius_c)
+
+# vertex_form_index (string_utils)
+add_executable(vertex_form_index_cpp vertex_form_index.cpp)
+target_link_libraries(vertex_form_index_cpp PRIVATE string_utils_cpp_static)
+configure_target(vertex_form_index_cpp ON)
+add_test(NAME vertex_form_index_cpp COMMAND vertex_form_index_cpp)
+
+add_executable(vertex_form_index_c vertex_form_index.c)
+target_link_libraries(vertex_form_index_c PRIVATE string_utils_c_static)
+configure_target(vertex_form_index_c ON)
+add_test(NAME vertex_form_index_c COMMAND vertex_form_index_c)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
