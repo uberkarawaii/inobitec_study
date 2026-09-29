@@ -3668,6 +3668,95 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   ```
   падение происходит и как надо. после отката на приемлемый sha: `All requested installations completed successfully in: 222 us ... -- Configuring done (3.3s) -- Generating done (0.1s) ...`
 
+- прогоняю на виртуалке `cmake --preset debug`
+  ```
+  -- ninja: /usr/bin/ninja
+  CMake Error at CMakeLists.txt:36 (message):
+  VCPKG_DEV_ROOT is not set; it must point to the vcpkg clone used by the
+  toolchain
+  -- Configuring incomplete, errors occurred!
+  ```
+  получается, нет VCPKG_DEV_ROOT. я и не помню чтобы я её делала. то есть работа идёт с VCPKG_ROOT? спрошу ии:
+  "VCPKG_DEV_ROOT был исключительно для винды,так? и vm-ка работала на VCPKG_ROOT?" нет, и я её задавала через
+  export VCPKG_DEV_ROOT="$HOME/dev/vcpkg". когда я вот так задаю на линуксе перем. среды, это ровно на текущ. сессию и она уходит в кэш, эта переменная? ответ ии:
+  - да export VCPKG_DEV_ROOT... на текущ. сессию
+  - она сама не кэшируется, только косвенно - её значение становится частью в CMAKE_TOOLCHAIN_FILE
+  когда происходит реконфиг (повтор. конфиг или реконфиг при билде - нужна VCPKG_DEV_ROOT)
+
+  хочу сделать VCPKG_DEV_ROOT постоянной перем. окружения, а не на одну сессию. выполняю в bash
+  `echo 'export VCPKG_DEV_ROOT="$HOME/dev/vcpkg"' >> ~/.bashrc`
+  ии говорит что применится в "новых интерактивных сессиях". для проверки в текущей
+  `source ~/.bashrc` `echo "$VCPKG_DEV_ROOT"   # должно вывести /home/<user>/dev/vcpkg`
+  выводит /home/karavai/dev/vcpkg - как и должно быть. 
+  
+  заново запускаю из корня проекта `cmake --preset debug`
+  ```
+  -- ninja: /usr/bin/ninja
+  -- vcpkg baseline : 1577f17ee57f42a0ef6d75bbb82cb37d0b76d7e8 (reachable in /home/karavai/dev/vcpkg)
+  -- Running vcpkg install
+  Detecting compiler hash for triplet x64-linux...
+  Compiler found: /usr/bin/c++
+  ...
+  All requested installations completed successfully in: 67 us
+  -- Running vcpkg install - done
+  ...
+  -- vcpkg triplet  : x64-linux
+  -- Configuring done (0.9s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/debug
+  ```
+  baseline также проверяется. и теперь VCPKG_DEV_ROOT виден, и его не надо задвать повтороно, если нужен реконфиг
+
+- свежий клон моего проекта в d:\test1 и говорю deepseek сделать всю цепочку: конфиги, билд и прогон на релиз/дебаг.
+  прогоняет:
+  ```
+  # config build...
+  ...
+
+  # Running in D:\test1\inobitec_study
+  $ cmake --build "D:\test1\inobitec_study\build\debug"
+  ...
+  [80/80] Linking C executable tests\unit\vertex_form_index_c.exe
+
+  # Running in D:\test1\inobitec_study
+  $ ctest --test-dir "D:\test1\inobitec_study\build\debug" --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 521
+  Total Test time (real) =  46.92 sec
+
+  # config release....
+  ...
+
+  # Running in D:\test1\inobitec_study
+  $ cmake --build "D:\test1\inobitec_study\build\release"
+  ...
+  [80/80] Linking CXX executable tests\unit\vertex_form_index_cpp.exe
+
+  # Running in D:\test1\inobitec_study
+  $ ctest --test-dir "D:\test1\inobitec_study\build\release" --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 521
+  Total Test time (real) =   8.97 sec
+  ```
+  
+- ии на финальном промпте напомнил что я забыла сделать негативный контроль на vm. на vm vcpkg.json
+  baseline=07f4812200df3d3c931c0c8a6081d3b21fe2bf9f - один из новеших, на vm копия точно старее.
+  при конфиге 
+  ```
+  -- ninja: /usr/bin/ninja
+  CMake Error at CMakeLists.txt:61 (message):
+  builtin-baseline 07f4812200df3d3c931c0c8a6081d3b21fe2bf9f is not reachable
+  in the vcpkg instance at /home/karavai/dev/vcpkg.  Run 'git fetch' in that
+  clone and try again.
+  -- Configuring incomplete, errors occurred!
+  ```
+  срабатывает моя проверка и падает с мои сообщением
+
+*Что не получилось*
+- не забыть сдлеать пресет для билда (cmake --build/release --preset) 
+- на забыть сделать руками до след. сессии (ии посоветовал для лучшего понимания) "git cat-file -e руками — запустить
+  на 1577f17… (успех, 0) и на несуществующем SHA (падение, 128), увидеть коды самому."
+
 *Что заметила при работе с deepseek*
 - сначала сказал что инстанс vcpkg надёжнее находить из CMAKE_TOOLCHAIN_FILE а не из VCPKG_DEV_ROOT. потом сам
   оговорился, что мой CMAKE_TOOLCHAIN_FILE строится по VCPKG_DEV_ROOT и делать то что он предложил - это предполагать, 
