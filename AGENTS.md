@@ -3411,6 +3411,270 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   возвращаю, опять прогон ctest --preset unit:
   `100% tests passed, 0 tests failed out of 19 Total Test time (real) =   2.18 sec`
 
+# 2026-09-28
+*Что сделано*
+- **правка 4: о версии vcpkg**. начну с вопроса **и как ты сама узнаешь, что твой baseline пора двигать вперёд?**
+  мои рассуждения, у чата не спрашивала (глобально не спрашивала. где точечно спросила - написала явно), не искала в интернете. просто выход новой версии не означает, что
+  надо срочно обновляться. потому что а) это будет часто (тоже, с потолка, мне так кажется) и б) это будет обновление
+  ради обновления - а зачем в итоге? если можно свободно обходиться тем, что уже есть. получается, должна возникнуть
+  потребность в обновлении, и только потом - обновление. потребность - в виде а) нового функционала б) фикса того, 
+  что не фиксили патчи (не знаю может ли быть такое вообще, что могут оставаться места, которые не покрыты патчами? спрошу ии) да ии говорит, что такое может быть. вот его список того, почему может быть починка только обновлением, 
+  но не патчем
+  - фича добавлена позже и она в новом коде
+  - исправление потянет за собой несовместимость api/abi - то есть фундаменальное изменение
+  - ошибка в обвязке (порта/тулчейна) - тогда ошибка идёт внутри самой версии
+  - если есть нечто(lib/dll) скомпилированное и нет исходников, и в этом нечто - ошибка. тогда патчить нечего,
+    только ждать обновления этого нечтно
+
+  ещё стала спрашивать ии про порт. и он рассказал, что есть база версий библиотек конкретного коммита (sha), и версию
+  конкретной библиотеки можно взять <= той, что определяется baseline при определённом sha. и вот ещё одна причина поднять baseline: если мне нужна версия библиотеки, выше максималки по baseline, тогда baseline надо поднимать.
+
+- **почему после этого CMake «не видит» инструменты, которые есть**. пока моё предположение, глобально ии не спрашиваю
+  и не гуглю. где задаю точечные вопросы ии - явно помечаю. мне кажется, это происходит оттого, что vcpkg влияет на
+  работу CMake, из того что я помню - делает так, что find_package становится возможно использовать. (цепочка обращений - к vcpkg.cmake И тд тд, всё это ради find_package, как я понимаю). но vcpkg локально скопировал много инструментов,
+  это я помню было при первом конфиге (2026-09-16). зачем ему эти интструменты? спрошу ии. но пока моё предположение в 
+  том, что то, что он установил, влияет на работу CMake. И если произошла какая-то несовместимость / проблема с vcpkg, 
+  то CMake уже подвязан на инструменты, которых пока нет, - они просто не установились. возможно я и неправа. вопрос к ии, какие инструменты vcpkg копирует приватно? и зачем ему эти копии.
+  пока не прочитала зачем ему эти копии, но пробежала глазами список того, что vcpkg копирует себе в vcpkg/downloads/tools. там след. вещи
+  - 7zip-26.03-windows - консольный архиватор
+  - 7zr-26.03-windows - для работы через shell с тем же архиватором (работает исключительно с .7z форматом)
+  - cmake-4.4.3-windows - cmake
+  - msys2 - среда, дающая POSIX-окружение, и пакетный менеджер 
+  - powershell-core-7.6.6-window - кросплатформенная версия PS
+
+  в списке есть CMake, и это уже другой CMake, не тот, что установлен у меня. и этот CMake будет использован для
+  сборки библиотек(и) которые указаны в vcpkg.json. то есть, проблема может быть именно у внутреннего CMake, пришедшего
+  из vcpkg. спрошу ии, так ли это - используется ли приват. копия си мейк для сборки портов? да, так и есть 
+  "vcpkg использует собственный загруженный CMake для сборки портов; это штатный механизм"
+
+  теперь след. вопрос ии - как понять, какой Ninja использует этот внутренний CMake? совеует искать в vcpkg/buildtrees/gtest/x64-windows-dbg/CMakeCache.txt
+  там строка
+  //make program
+  CMAKE_MAKE_PROGRAM:FILEPATH=D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe
+  на винде берётся мой же ninja. посмотрю на vm-ке в тот же .../CMakeCache.txt чтобы понять - может там брался ninja из vcpkg/downloads/tools. также нахожу там 
+  CMAKE_MAKE_PROGRAM:UNINITIALIZED=/usr/bin/ninja
+
+  в обоих случаях это мой ninja, а не приватная копия. значит моя версия не сработала, и теперь она мне не совсем нравится ещё по одной причине: возьмём что vcpkg install failed - но возможно он установил свой ninja или ninja локальный. проблема-то изначально не в отсутствии того же ninja, а в том что его невозможно найти. из этого второе
+  предположение: при vcpkg install failed что-то происходит с путями, по котрым ищутся программные компоненты. пути - я так думаю это переменные навроде вот этой (CMAKE_MAKE_PROGRAM). то есть, всё ещё думаю, что "проблемы с поиском" у приватного CMake, но проблемы не ввиду отсутствия приватного Ninja, а ввиду нарушенных путей.
+
+  теперь надо смотреть на практике - так ли оно, когда происходит vcpkg install failed. вопрос ии
+  "как мне с минимальными потерями сэмулировать ситуацию "vcpkg install failed" на фоне того что локал версия меньше указанной в проекте? мб сделать очень маленький проект с более свежей версией и запустить и тогда он упадёт?"
+  говорит да, это ок, главное чтобы не возник git fetch иначе продвинется baseline что не надо сейчас. 
+  и след идея от той - не мал. проект, а клон моего же, но вписать новый sha и отключить сеть? да, но надо будет
+  сделать shallow-клон vcpkg чтобы не засорить каталог своего рабочего vcpkg
+
+  самый свежий vcpkg
+  ```
+  D:\test>git ls-remote https://github.com/microsoft/vcpkg.git refs/heads/master
+  07f4812200df3d3c931c0c8a6081d3b21fe2bf9f        refs/heads/master
+  ```
+  копирую в d:\test свой репо и уже в нём в vcpkg.json "builtin-baseline": "07f4812200df3d3c931c0c8a6081d3b21fe2bf9f",
+
+  далее `git clone --depth 1 --branch 2026.06.01 https://github.com/microsoft/vcpkg.git d:\test\vcpkg` (сначала было --shallow-since ... вместо --branch но это не прошло - fatal: error processing shallow info: 4. ии объяснил что эта ф-ция отключена гитом для не-серверов). и потом для клона vcpkg и после bootstrap скрипт для .exe: `d:\test\vcpkg\bootstrap-vcpkg.bat`
+
+  отключаю интернет чтобы точно ничего не подтянулось и делаю установку пути до shallow-копии чтобы не тянулось из
+  PATH и конфиг
+  ```
+  set "VCPKG_DEV_ROOT=d:\test\vcpkg"
+  cmake --fresh --preset debug
+  ```
+
+  ```
+  D:\test\inobitec_study>cmake --fresh --preset debug
+  -- ninja: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe
+  -- Running vcpkg install
+  error: while checking out baseline from commit '07f4812200df3d3c931c0c8a6081d3b21fe2bf9f', failed to `git show` versions/baseline.json. This may be fixed by fetching commits with `git fetch`.
+  error: "C:\Program Files\Git\cmd\git.exe" "--git-dir=D:\test\vcpkg\.git" "--work-tree=D:\test\vcpkg\.git" -c core.autocrlf=false show 07f4812200df3d3c931c0c8a6081d3b21fe2bf9f:versions/baseline.json failed with exit code 128
+  fatal: path 'versions/baseline.json' exists on disk, but not in '07f4812200df3d3c931c0c8a6081d3b21fe2bf9f'
+  while checking out baseline 07f4812200df3d3c931c0c8a6081d3b21fe2bf9f
+  while loading baseline version for gtest
+  -- Running vcpkg install - failed
+  CMake Error at d:/test/vcpkg/scripts/buildsystems/vcpkg.cmake:955 (message):
+    vcpkg install failed.  See logs for more information:
+    D:\test\inobitec_study\build\debug\vcpkg-manifest-install.log
+  Call Stack (most recent call first):
+    D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeDetermineSystem.cmake:146 (include)
+    CMakeLists.txt:24 (project)
+
+
+  CMake Error: CMake was unable to find a build program corresponding to "Ninja".  CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.
+  CMake Error: CMAKE_C_COMPILER not set, after EnableLanguage
+  CMake Error: CMAKE_CXX_COMPILER not set, after EnableLanguage
+  -- Configuring incomplete, errors occurred!
+  ```
+  хорошо, ошибка есть. и сборщика не видит, и компилятор не видит. но в vcpkg/buildtrees один файл - vcpkg-running.lock
+  т.е. vcpkg/buildtrees/gtest/x64-windows-dbg/CMakeCache.txt не существует. ладно, посмотрю build/debug/CMakeCache.txt
+  и поищу там  CMAKE_MAKE_PROGRAM. в d:/test/build/debug/CMakeCache.txt нет CMAKE_MAKE_PROGRAM, CMAKE_C_COMPILER, 
+  CMAKE_CXX_COMPILER, в то время как в build/debug моего проекта все эти переменные есть.
+
+  вывод в том, что изначально файлы:
+  - build/debug/CMakeCache.txt - ожидаемо от моего CMake (там было написано # It was generated by CMake: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe)
+  - в рабочем vcpkg D:/dev/vcpkg/buildtrees/gtest/x64-windows-dbg/CMakeCache.txt был сгенерен внутренним vcpkg-ным CMake (там - # It was generated by CMake: D:/dev/vcpkg/downloads/tools/cmake-4.4.3-windows/cmake-4.4.3-windows-x86_64/bin/cmake.exe)
+
+  т.е. в папке бинарников кэш моего си-мейка. в vcpkg/buildtrees/port/x64.. - vcpkg-шного CMake. но в том shallow-клоне
+  нет папки downloads ( а в рабочем vcpkg она есть ) и соотв. нет своего внутрненнего CMake и зщке/x64-windows-dbg/CMakeCache.txt - т.к. некому было его сгенерировать. связаны ли эти два CMakeCache? поищу ссылки в моём рабочем 
+  inoubitec_stud/build/debug/CMakeCache.txt, не в копии. тут есть запись 
+  //The CMake toolchain file
+  CMAKE_TOOLCHAIN_FILE:FILEPATH=D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake. но тут нет таких переменных. 
+  
+  **в vcpkg-шном CMakeCache.txt нет путей до сборщика и компиляторов (т.к. этот CMakeCache.txt не существует), потому что в downoalds нет CMake самого vcpkg и этот файл "некому" сгенерировать**
+  
+  кэши рабочего и приватного CMake связаны. надо только понять, как. чтобы не ходить кругами спрошу у ии, как проектный CMakeCache.txt задействует vcpkg-шный CMakeCache.txt? Ответ - не напрямую, а по цепочке. 
+  - сначала к ..scripts/buildsystems/vcpkg.cmake, 
+  - в этом тулчейн-скрипте находится vcpkg.exe который запускает vcpkg install согласно моему vcpkg.json  (это шаг «Running vcpkg install»)
+  - для сборки зависимости в моём случае gtest, vcpkg поднимает приватный CMake (И вот тут, получается, если baseline расходится, то его уже нет и он не нагенерит  buildtrees/gtest/x64-windows-dbg/CMakeCache.txt).
+
+  **мой вывод**: vcpkg install failed ведёт к тому, что у vcpkg не установится свой CMake, он не сгенерирует свой кэш, в котором лежат пути до инструментов для сборки порта. поэтому CMake не имеет нужных переменных с путями до интрументов, даже если сами инструменты есть. и приватный CMake не существует
+
+  теперь спрошу у ии - это сообщение (CMake Error: CMake was unable to find...) выводится рабочим CMake, так? т.к. 
+  другого и нет, он не установлен. ии говорит: да, это сообщение рабочего CMake а не приавтного. но не потому что приватного нет. доспрашиваю т.к. тут непонятно. после объяснения ии, почему это рабочий CMake, а не приватный - потому что приватный живёт внутри подпроцесса vcpkg, а к моменту определения переменных сборщика и компиляторов
+  подпроцесс vcpkg уже закончен, в любом случае, и его приватный CMake уже неактивен. потому именно рабочий CMake выводит ошибки
+  
+  **по итогу разговора с ии**: CMake Error.. на сборщике и компиляторах происходит, т.к. на стадии выполнения 
+  project(...) из головного CMakeLists.txt сначала грузится тулчейн файл vcpkg.cmake и уже потом, после того как vcpkg install произошло и vcpkg завершил свой подпроцесс, управление переходит к родит. процессу
+  рабочего CMake. определяются переменные CMAKE_C_COMPILER, CMAKE_CXX_COMPILER, CMAKE_MAKE_PROGRAM. и если этап с vcpkg install завершился с ошибкой, то дальше только каскад падений. и рабочий CMake предупредит, что его переменные
+  не были определены. проблема именно в не-определении, а не в отсутствии тулчейна (он при этом может быть установлен, но это не поможет определить переменные)
+
+  до этого я увидела последствия этих моментов в кэшах, но не цепочку событий, как это описал ии
+
+# 2026-09-29
+*Что сделано*
+- **что должен увидеть человек со старым клоном — и где это должно быть написано**. надо перехватить проверку 
+  baseline и вывести информацию об этом, если есть рассогласование. сделать это надо раньше, чем это происходит в
+  проверке baseline внутри момента project(). т.е. это проверка, располагающаяся до project(...) в головном 
+  CMakeLists.txt 
+
+  ещё была интересна ситуация: клон на машине новее, чем baseline проекта. мне не кажется, что тут есть проблема, но
+  обосновать я это не могу. поэтому спрошу у ии, что будет в такой ситуации. он говорит, что всё ок, потому что более
+  новый клон vcpkg "содержит" в себе предка, который указан в vcpkg.json проекта. обратная ситуация - vcpkg install failed
+
+  что говорит ии про мою идею: да, до project() - единственное окно. важно учесть, что до project я как бы "не знаю"
+  какой у vcpkg инстанс, и он определяется во время project() в перем. Z_VCPKG_ROOT_DIR и есть созданный мною VCPKG_DEV_ROOT - они совпадают. и пресет ипользует именно VCPKG_DEV_ROOT, потому на эту переменную можно опираться до project(). тут есть хрупкость в виде того, что надо заводить VCPKG_DEV_ROOT (если не задать - то будет пустой путь), а не пользоваться VCPKG_ROOT т.к. в native command prompt он перекроется бандлом от VS Build Tools. ну и либо переопределять VCPKG_ROOT в консоли каждую сессию, либо вместо "$env{VCPKG_DEV_ROOT}.../vcpkg.cmake" жёстко задавать путь до тулчейн файла, чтобы в CMAKE_TOOLCHAIN_FILE не опираться на то, задана ли перем. в окружении. ни один из путей мне не нравится - первый это условный предзапуск бат-файла, когда этап бат-файлов прошёл, а второе убивает переносимость. так что оставляю работу с VCPKG_DEV_ROOT (и в ридми к проекту про него сказано, так что это не неочевидный шаг). 
+
+  проверсять будет именно достижимость версии, требуемой моим проектом, в клоне. тогда если клон новее - в нём можно
+  достигнуть того, что требует мой проект. иначе - клон старый, в нём недостижимо необходимое. 
+
+- пробую на клоне проекта и клоне vcpkg, которые не сходятся по версиям. расаполагаю проверку baseline до project
+  и запускаю конфиг
+  ```
+  D:\test\inobitec_study>cmake --fresh --preset debug
+  -- ninja: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe
+  CMake Error at CMakeLists.txt:47 (message):
+  builtin-baseline 07f4812200df3d3c931c0c8a6081d3b21fe2bf9f is not reachable
+  in the vcpkg instance at d:\test\vcpkg.  Run 'git fetch' in that clone and
+  try again.
+
+
+  -- Configuring incomplete, errors occurred!
+  ```
+  error выводится именно мой и дальнейшие падения не позволяются. далее, обратная проверка - когда требуемая версия входит в реальную. хочу сделать: в том же клоне меняю builtin-baseline на более низкий, чем shallow-клон vcpkg. вопрос к ии, так можно? ответ ии: нет, т.к. клон именно shallow - там нет глубины, он не содержит ранние версии. да, про это я не подумала. если делать через shallow-клон, то надо ставить именно ту же версию что и у него - чтобы было полное совпадение. такое я не хочу проверять, это нечестно, если хочется проверить именно достижимость
+
+  в клоне своего проекта ставлю sha=f3e10653cc27d62a37a3763cd84b38bca07c6075 и запускаю set"VCPKG_DEV_ROOT=D:\dev\vcpkg"; cmake --fresh --preset debug. этот случай должен быть успешным т.к. требуемый baseline - старый (это та версия vcpkg, которая была в shallow-клоне, 2026.06.01). а реальный инстанс vcpkg - свежее, он был установлен в сентябре. и должен включать тот инстанс 2026.06.01. сначала vcpkg всё себе установил, вывод длинный. по второму прогону итог:
+  ```
+  -- ninja: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe
+  -- vcpkg baseline : f3e10653cc27d62a37a3763cd84b38bca07c6075 (reachable in D:\dev\vcpkg)
+  -- Running vcpkg install
+  Detecting compiler hash for triplet x64-windows...
+  ...
+  All requested installations completed successfully in: 211 us
+  -- Running vcpkg install - done
+  ...
+  -- Build files have been written to: D:/test/inobitec_study/build/debug
+  ```
+  то есть, всё отработало корректно при более старом требуемом baseline.
+
+  и также в клоне пробую "builtin-baseline": "1577f17ee57f42a0ef6d75bbb82cb37d0b76d7e8" - тот же baseline что и у моего рабочего vcpkg. cmake --fresh --preset debug:
+  ```
+  -- ninja: ...
+  -- vcpkg baseline : 1577f17ee57f42a0ef6d75bbb82cb37d0b76d7e8 (reachable in D:\dev\vcpkg)
+  -- Running vcpkg install
+  ...
+  The following packages will be rebuilt:
+      gtest:x64-windows@1.18.0
+    * vcpkg-cmake:x64-windows@2025-08-07
+    * vcpkg-cmake-config:x64-windows@2026-07-21
+  Additional packages (*) will be modified to complete this operation.
+  Restored 3 package(s) from C:\Users\User\AppData\Local\vcpkg\archives in 459 ms. Use --debug to see more details.
+  Removing 1/6 gtest:x64-windows
+  ...
+  Installing 6/6 gtest:x64-windows@1.18.0...
+  gtest:x64-windows@1.18.0 package ABI: fc7a3e776bebbccda523ac6e49625d0079e19ee5144fd96a45ea8d4c237a2558
+  Elapsed time to handle gtest:x64-windows: 12.4 ms
+  ...
+  The package gtest is compatible with built-in CMake targets:
+
+    enable_testing()
+    
+    find_package(GTest CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+    
+    add_test(AllTestsInMain main)
+
+  All requested installations completed successfully in: 52.5 ms
+  -- Running vcpkg install - done
+  ...
+  -- Configuring done (5.4s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: D:/test/inobitec_study/build/debug
+  ```
+  тут версии сходятся - всё корректно, reachable. и видно, что произошло повышение baseline, поэтому 
+  gtest 1.17.0->gtest 1.18.0 и тут важен именно Baseline проекта. при одинаковом инстансе vcpkg могут быть разные 
+  версии библиотеки, т.к. версия библиотеки будет взята согласно baseline проекта.
+
+- в readme в таблицу инструментов занесла git, т.к. теперь он реально используется из головного CMakeLists.txt и без
+  него не произойдёт проверка reachability. возможно git надо было вписать и раньше, т.к. vcpkg точно использует его,
+  чтобы подтянуть порты. но тогда я этого не заметила, а сейчас git появился явным образом
+
+- добавляю проверку версии инстанса vcpkg и тербуемного baseline в свой проект, не клон. 
+  реконфиг cmake --preset debug:
+  ```
+    -- ninja: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe
+  -- vcpkg baseline : 1577f17ee57f42a0ef6d75bbb82cb37d0b76d7e8 (reachable in D:\dev\vcpkg)
+  -- Running vcpkg install
+  Detecting compiler hash for triplet x64-windows...
+  Compiler found: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+  The following packages are already installed:
+      gtest:x64-windows@1.18.0
+    * vcpkg-cmake:x64-windows@2025-08-07
+    * vcpkg-cmake-config:x64-windows@2026-07-21
+  The package gtest is compatible with built-in CMake targets:
+
+      enable_testing()
+      
+      find_package(GTest CONFIG REQUIRED)
+      target_link_libraries(main PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+      
+      add_test(AllTestsInMain main)
+
+  All requested installations completed successfully in: 199 us
+  -- Running vcpkg install - done
+  ...
+  -- Configuring done (3.3s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/debug
+  ```
+  проверка проходит, что видно в самом начале. и тут версии сходятся полностью, потому успех. 
+  
+- deepseek советует сделать отказную ветку на реальном проекте, выставив высокий baseline. ставлю его как в клоне, на  
+  07f4812200df3d3c931c0c8a6081d3b21fe2bf9f (один из самых свежих). 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --preset debug
+  -- ninja: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe
+  CMake Error at CMakeLists.txt:47 (message):
+    builtin-baseline 07f4812200df3d3c931c0c8a6081d3b21fe2bf9f is not reachable
+    in the vcpkg instance at D:\dev\vcpkg.  Run 'git fetch' in that clone and
+    try again.
+  ...
+  ```
+  падение происходит и как надо. после отката на приемлемый sha: `All requested installations completed successfully in: 222 us ... -- Configuring done (3.3s) -- Generating done (0.1s) ...`
+
+*Что заметила при работе с deepseek*
+- сначала сказал что инстанс vcpkg надёжнее находить из CMAKE_TOOLCHAIN_FILE а не из VCPKG_DEV_ROOT. потом сам
+  оговорился, что мой CMAKE_TOOLCHAIN_FILE строится по VCPKG_DEV_ROOT и делать то что он предложил - это предполагать, 
+  что "toolchainFile" в пресете будет задан не через VCPKG_DEV_ROOT. что по сути надумывание.
+
+- про проверку baseline. deepseek отмечает "«Есть объект» и «достижим из HEAD» формально разные вещи. cat-file -e —
+  первое. Для твоей задачи этого достаточно: тебе важно «клон достаточно свежий, чтобы содержать baseline», а это ровно «объект был скачан». "
 
 ## 8. Диалоги с DeepSeek
 

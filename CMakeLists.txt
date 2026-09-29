@@ -18,6 +18,53 @@ if(CMAKE_GENERATOR MATCHES "^Ninja")
 # else отсутствует - пока что в проекте генератор - именно Ninja
 endif()
 
+
+# === ПРОВЕРКА BASELINE ===
+# делается до project, иначе будет падение не от моей проверки с моим сообщением,
+# а при vcpkg install - каскад падений
+
+# надо понять: "вложена" ли требуемая версия в имеющийся инстанс vcpkg. для этого используем git
+# проверка что он есть - иначе нет инструмента для проверки
+find_program(GIT_EXECUTABLE NAMES git)
+if(NOT GIT_EXECUTABLE)
+  message(FATAL_ERROR "git was not found in PATH; it is required to check the vcpkg baseline")
+endif()
+
+# при поиске инстанса опираемся на переменную среды VCPKG_DEV_ROOT - если её нет, падаем
+# иначе не сможем понять, какой именно инстанс
+if(NOT DEFINED ENV{VCPKG_DEV_ROOT} OR "$ENV{VCPKG_DEV_ROOT}" STREQUAL "")
+  message(FATAL_ERROR "VCPKG_DEV_ROOT is not set; it must point to the vcpkg clone used by the toolchain")
+endif()
+
+# чтение vcpkg.json из корня проекта, чтобы определить baseline
+# _vcpkg_manifest - весь vcpkg.json; _m - builtin-baseline найденный по regex  
+file(READ "${CMAKE_SOURCE_DIR}/vcpkg.json" _vcpkg_manifest)
+string(REGEX MATCH "\"builtin-baseline\"[ \t]*:[ \t]*\"([0-9a-fA-F]+)\"" _m "${_vcpkg_manifest}")
+# если builtin-baseline не нашёлся, то падение с ошибкой 
+if(NOT _m)
+  message(FATAL_ERROR "builtin-baseline was not found in vcpkg.json")
+endif()
+# CMAKE_MATCH_1 - то что попало в первую группу regex - т.е. ([0-9a-fA-F]+), сам sha
+set(VCPKG_BASELINE "${CMAKE_MATCH_1}")
+
+# запуск подпроцесса git из папки клона vcpkg
+# cat-file -e X - есть ли объект Х в базе? результат: 0(успех) или не-нуль(нет в базе), уйдёт в _baseline_ok
+# "${VCPKG_BASELINE}^{commit}" - объект-коммит выделенного sha. если такого коммита нет - падение с не-нуль  
+execute_process(
+  COMMAND "${GIT_EXECUTABLE}" -C "$ENV{VCPKG_DEV_ROOT}" cat-file -e "${VCPKG_BASELINE}^{commit}"
+  RESULT_VARIABLE _baseline_ok
+  OUTPUT_QUIET
+  ERROR_QUIET)
+
+# если такого объекта нет в базе - падение с сообщением. если есть - тоже оповещаем
+if(NOT _baseline_ok EQUAL 0)
+  message(FATAL_ERROR
+    "builtin-baseline ${VCPKG_BASELINE} is not reachable in the vcpkg instance at "
+    "$ENV{VCPKG_DEV_ROOT}. Run 'git fetch' in that clone and try again.")
+endif()
+
+message(STATUS "vcpkg baseline : ${VCPKG_BASELINE} (reachable in $ENV{VCPKG_DEV_ROOT})")
+
 # имя проекта сохранится в CMAKE_PROJECT_NAME
 # определяются яызки проекта: с с++; определится компилятор; 
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
