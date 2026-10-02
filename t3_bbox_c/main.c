@@ -7,7 +7,10 @@
 #include "../common/parse_codes.h"
 #include "../common/string_utils.h"
 
-int main() {
+int main(int argc, char* argv[]) {
+    // если первый аргумент --version - отдаём версию и завершаем
+    if (handle_version_flag(argc, argv))
+        return 0;
 
     int len;
     char* s = NULL;

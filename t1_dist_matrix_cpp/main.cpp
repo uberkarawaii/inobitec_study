@@ -8,7 +8,12 @@
 #include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
-int main() {
+int main(int argc, char* argv[]) {
+    // если первый аргумент --version - отдаём версию и завершаем
+    if (handle_version_flag(argc, argv))
+        return 0;
+
+    // получение N
     std::string lineN;
     // считывание строки, проверка на пустоту
     if (!std::getline(std::cin, lineN)) {

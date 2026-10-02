@@ -11,7 +11,12 @@
 #define MAX_SIZE 20
 #define MIN_SIZE 3
 
-int main(void) {
+int main(int argc, char* argv[]) {
+    // если первый аргумент --version - отдаём версию и завершаем
+    if (handle_version_flag(argc, argv))
+        return 0;
+
+    // получение числа N
     char lineN[32];
     if (fgets(lineN, sizeof(lineN), stdin) == NULL) {
         fprintf(stderr, "Получен пустой ввод вместо целого N");

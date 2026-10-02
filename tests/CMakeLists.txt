@@ -34,7 +34,7 @@ file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results")
 # input - входные данные для exe
 # expected_excode - ожидаемый код завершения
 # check_flag - для check (--equal / --contains)
-# expected_result - ожидаемый вывод программы; НЕ абсолют. путь, а просто имя
+# expected_result - ожидаемый вывод программы
 # stream - поток, вывод которого будет сравниваться с expected_result
 function(add_case test_name exe args input expected_excode check_flag expected_result stream)
 
@@ -63,6 +63,14 @@ if(IS_ABSOLUTE "${input}")
   set(INPUT_PATH "${input}")
 else()
   set(INPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/input_data/${input}")
+endif()
+
+# ожидаемое значение. абсолютный путь берём как есть, иначе - файл из tests/expect/
+# сделано для теста версионирования (там ожидание генерится в build, не лежит в tests/expect/)
+if(IS_ABSOLUTE "${expected_result}")
+  set(EXPECTED_PATH "${expected_result}")
+else()
+  set(EXPECTED_PATH "${CMAKE_CURRENT_SOURCE_DIR}/expect/${expected_result}")
 endif() 
 
 # тест_1 на код всегда безусловен и одинаков по сигнатуре
@@ -98,7 +106,7 @@ add_test(NAME ${RESULT_TEST} COMMAND
  $<TARGET_FILE:check> 
  ${CHECK_FLAG} 
  ${PROGRAMM_RESULT} 
- ${CMAKE_CURRENT_SOURCE_DIR}/expect/${expected_result})
+ ${EXPECTED_PATH})
 
 # ${CMAKE_SOURCE_DIR} - изначальный корень с корневым  CMakeLists.txt
 # ${CMAKE_CURRENT_SOURCE_DIR} - подпапка в корне с текущим CMakeLists.txt

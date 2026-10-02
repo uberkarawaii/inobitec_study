@@ -68,7 +68,7 @@ message(STATUS "vcpkg baseline : ${VCPKG_BASELINE} (reachable in $ENV{VCPKG_DEV_
 # имя проекта сохранится в CMAKE_PROJECT_NAME
 # определяются яызки проекта: с с++; определится компилятор; 
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
-project(inobitec_stud LANGUAGES C CXX)
+project(inobitec_stud VERSION 0.1.0 LANGUAGES C CXX)
 
 # какой инстанс vcpkg реально подключён - защита от тихой подмены инструмента
 # CMAKE_TOOLCHAIN_FILE путь к скрипт vcpkg.cmake
@@ -180,6 +180,15 @@ function(add_task dir trgt src lib)
   configure_target(${trgt} ON)
  
 endfunction()
+
+# генерация version.h из шаблона
+# @PROJECT_VERSION@ подставится реальная версия из project(VERSION)
+# @ONLY - подставляются только @VAR@, а не ${...} (в шаблоне только @PROJECT_VERSION@). для защиты
+# /generated в каталоге бинарей будет создан configure_file-ом, если такого каталога ещё нет
+configure_file(
+  ${CMAKE_SOURCE_DIR}/common/version.h.in
+  ${CMAKE_BINARY_DIR}/generated/version.h
+  @ONLY)
 
 # === ПОДПРОЕКТ ДЛЯ СОЗДАНИЯ БИБЛИОТЕК === 
 # add_subdirectory(source_dir [binary_dir] ...)

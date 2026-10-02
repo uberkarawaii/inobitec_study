@@ -5,11 +5,14 @@
 #include <cmath>
 #include <cstdint>
 #include <expected>
+#include <print>
 #include <string>
 #include <string_view>
 #include <system_error>
 
 #include "parse_codes.hpp"
+#include "version.h"
+// version.h Будет найден благодаря include_directories от CMake - добавит каталог generated в пути поиска
 
 // при переводе на isspace - новые вспомогат. методы
 namespace {
@@ -139,4 +142,14 @@ int vertex_form_index(int N) {
         return 1;
     else
         return 2;
+}
+
+// при --version первым аргументом вернёт версию программы
+bool handle_version_flag(int argc, char* argv[]) {
+    if (argc == 2 && std::string_view{argv[1]} == "--version") {
+        std::println(INOBITEC_STUD_VERSION);
+        return 1;
+    } else {
+        return 0;
+    }
 }

@@ -12,7 +12,11 @@
 #include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
-int main() {
+int main(int argc, char* argv[]) {
+    // если первый аргумент --version - отдаём версию и завершаем
+    if (handle_version_flag(argc, argv))
+        return 0;
+
     // откл. синхронизации, иначе EOF и io-fail станут неразличимы из-за чтения через fgetc
     std::ios::sync_with_stdio(false);
     // считывание начальных x y z в массив; сначала строка, потом число

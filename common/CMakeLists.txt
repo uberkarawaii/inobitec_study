@@ -1,3 +1,7 @@
+# путь до сгенерированного version.h (лежит в build/<cfg>/generated)
+# указанные здесь каталоги будут включены в каждый INCLUDE_DIRECTORIES каждой цели этого CMakeLists
+include_directories(${CMAKE_BINARY_DIR}/generated)
+
 # === T1 СБОРКА СТАТИЧ. БИБЛИОТЕКИ ===
 # <name> - логическое имя цели
 # [<type>] - static

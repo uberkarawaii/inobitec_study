@@ -17,6 +17,7 @@
 #define COMMON_API
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "parse_codes.h"
@@ -44,5 +45,8 @@ COMMON_API int parse_radius(const char* s, double* out);
 
 // получение формы слова "вершина" в зависимости от того, сколько их штук
 COMMON_API int vertex_form_index(int N);
+
+// при --version первым аргументом вернёт версию программы
+COMMON_API bool handle_version_flag(int argc, char* argv[]);
 
 #endif

@@ -3765,6 +3765,174 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
 - про проверку baseline. deepseek отмечает "«Есть объект» и «достижим из HEAD» формально разные вещи. cat-file -e —
   первое. Для твоей задачи этого достаточно: тебе важно «клон достаточно свежий, чтобы содержать baseline», а это ровно «объект был скачан». "
 
+# 2026-09-30
+*Что сделано*
+- решения, принятые по версионированию:
+  - версионирование делаю для 8 задач-программ. это изначально предложил ии, хотя я бы хотела прилепить версию ко всему.
+    потом я подумала: если в теории моя программа - продукт, и именно продкт кому-то и нужен, то его и версионируем.
+    а тестовая обвязка - мой инструмент для отладки продукта, и это именно что мой инстмент, внутренний. ии сказал, что
+    примерно понимание верное, но точнее - "--version нужен тем артефактам, чья идентичность живёт дольше контекста сборки:" - то есть то, что кому-то отдадут, и юзеру понадобиться например сказать, что программа сломана. и вот чтобы понять, что именно было у него в бинаре, надо знать версию. 
+
+  --version блок решила вынесли в string_utils. т.к. иначе повторение в каждой программе - что нехорошо по сути и
+    должно быть вынесено. по-хоршему в отдельную программу потому что --version - не про работу со строками. и там есть вывод в выходной поток. но отдельный файл под него заводить - излишество, там будет одни version-блок. поэтому по совету ии откладываю создание отдельного модуля до момента, когда буду делать --help.
+
+  - vcpkg.json["version"] - ии объяснил что это для того, если мой проект будет библиотекой. как, например, gtest. 
+    но мой проект - не библиотека,не пакет. поэтому вот этот "version" в нём оставляю как заглушку и потом сделаю запись об этом в ридми (для чего оно, что оно по факту нефункционально, что этот "version" - не источник истины, что он ведётся рукми). также важно, что м-у vcpkg.json["version"] и project(inobitec_stud VERSION 0.1.0 ...) нет связи и синхронизации. при надобности она будет сделана, но пока что мой проект - не пакет, потому её нету (это нужно занести будет в ридми, известные ограничения проекта)
+
+- в главный CMakeLists.txt добавляю VERSION 0.1.0 в project(...). Это единственный источник версии моего проекта
+
+- создаю файл-шаблон common/version.h.in - в нём определяется INOBITEC_STUD_VERSION "@PROJECT_VERSION@" - версия
+  проекта. и в build будет уходить version.h, сгенерированный по этому шаблону. погуглила про вот это .in расширение - 
+  это файл для какого-либо сборщика, из которого будет сгенерирован .h файл и будет подставлено реальное значение вместо того, что в @@. и проект будет скомпилирован именно с этим заголовком. то есть реального такого заголовка version.h пока нет - но он будет сгенерирован сборщиком по шаблону. мы на это полагаемся, и, как я догадываюсь, будем использовать version.h как уже существующий. 
+
+- в главном CMakeLists.txt до add_subdirectory(common) прописываю configure_file для генерации version.h из version.h.in
+  именно до add_subdirectory(common), т.к. иначе для string_utils.c/cpp не будет реального version.h, который нужнен
+  для понимания версии в --version-блоке
+
+- common/CMakeLists.txt добавляю путь до version.h который сгенерен configure_file-ом. через include_directories - это
+  добавит нужную папку в список путей для поиска заголовка version.h
+
+- выполняю cmake --preset debug - в build/debug/generated появился version.h такого содержания
+  ```
+  #ifndef IRINA_VERSION_H
+  #define IRINA_VERSION_H
+
+  #define INOBITEC_STUD_VERSION "0.1.0"
+
+  #endif
+  ```
+- string_utils.h/hpp .c/cpp - записываю определения и реализации bool handle_version_flag.
+- все программы используют string_utils, в котором и находится bool handle_version_flag, потому ничего дополнительно не
+  добавляется
+
+# 2026-10-01
+*Что сделано*
+- после добавления handle_version_flag перезапускаю цепочку: конфиг, билд, тесты - смотрю чтобы не было рассогласований/
+   cmake --preset debug; cmake --build build/debug; ctest --preset full: `100% tests passed, 0 tests failed out of 521 Total Test time (real) =  34.59 sec` 
+
+- t1-t4 добаваляю int argc, char* argv[] в аргументы main, если их там нет, и 
+  `if (handle_version_flag(argc, argv) return 0;`. формат, пересборка, и запускаю каждую программу с --version:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t1_dist_matrix_c\main.exe --version
+  0.1.0
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t1_dist_matrix_cpp\main.exe --version
+  0.1.0
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t2_passport_c\main.exe --version
+  0.1.0
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t2_passport_cpp\main.exe --version
+  0.1.0
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t3_bbox_c\main.exe --version
+  0.1.0
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t3_bbox_cpp\main.exe --version
+  0.1.0
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t4_filter_c\main.exe --version
+  0.1.0
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t4_filter_cpp\main.exe --version
+  0.1.0
+  ```
+  и на одном экземпляре смотрю, что код возврата 0:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t4_filter_cpp\main.exe --version
+  0.1.0
+  c:\Users\User\Desktop\inobitec_stud> echo %errorlevel%
+  0
+  ```
+  прогоняю ctest --preset full: `100% tests passed, 0 tests failed out of 521 Total Test time (real) =  35.94 sec`
+- в корне завожу CHANGELOG.md И пока заношу туда минимальную информацию, предложенную ИИ. 
+- в README.md делаю секцию "версионирование" и добавляю инф. о handle_version_flag (что он не совсем подходяще живёт в
+  string utils, почему так, когда это изменится) и о vcpkg.json["version"] и project(inobitec_stud VERSION Х.Х.Х ...) в "известные ограничения проекта". 
+- пока дополняю CHANGELOG, переспросила ии - **что именно фиксирует `builtin-baseline`** (я как-то думала, что всё для портов 
+  и версию самого vcpkg). deepseek разделил - нет, это не так. baseline - версии портов и их рецепты. а вот версия vcpkg определяется отдельно - в его клоне есть scripts/vcpkg-tool-metadata.txt, который читает bootstrap-vcpkg.bat и скачивает определённую версию vcpkg
+- приступаю к тестированию версионирования. в итоге сравнивать будет check - потому ии заранее предупреждает, что не
+  надо делать хардкод в виде файла с версией, тогда синхронизация вручную, точка истины нарушается. потому эталон с версией надо генерить налету, из PROJECT_VERSION и класть в build. 
+- консистенси тест (т.е. совпадение версии в двух местах) отдельно не делаю - связь обоих мест с точкой истины
+  естественна, согласованность будет подтверждаться, если тесты проходят
+- tests/CMakeLists.txt - добавляю возможность для expect иметь абс. путь и меняю жёсткий путь из последнего add_test
+  (тест2) на переменную EXPECTED_PATH, которая может содержать как и абсолютный путь до ожидания, как и относительный
+- tests/cases.cmake - генерация эталона version.expect с версией. по итогу будет сгенерирован файл build/<cfg>/tests
+  /version.expect. в конце файла добавляю 8 тестов на версионирование - check будет сверять выход программы при `--version` и сгенереный эталон с версией
+- пока что в тестах на версионирование, как и во всех остальных, будет проверка только stdout, stderr проверяться не
+  будет
+
+- проверяю после сборки тесты ctest --preset full и потом делаю негативный контроль (хардкод version.h.in
+  @PROJECT_VERSION@ на 0.9.9).
+
+  ctest --preset full
+  ```
+    Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 121: t2_cpp_empty_vertexes_code
+  1/2 Test #121: t2_cpp_empty_vertexes_code .......***Failed    0.02 sec
+  6 or more arg-s are needed: <expect_code> <file_input> <file_stdout> <file_stderr> -- <exe>. Received: 5
+  ```
+  почему-то тест, всё время проходивший, упал. смотрю cases.cmake - там для этого теста ${NO_INPUT4} а не ${NO_INPUT}
+  что, скорее всего, опечатка. заново прогон ctest --preset full: `100% tests passed, 0 tests failed out of 537 Total Test time (real) =  35.89 sec`
+
+  теперь смотрю чисто версионирование-тесты 
+  ```
+  ctest --test-dir build/debug -R "_version"
+  ...
+  100% tests passed, 0 tests failed out of 16
+  Total Test time (real) =   1.03 sec
+  ```
+
+  и теперь негативный контроль - в version.h.in @PROJECT_VERSION@ на 0.9.9
+  ```
+  ctest --test-dir build/debug -R "_version"
+  ...
+  15/16 Test #517: t4_cpp_version_code ..............   Passed    0.13 sec
+        Start 518: t4_cpp_version_stdout
+  16/16 Test #518: t4_cpp_version_stdout ............***Failed    0.01 sec
+
+  50% tests passed, 8 tests failed out of 16
+
+  Total Test time (real) =   1.21 sec
+
+  The following tests FAILED:
+          504 - t1_c_version_stdout (Failed)
+          506 - t1_cpp_version_stdout (Failed)
+          508 - t2_c_version_stdout (Failed)
+          510 - t2_cpp_version_stdout (Failed)
+          512 - t3_c_version_stdout (Failed)
+          514 - t3_cpp_version_stdout (Failed)
+          516 - t4_c_version_stdout (Failed)
+          518 - t4_cpp_version_stdout (Failed)
+  Errors while running CTest
+  ```
+  то есть - код тестов так и остаётся нуль, а вот выход - сравнение не проходит. т.к. по точке истины project - 0.1.0 сейчас и из него происходит version.expect - эталон. а в version.h.in, из которого в программу доходит версия, хардкод другого значения. то есть, вот такой тест
+  ловит момент, когда началось отхождение от точки истины и произошло рассогласование (потому что если рассогл. нет, 
+  то всё сойдётся). возвращаю @PROJECT_VERSION@, пересборка, пробег `ctest --preset full`
+  ```
+  100% tests passed, 0 tests failed out of 537
+  Total Test time (real) =  34.99 sec
+  ```
+
+- хотела сделать пресет для версион. тестов, посоветовалась с ии - он говорит, что это излишне, тестов мало, отдельно
+  их гонять можно `ctest --test-dir build/debug -R "_version"`. для пресета неубедительно. окей, с аргументом про количество - согласна. поэтому не выношу это в пресет. в ридми раздел версионирование также оставила пометку об этом
+
+*Что не получилось*
+- возможно, нужно будет (если это так по 4.9.7) сделать проверки в acceptance-тестах: при ожидаемом успехе проверять
+  stderr на пустоту и при проверке не ошибку - stdout - на пустоту. но пока что это не факт, только после уточнения формулировки
+
+- что означает "git describe/теги — отложены" - ии говорил это в последнем пункте плана про версионирование. но что
+  под этим имеется ввиду
+
+*Что заметила при работе с deepseek*
+- был небольшой глюк, ии сказал что "stderr для --version: по § 4.9 п.7 каналы проверяются все, но наставник назвал
+  только exit + stdout. Проверять ли, что stderr пуст при --version (потребует пустой expect-файл)? Я склоняюсь — не сейчас, следовать тексту наставника." хотя такого требования у наставника не было. при вопросе об этом ии
+  сказал, что своё предложение выдал за текст наставника
+
+# 2026-10-02
+*Что сделано*
+- ии объяснил, что пока из версионирования (релиз) остаётся несделанным git tag / git describe - понимание версии
+  по состоянию гит, а не --version. отложено, и по словам агента "git describe технически требует тегов/релизов, которых нет (0.1.0 в разработке)" 
+
+- делаю контрольные тесты. `ctest --preset full`: 
+  `100% tests passed, 0 tests failed out of 537 Total Test time (real) =  38.61 sec`
+
+  `ctest --preset full-release`
+  `100% tests passed, 0 tests failed out of 537 Total Test time (real) =   8.38 sec`
+
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.

@@ -1,0 +1,6 @@
+#ifndef IRINA_VERSION_H
+#define IRINA_VERSION_H
+
+#define INOBITEC_STUD_VERSION "@PROJECT_VERSION@"
+
+#endif

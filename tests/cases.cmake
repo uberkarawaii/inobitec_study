@@ -9,6 +9,11 @@ set(ERR 2)
 set(EMPTY_ARG "")
 # для достижения io-fail
 set(FOLDER_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/input_data")
+# ожидание для --version: генерируется из project(VERSION), не хранится в репо
+set(VERSION_EXPECT "${CMAKE_CURRENT_BINARY_DIR}/version.expect")
+file(WRITE "${VERSION_EXPECT}" "${PROJECT_VERSION}")
+# аргумент который будет подаваться в программы, чтобы они вывели версию
+set(VERSION_ARG "--version")
 
 # === T1 C TESTS ====
 # входные данные с ошибками
@@ -369,3 +374,13 @@ add_case(t4_cpp_nan_payload_coord t4_cpp "${RAD1}" t4_nan_payload_coord "${DATA}
 add_case(t4_cpp_comma_coord t4_cpp "${RAD1}" t4_comma_coord "${DATA}" EQ t4_comma_coord "${ERR}")
 add_case(t4_cpp_dot_trailing_coord t4_cpp "${RAD8}" t4_dot_trailing_coord "${SUCCESS}" EQ t4_dot_trailing_coord "${OUT}")
 add_case(t4_cpp_dot_leading_coord t4_cpp "${RAD5}" t4_dot_leading_coord "${SUCCESS}" EQ t4_dot_leading_coord "${OUT}")
+
+# === тесты на версионирование (--version) ===
+add_case(t1_c_version    t1_c    "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t1_cpp_version  t1_cpp  "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t2_c_version    t2_c    "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t2_cpp_version  t2_cpp  "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t3_c_version    t3_c    "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t3_cpp_version  t3_cpp  "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t4_c_version    t4_c    "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t4_cpp_version  t4_cpp  "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")

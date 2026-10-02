@@ -105,6 +105,10 @@ int get_points(struct Point** points, int* points_size, int* points_capacity) {
 }
 
 int main(int argc, char* argv[]) {
+    // если первый аргумент --version - отдаём версию и завершаем
+    if (handle_version_flag(argc, argv))
+        return 0;
+
     // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
     if (argc != 2) {
         if (argc < 2)

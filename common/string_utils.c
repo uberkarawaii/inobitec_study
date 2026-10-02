@@ -3,10 +3,14 @@
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "version.h"
+// version.h Будет найден благодаря include_directories от CMake - добавит каталог generated в пути поиска
 
 // массив символов из входного потока до \0 через динамич. массив
 char* get_string(int* len) {
@@ -148,4 +152,14 @@ int vertex_form_index(int N) {
         return 1;
     else
         return 2;
+}
+
+// при --version первым аргументом вернёт версию программы
+bool handle_version_flag(int argc, char* argv[]) {
+    if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+        printf("%s\n", INOBITEC_STUD_VERSION);
+        return 1;
+    } else {
+        return 0;
+    }
 }
