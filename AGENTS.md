@@ -3923,7 +3923,7 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
 
 # 2026-10-02
 *Что сделано*
-- ии объяснил, что пока из версионирования (релиз) остаётся несделанным git tag / git describe - понимание версии
+- ии объяснил, что пока из версионирования (релиз) остаётся несделанным git tag-based версионирование - понимание версии
   по состоянию гит, а не --version. отложено, и по словам агента "git describe технически требует тегов/релизов, которых нет (0.1.0 в разработке)" 
 
 - делаю контрольные тесты. `ctest --preset full`: 
@@ -3932,6 +3932,113 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   `ctest --preset full-release`
   `100% tests passed, 0 tests failed out of 537 Total Test time (real) =   8.38 sec`
 
+  коммит и прошу ии прогнать чистый клон по всем ступеням: конфиг, билд, тесты. 
+  ```
+  # Running in d:\test1\inobitec_study
+  $ cmake --fresh --preset debug
+  ...
+  -- vcpkg triplet  : x64-windows
+  -- Configuring done (6.3s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: D:/test1/inobitec_study/build/debug
+
+  # Running in d:\test1\inobitec_study
+  $ cmake --fresh --preset release
+  ...
+  -- Configuring done (5.0s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: D:/test1/inobitec_study/build/release
+  ```
+
+  ```
+  # Running in d:\test1\inobitec_study
+  $ cmake --build build/debug
+  [1/80] Building C object common\CMakeFiles\common_c_shared.dir\geometry.c.obj
+  ...
+  [80/80] Linking C executable tests\unit\vertex_form_index_c.exe
+
+  # Running in d:\test1\inobitec_study
+  $ cmake --build build/release
+  [1/80] Building C object common\CMakeFiles\common_c_shared.dir\geometry.c.obj
+  [2/80] Building C object common\CMakeFiles\common_c_static.dir\geometry.c.obj
+  ...
+  [79/80] Linking CXX executable t3_bbox_cpp\main.exe
+  [80/80] Linking CXX executable tests\unit\vertex_form_index_cpp.exe
+  ```
+
+  ```
+  D:\test1\inobitec_study>ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 537
+  Total Test time (real) =  32.92 sec
+
+  D:\test1\inobitec_study>ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 537
+  Total Test time (real) =   7.53 sec
+  ```
+  
+- теперь на виртуалке
+  ```
+  cmake --fresh --preset debug
+  -- ninja: /usr/bin/ninja
+  ...
+  -- Found Threads: TRUE
+  -- Configuring done (1.5s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/debug
+
+  cmake --fresh --preset release
+  -- Configuring done (1.3s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/release
+  ```
+
+  ```
+  cmake --build build/debug
+  [1/62] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o
+  ...
+  [62/62] Linking CXX executable tests/unit/parse_radius_cpp
+
+  cmake --build build/release
+  [1/62] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o
+  ...
+  [62/62] Linking CXX executable tests/unit/vertex_form_index_cpp
+  ```
+
+  ```
+  ctest --preset full
+  Test project /home/karavai/test/inobitec_study/build/debug
+        Start   1: format-check
+  1/545 Test   #1: format-check ..............................   Passed    0.28 sec
+  ...
+          Start 511: t1_c_version_code
+  511/545 Test #511: t1_c_version_code .........................   Passed    0.01 sec
+  ...
+          Start 545: vertex_form_index_c
+  545/545 Test #545: vertex_form_index_c .......................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 545
+
+  Total Test time (real) =   3.55 sec
+
+  ctest --preset full-release
+  Test project /home/karavai/test/inobitec_study/build/release
+        Start   1: format-check
+  1/545 Test   #1: format-check ..............................   Passed    0.13 sec
+  ...
+            Start 513: t1_cpp_version_code
+  513/545 Test #513: t1_cpp_version_code .......................   Passed    0.00 sec
+  ...
+          Start 544: vertex_form_index_cpp
+  544/545 Test #544: vertex_form_index_cpp .....................   Passed    0.00 sec
+          Start 545: vertex_form_index_c
+  545/545 Test #545: vertex_form_index_c .......................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 545
+
+  Total Test time (real) =   1.65 sec
+  ```
 
 ## 8. Диалоги с DeepSeek
 
