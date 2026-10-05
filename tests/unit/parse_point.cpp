@@ -3,10 +3,9 @@
 #include <ostream>
 #include <string_view>
 
-#include "printers.hpp"
 #include "../../common/geometry.hpp"
 #include "../../common/parse_codes.hpp"
-
+#include "printers.hpp"
 
 namespace {
 // тип данных. вход в виде строки и ожидаемая точка. нормальный случай
