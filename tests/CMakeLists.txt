@@ -14,6 +14,10 @@ find_package(GTest CONFIG REQUIRED)
 # благодаря vcpkg GTestConfig.cmake найдётся. т.к. vcpkg.cmake Добавил build/<cfg>/vcpkg_installed/.../share
 # в список каталогов по которому CMake ведёт поиск
 
+# find_package(GTest...) - сама библиотека; include(GoogleTest) - хелперы для gtest 
+# грузит GoogleTest.cmake - будут доступны gtest_add_tests и gtest_discover_tests (для целей, залинкованных с GTest)
+include(GoogleTest)
+
 # маленькая тестовая программа
 add_executable(gtest_smoke gtest_smoke.cpp)
 # конфигурируется как тестовая обвязка, не продукт для тестирования

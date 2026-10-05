@@ -4040,6 +4040,228 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   Total Test time (real) =   1.65 sec
   ```
 
+# 2026-10-04
+*Что сделано*
+- была найдена асимметрия в том, что выводят tests/unit при падении. какие-то будут выводить только то, что было
+  получено на практике, а какие-то - и полученное на практике, и что ожидалось. раньше я эту асимметрию не заметила.
+  ии также подтвердил, что это ассиметрия и несоотв. 4.6 (что выводить при ошибке). также, ии не советует чинить ручные
+  check_... - тк ровно сейчас будет переход на gtest. в его рамках всегда будет вывод result+expected+строка файла. и
+  те исправления будут выброшены, т.к. переходный инструмент будет удалён. 
+  
+  вопрос ии: нормально ли полагатся на то, что
+  скоро будет переход и потому не делать выравнивание асимметрии? с пониманием того, что переход будет и он устранит
+  и несоотв. 4.6 и асимметрию? приводит много арг. "за" и против - только если слой будет отложен или миграция сорвётся.
+  я предполагаю миграцию потом не буду вносить правки в check_... с осознанием того, что этот слой скоро будет удалён
+
+- пока что переношу один parse_point_cpp на gtest
+
+*Что не получилось*
+- пока не проверено на практике, но ии говорит что возможный риск (на моменте с gtest_discover_tests)
+
+  "И это ровно то место, где мы отметили риск: discovery запускает exe на этапе сборки, а gtest.dll/gtest_main.dll копирует applocal тоже POST_BUILD — если порядок шагов окажется не тот, discovery упадёт; тогда лечится DISCOVERY_MODE PRE_TEST. ПРЕДПОЛОЖЕНИЕ, СРЕДНИЙ"
+
+  и вопрос совместимости ASan + gtest
+
+# 2026-10-05
+*Что сделано*
+- вношу изменения в test/unit/parse_point.cpp. до этого: 
+  - свой счётчик ошибок
+  - свой метод проверки вход VS ожидание (check())
+  - main() который вызывает свой check() и если не сошлось - +1 к счётчику ошибок
+  
+  теперь:
+  - на каждый тип теста есть свой класс-фикстура (suite) со своим типом данных (struct - либо строка+ожидаемая_точка
+    либо строка+ожидаемая_ошибка)
+  - от suite наследуется класс, который будет сгенерирован макросом TEST_P - тест с параметрами. он регистрирует
+    наследника suite и берёт на себя др. моменты связанные с логкой gtest. а от меня в TEST_P прописывается только
+    логика теста. она и станет TestBody наследника suite
+  - создаётся статический объект с данными (INSTANTIATE_TEST_SUITE_P) - сколько там наборов данных, столько 
+    gtest и сделает инстансов наследника suite. тогда и будет происходить вызов тестов
+  - такой набор сущностей - на Ok-case и на Err-case
+
+  связь м-у классом-наследником suite и данными, с которыми он должен отработать - по ключу (имя suite). с кем 
+  класс-насленик suite связался при join, с теми он и будет вызван
+
+  main() своего тут нет, его обеспечивает gtest
+
+- выполняю проверку, что прогон зелёный и gtest-тест работают, как ожидвается
+
+  `cmake --preset debug ... -- Configuring done (8.3s) -- Generating done (0.2s) ...`
+
+  ```
+    c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [4/4] Linking CXX executable tests\unit\parse_point_cpp.exe
+  C:\Users\User\Desktop\inobitec_stud\build\debug\vcpkg_installed\x64-windows\debug\bin\gtest_main.dll -> C:\Users\User\Desktop\inobitec_stud\build\debug\tests\unit\gtest_main.dll done
+  C:\Users\User\Desktop\inobitec_stud\build\debug\vcpkg_installed\x64-windows\debug\bin\gtest.dll -> C:\Users\User\Desktop\inobitec_stud\build\debug\tests\unit\gtest.dll done
+  ```
+  думаю это ок, просто связи с gtest-dll-ками
+
+  ctest --preset unit --output-on-failure
+  ```
+    Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+        Start 550: parse_point_c
+  1/18 Test #550: parse_point_c ....................   Passed    0.12 sec
+  ...
+        Start 558: point_distance_cpp
+  9/18 Test #558: point_distance_cpp ...............   Passed    0.12 sec
+  ...
+  100% tests passed, 0 tests failed out of 18
+
+  Total Test time (real) =   2.89 sec
+  ```
+  тесты не изменились - хотя при подключении gtest они должны были появиться. но кол-во тестов выросло - то есть они
+  "появились". deepseek посмотрел и говорит что проблема возможно в фильтре пресета unit - "он отсекает discovered-тесты". он поискал и выяснил, что:
+  - gtest_discover_tests по умолчанию нет префикса целевого имени - то есть там нет parse_point, по которому был regex
+  - GetParam() (там адреса данных, а они всегда разные. потому и значения получаются разные) попадает в имя. это плохо
+  
+  исправление: `gtest_discover_tests(parse_point_cpp TEST_PREFIX "parse_point_cpp/" NO_PRETTY_VALUES)` - добавить
+  нужный префикс к имени и NO_PRETTY_VALUES - убрать GetParam() из имени. будет вместо него /0
+
+- прогон всего заново  
+  `c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug [1/1] Linking CXX executable tests\unit\parse_point_cpp.exe`;
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset unit --output-on-failure
+    Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+        Start 519: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  1/49 Test #519: parse_point_cpp/OkCases/ParsePointOk.Parses/0 .......   Passed    0.12 sec
+        Start 520: parse_point_cpp/OkCases/ParsePointOk.Parses/1
+  2/49 Test #520: parse_point_cpp/OkCases/ParsePointOk.Parses/1 .......   Passed    0.23 sec
+        Start 521: parse_point_cpp/OkCases/ParsePointOk.Parses/2
+    ...      
+    Start 567: vertex_form_index_c
+  49/49 Test #567: vertex_form_index_c .................................   Passed    0.09 sec
+
+  100% tests passed, 0 tests failed out of 49
+
+  Total Test time (real) =   6.12 sec
+  ```
+
+- негатив. контроль - в parse_point.cpp: OkCase{"1 2 3", Point{1, 2, 3}}->OkCase{"1 2 3", Point{1, 2, 4}}. ожидается
+  падение - распознанное не совпало с ожидаемым. 
+
+  ```
+  c:\Users\User\Desktop\inobitec_stud> ctest --preset unit -R parse_point_cpp --output-on-failure
+    Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+        Start 519: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  1/31 Test #519: parse_point_cpp/OkCases/ParsePointOk.Parses/0 .......***Failed    0.13 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = OkCases/ParsePointOk.Parses/0
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from OkCases/ParsePointOk
+  [ RUN      ] OkCases/ParsePointOk.Parses/0
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_point.cpp(34): error: Expected equality of these values:
+    *got
+      Which is: 24-byte object <00-00 00-00 00-00 F0-3F 00-00 00-00 00-00 00-40 00-00 00-00 00-00 08-40>
+    c.want
+      Which is: 24-byte object <00-00 00-00 00-00 F0-3F 00-00 00-00 00-00 00-40 00-00 00-00 00-00 10-40>
+
+  [  FAILED  ] OkCases/ParsePointOk.Parses/0, where GetParam() = 40-byte object <20-50 2E-2F F6-7F 00-00 05-00 00-00 00-00 00-00 00-00 00-00 00-00 F0-3F 00-00 00-00 00-00 00-40 00-00 00-00 00-00 10-40> (13 ms)
+  [----------] 1 test from OkCases/ParsePointOk (13 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (14 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] OkCases/ParsePointOk.Parses/0, where GetParam() = 40-byte object <20-50 2E-2F F6-7F 00-00 05-00 00-00 00-00 00-00 00-00 00-00 00-00 F0-3F 00-00 00-00 00-00 00-40 00-00 00-00 00-00 10-40>
+
+  1 FAILED TEST
+
+        Start 520: parse_point_cpp/OkCases/ParsePointOk.Parses/1
+  2/31 Test #520: parse_point_cpp/OkCases/ParsePointOk.Parses/1 .......   Passed    0.11 sec
+  ...
+  97% tests passed, 1 tests failed out of 31
+
+  Total Test time (real) =   5.16 sec
+
+  The following tests FAILED:
+          519 - parse_point_cpp/OkCases/ParsePointOk.Parses/0 (Failed)
+  Errors while running CTest
+  ```
+  сам контроль прошёл, но ии заметил: опять момент с GetParam() - из имени он ушёл, но не из самого сообщения. 
+  и аргументы печатаются байтами - плохо читаемо. предлагает сделать операторы вывода в tests/unit/parse_point.cpp 
+  то есть изменить то, как gtest выводит данные
+  ```
+  void PrintTo(const Point& p, std::ostream* os);   // печатать (x, y, z) с 3 знаками
+  std::ostream& operator<<(std::ostream& os, const OkCase& c);   // in + want
+  std::ostream& operator<<(std::ostream& os, const ErrCase& c);  // in + want-code
+  ```
+  ещё раз тест, который должен упасть, смотрю на вывод данных:
+  ```
+    ...
+    C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_point.cpp(39): error: Expected equality of these values:
+    *got
+      Which is: (1.000, 2.000, 3.000)
+    c.want
+      Which is: (1.000, 2.000, 4.000)
+
+  [  FAILED  ] OkCases/ParsePointOk.Parses/0, where GetParam() = in="1 2 3", want=(1.000, 2.000, 4.000) (4 ms)
+  ...
+  [  FAILED  ] OkCases/ParsePointOk.Parses/0, where GetParam() = in="1 2 3", want=(1.000, 2.000, 4.000)
+  ...
+  97% tests passed, 1 tests failed out of 31
+  Total Test time (real) =   4.68 sec
+  The following tests FAILED:
+    519 - parse_point_cpp/OkCases/ParsePointOk.Parses/0 (Failed)
+  ```
+- меняю данные на 1 2 3 как и должно быть и ещё раз прогон билда и ctest --preset unit
+  ```
+    Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+        Start 519: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  1/49 Test #519: parse_point_cpp/OkCases/ParsePointOk.Parses/0 .......   Passed    0.24 sec
+  ...
+  49/49 Test #567: vertex_form_index_c .................................   Passed    0.10 sec
+
+  100% tests passed, 0 tests failed out of 49
+
+  Total Test time (real) =   6.37 sec
+  ```
+
+- ctest --preset full - посмотреть что не образовалось новых проблем. 
+  `100% tests passed, 0 tests failed out of 567 Total Test time (real) =  44.06 sec`. 
+  
+  и релизная сборка, тесты
+  ```
+    Test project C:/Users/User/Desktop/inobitec_stud/build/release
+        Start 519: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  1/49 Test #519: parse_point_cpp/OkCases/ParsePointOk.Parses/0 .......   Passed    0.12 sec
+        Start 520: parse_point_cpp/OkCases/ParsePointOk.Parses/1
+      ...
+    49/49 Test #567: vertex_form_index_c .................................   Passed    0.02 sec
+
+  100% tests passed, 0 tests failed out of 49
+
+  Total Test time (real) =   2.12 sec
+  ```
+
+- tests/unit/printers.hpp выношу в новый файл PrintTo т.к. вывод точки будет при многих тестах, не только в 
+  parse_point_cpp. реализация будет жить в том же заголовочнике т.к. она очень лаконичная. ии не видит в этом
+  нарушения идиоматики. выношу ф-цию, проверяю что связь поддерживается - билд и прогон юнит-пресета на дебаге
+  `ctest --preset unit 100% tests passed, 0 tests failed out of 49 Total Test time (real) =   7.07 sec`
+  и на релизе 
+  `ctest --preset unit-release 100% tests passed, 0 tests failed out of 49 Total Test time (real) =   1.53 sec`
+
+- делаю коммит и прогоны на виртуалке
+
+*Что не получилось*
+- deepseek ещё предложил на параллельной сборке прогнать, т.к. gtest_discover_tests - пост-билд и он говорит, что это 
+  возможно будет вызывать проблемы - гонка за запись (разные тестовые .exe будут писать одновременно и мб конфликт - пока не может быть, т.к. discovery ипользует только parse_point_cpp, едиснтвенный) и возможна ситуация когда
+  gtest.dll будет сокпирован позже, чем запустится discovery (копирование там пост-билд). Тогда падение. проверю 
+  это позже, когда будет не одна цель а мн-во (cmake --build build/debug --clean-first -j или сначала --target clean потом cmake .. -j)
+
+- после появления gtest в другом тест-файле решить о выносе 
+  `tests/unit/case.hpp: шаблон template<class Want> struct Case` - надо / не надо, может оставить копирование если будет
+  довольно разнородно
+
+*Что заметила при работе с deepseek*
+- хорошо заметил что PrintTo(Point) пригодится и в остальных пачках тестов для вывода точки и предложил вынести.
+  соглашаюсь и вопрос "где ещё?" - а остальные методы для печати OkCase ErrCase - не надо выносить? или нет. они ведь
+  приватные, но их повторения наверняка будут, именно по смыслу 
+
+  говорит что да, повторение по смыслу будет. но типы там разные. можно вынести шаблон, но советует это делать 
+  только когда на практике увижу что и во втором тест-файле форма вызова совпадает. тогда есть смысл выносить. а вот PrintTo(Point) повторится гарантированного, так что его выносим
+  
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.

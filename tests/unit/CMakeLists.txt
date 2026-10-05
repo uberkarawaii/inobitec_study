@@ -5,9 +5,14 @@
 
 # parse_point (geometry + string_utils)
 add_executable(parse_point_cpp parse_point.cpp)
-target_link_libraries(parse_point_cpp PRIVATE common_cpp_static)
+target_link_libraries(parse_point_cpp PRIVATE common_cpp_static GTest::gtest_main)
 configure_target(parse_point_cpp ON)
-add_test(NAME parse_point_cpp COMMAND parse_point_cpp)
+# увидит все кейсы и сделает их отдельными тестами, а не под-тестами в составе одной сущности
+# опред. префикс для фильтрации через пресеты, по имени
+# убирать GetParam() - разнящееся м-у сборками число - из имени теста
+gtest_discover_tests(parse_point_cpp
+  TEST_PREFIX "parse_point_cpp/"
+  NO_PRETTY_VALUES)
 
 add_executable(parse_point_c parse_point.c)
 target_link_libraries(parse_point_c PRIVATE common_c_static)
