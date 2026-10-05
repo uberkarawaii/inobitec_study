@@ -4220,7 +4220,7 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
 - ctest --preset full - посмотреть что не образовалось новых проблем. 
   `100% tests passed, 0 tests failed out of 567 Total Test time (real) =  44.06 sec`. 
   
-  и релизная сборка, тесты
+  и релизная сборка, потом тесты
   ```
     Test project C:/Users/User/Desktop/inobitec_stud/build/release
         Start 519: parse_point_cpp/OkCases/ParsePointOk.Parses/0
@@ -4241,7 +4241,54 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
   и на релизе 
   `ctest --preset unit-release 100% tests passed, 0 tests failed out of 49 Total Test time (real) =   1.53 sec`
 
-- делаю коммит и прогоны на виртуалке
+- делаю коммит и прогоны на виртуалке. тесты дебага
+  ```
+  Test project /home/karavai/test/inobitec_study/build/debug
+        Start   1: format-check
+  1/575 Test   #1: format-check ........................................   Passed    0.13 sec
+  ...
+  526/575 Test #526: t4_cpp_version_stdout ...............................   Passed    0.00 sec
+        Start 527: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  ...
+  575/575 Test #575: vertex_form_index_c .................................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 575
+
+  Total Test time (real) =   3.79 sec
+  ```
+  и релиза 
+  ```
+  Test project /home/karavai/test/inobitec_study/build/release
+        Start   1: format-check
+        ...
+  575/575 Test #575: vertex_form_index_c .................................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 575
+
+  Total Test time (real) =   1.69 sec
+  ```
+
+  негатив. контроль - также меняла 1 2 3 на 1 2 4
+  ```
+    Test project /home/karavai/test/inobitec_study/build/debug
+        Start 527: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  1/49 Test #527: parse_point_cpp/OkCases/ParsePointOk.Parses/0 .......***Failed    0.02 sec
+  Running main() from /home/karavai/dev/vcpkg/buildtrees/gtest/src/v1.18.0-e6987f02b9.clean/googletest/src/gtest_main.cc
+  ...
+  Expected equality of these values:
+    *got
+      Which is: (1.000, 2.000, 3.000)
+    c.want
+      Which is: (1.000, 2.000, 4.000)
+  ...
+  98% tests passed, 1 tests failed out of 49
+  Total Test time (real) =   0.63 sec
+  The following tests FAILED:
+    527 - parse_point_cpp/OkCases/ParsePointOk.Parses/0 (Failed)
+  ```
+
+  исправляю испорченное и опять прогон `100% tests passed, 0 tests failed out of 49 Total Test time (real) =   0.63 sec`
+
 
 *Что не получилось*
 - deepseek ещё предложил на параллельной сборке прогнать, т.к. gtest_discover_tests - пост-билд и он говорит, что это 
