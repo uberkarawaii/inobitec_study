@@ -4289,12 +4289,163 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
 
   исправляю испорченное и опять прогон `100% tests passed, 0 tests failed out of 49 Total Test time (real) =   0.63 sec`
 
+- добавляю function(add_unit_gtest target src lib) в tests/CMakeLists.txt - ии заметил хороший момент, в 
+  tests/unit/CMakeLists.txt много дублирования - на добавление теста - 4 опции, они постоянно повторяются. триггер
+  для вынесения -> add_unit_gtest. переношу её в tests/unit/CMakeLists.txt т.к. использоваться она будет только там и не выше. перевожу на неё parse_point_cpp и проверяю что поведение осталось прежним. `ctest --preset unit`
+  `100% tests passed, 0 tests failed out of 49 Total Test time (real) =   6.35 sec`
+  количество не поменялось, падений нет. 
+
+- далее надо перенести cpp: is_empty, trim_string, parse_int32, parse_radius, point_distance, vertex_form_index, 
+  centroid, polygon_vertex на gtest, как это было с parse_point_cpp. говорю ии перевести для начала только 
+  is_empty и trim_string. реконфиг, пересборка, прогон тестов:
+  ```
+  cmake --preset debug
+  ...
+  -- Configuring done (3.0s)
+  -- Generating done (0.1s)
+  ...
+
+  cmake --build build/debug
+  ...
+  [5/5] Linking CXX executable tests\unit\is_empty_cpp.exe
+
+
+  ctest --preset unit
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+    Start 519: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  1/62 Test #519: parse_point_cpp/OkCases/ParsePointOk.Parses/0 .......   Passed    0.23 sec
+   ...
+    Start 550: is_empty_cpp/Cases/IsEmpty.Detects/0
+  32/62 Test #550: is_empty_cpp/Cases/IsEmpty.Detects/0 ................   Passed    0.10 sec
+  ...
+    Start 558: trim_string_cpp/Cases/TrimStr.Trims/0
+  40/62 Test #558: trim_string_cpp/Cases/TrimStr.Trims/0 ...............   Passed    0.10 sec
+  ...
+  100% tests passed, 0 tests failed out of 62
+
+  Total Test time (real) =   7.81 sec
+  ```
+
+- смотрю что будет на параллельной сборке
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --clean-first -j
+  [1/1] Cleaning all built files...
+  Cleaning... 85 files.
+  [49/80] Linking C executable t3_bbox_c\main.exe
+  FAILED: [code=1] t3_bbox_c/main.exe
+  C:\Windows\system32\cmd.exe /C "cd . && "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\t3_c.dir --rc=C:\PROGRA~2\WI3CF2~1\10\bin\10.0.26100.0\x64\rc.exe --mt=C:\PROGRA~2\WI3CF2~1\10\bin\10.0.26100.0\x64\mt.exe --manifests  -- "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\bin\Hostx64\x64\link.exe" /nologo CMakeFiles\t3_c.dir\t3_bbox_c\main.c.obj  /out:t3_bbox_c\main.exe /implib:main.lib /pdb:t3_bbox_c\main.pdb /version:0.0 /machine:x64 /debug  /subsystem:console /DEBUG  common\common_c_shared.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && C:\Windows\system32\cmd.exe /C "cd /D C:\Users\User\Desktop\inobitec_stud\build\debug && D:\dev\vcpkg\vcpkg.exe z-applocal --target-binary=C:/Users/User/Desktop/inobitec_stud/build/debug/t3_bbox_c/main.exe --installed-bin-dir=C:/Users/User/Desktop/inobitec_stud/build/debug/vcpkg_installed/x64-windows/debug/bin""
+  The process cannot access the file because it is being used by another process.
+  [58/80] Building CXX object CMakeFiles\t3_cpp.dir\t3_bbox_cpp\main.cpp.obj
+  ninja: build stopped: subcommand failed.
+  ```
+  но после 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --clean-first -j
+  [1/1] Cleaning all built files...
+  Cleaning... 85 files.
+  [80/80] Linking CXX executable tests\unit\vertex_form_index_cpp.exe
+  ```
+
+  спроисла ии: это та проблема от паралл. сборки, про которую был разговор? или нет. ии: в том что упало нет discovery -
+  так и есть, это просто задача. говорит что возможно это из-за defender - но тут не так важно, что это именно. 
+  это не дефект графа и не связано с discovery. 
+
+  ещё раз перечитала саму ошибку и потенциальную ошибку discovery - она том что, что могут вызваться тестовые
+  программы когда рядом ещё нет gtest.dll / gtest_main.dll, а у меня "процесс занят". то есть вообще не про то
+  то есть, того, что возможно случится не случилось. потому просто зафиксирую, что если такая ситуация возникнет, то:
+  "
+  Лечение, если выстрелит: gtest_discover_tests(<target> ... DISCOVERY_MODE PRE_TEST) — тогда перечисление идёт на этапе ctest, а не сборки.
+  "
+
+- переспросила про вынесение `template<class Want> struct Case`. помню что это был не совет ии, что я это спросила
+  как "где ещё" - можно ли и здесь применить тот же принцип? тогда ии и сказал про темплейт. немного смущает
+  что это вынос не самого метода а темплейта. то есть не дублирующейся логики, насколько я понимаю. а я хочу выносить именно дубли логики. 
+
+  вопрос к ии: а это надо выносить или это вынос ради выноса? склоняется то это вынос ряди выноса. потому что
+  - формы внутри разные
+  - выносится не логика а форматтер - то есть, как мне и думалось, - логика не вынесется. но я забыла что её там просто
+    нет, выносить нечего. 
+  - enum Ошибка number_error будет встречаться и дизайн принтера надо подстроить и под неё
+
+  так что буду оставлять методы для вывода gtest в namespace, без выноса шаблона, т.к. вынос ради выноса - не вижу смысла
+
+- далее, негативный контроль с is_empty + trim_string. trim_string: {"  abc  ", "abc"}->{"  abc  ", "abd"};
+  is_empty: {"   ", 1}->{"   ", 0} - ожидаемые падения
+    ```
+    ctest --preset unit
+    ...
+    31/62 Test #549: parse_point_cpp/ErrCases/ParsePointErr.Rejects/19 ...   Passed    0.11 sec
+        Start 550: is_empty_cpp/Cases/IsEmpty.Detects/0
+  32/62 Test #550: is_empty_cpp/Cases/IsEmpty.Detects/0 ................   Passed    0.10 sec
+        Start 551: is_empty_cpp/Cases/IsEmpty.Detects/1
+  33/62 Test #551: is_empty_cpp/Cases/IsEmpty.Detects/1 ................***Failed    0.10 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\is_empty.cpp(25): error: Expected equality of these values:
+    got
+      Which is: 1
+    c.want
+      Which is: 0
+
+  [  FAILED  ] Cases/IsEmpty.Detects/1, where GetParam() = in="   ", want=0 (3 ms)
+  [----------] 1 test from Cases/IsEmpty (3 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (4 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] Cases/IsEmpty.Detects/1, where GetParam() = in="   ", want=0
+
+  1 FAILED TEST
+
+        Start 552: is_empty_cpp/Cases/IsEmpty.Detects/2
+  34/62 Test #552: is_empty_cpp/Cases/IsEmpty.Detects/2 ................   Passed    0.10 sec
+  ...
+        Start 558: trim_string_cpp/Cases/TrimStr.Trims/0
+  40/62 Test #558: trim_string_cpp/Cases/TrimStr.Trims/0 ...............***Failed    0.22 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\trim_string.cpp(23): error: Expected equality of these values:
+    got
+      Which is: "abc"
+    c.want
+      Which is: "abd"
+
+  [  FAILED  ] Cases/TrimStr.Trims/0, where GetParam() = in="  abc  ", want="abd" (2 ms)
+  [----------] 1 test from Cases/TrimStr (2 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (3 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] Cases/TrimStr.Trims/0, where GetParam() = in="  abc  ", want="abd"
+
+  1 FAILED TEST
+
+  ...
+        Start 580: vertex_form_index_c
+  62/62 Test #580: vertex_form_index_c .................................   Passed    0.11 sec
+
+  97% tests passed, 2 tests failed out of 62
+
+  Total Test time (real) =   8.58 sec
+
+  The following tests FAILED:
+    551 - is_empty_cpp/Cases/IsEmpty.Detects/1 (Failed)
+    558 - trim_string_cpp/Cases/TrimStr.Trims/0 (Failed)
+  ```
+
+  возвращаю корректные значения 
+  ```
+  ctest --preset unit
+  100% tests passed, 0 tests failed out of 62  
+  Total Test time (real) =   8.89 sec
+  ```
 
 *Что не получилось*
 - deepseek ещё предложил на параллельной сборке прогнать, т.к. gtest_discover_tests - пост-билд и он говорит, что это 
   возможно будет вызывать проблемы - гонка за запись (разные тестовые .exe будут писать одновременно и мб конфликт - пока не может быть, т.к. discovery ипользует только parse_point_cpp, едиснтвенный) и возможна ситуация когда
   gtest.dll будет сокпирован позже, чем запустится discovery (копирование там пост-билд). Тогда падение. проверю 
-  это позже, когда будет не одна цель а мн-во (cmake --build build/debug --clean-first -j или сначала --target clean потом cmake .. -j)
+  это позже, когда будет не одна цель а мн-во (cmake --build build/debug --clean-first -j или сначала --target clean потом cmake .. -j) (позже просто зафиксировано, что делать если такое возникнет. т.к. пока что такой ситуации
+  не возникло)
 
 - после появления gtest в другом тест-файле решить о выносе 
   `tests/unit/case.hpp: шаблон template<class Want> struct Case` - надо / не надо, может оставить копирование если будет
@@ -4307,7 +4458,269 @@ cmake -S D:\dev\googletest -B D:\dev\googletest\build -G Ninja -DCMAKE_BUILD_TYP
 
   говорит что да, повторение по смыслу будет. но типы там разные. можно вынести шаблон, но советует это делать 
   только когда на практике увижу что и во втором тест-файле форма вызова совпадает. тогда есть смысл выносить. а вот PrintTo(Point) повторится гарантированного, так что его выносим
-  
+
+- когда спросила про вынос приватных методов для печати (gtest) показал механику, что надо выносить именно темплейты.
+  но не сказал явно, что, возможно, этого и не нужно делать, что это не вынос логики.
+
+
+# 2026-10-06
+*Что сделано*
+- перевожу vertex_form_index_cpp на gtest. говорю агенту переписать сам vertex_form_index.cpp, далее переисываю 
+  tests\unit\CMakeLists.txt добавление теста vertex_form_index_cpp на add_unit_gtest. пересобираю и прогон
+  юнит тестов `ctest --preset unit`
+  ```
+    Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+        Start 519: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  ...
+        Start 565: vertex_form_index_cpp/Cases/VertexFormIndex.Returns/0
+  47/79 Test #565: vertex_form_index_cpp/Cases/VertexFormIndex.Returns/0 ....   Passed    0.22 sec
+  ...
+
+  100% tests passed, 0 tests failed out of 79
+
+  Total Test time (real) =  13.08 sec
+  ```
+  теперь негатив контроль. в vertex_form_index.cpp порчу один кейс Case{10, 2}->Case{10, 1}; пересборка+тесты:
+  ```
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+  ...
+          Start 576: vertex_form_index_cpp/Cases/VertexFormIndex.Returns/11
+  58/79 Test #576: vertex_form_index_cpp/Cases/VertexFormIndex.Returns/11 ...   Passed    0.11 sec
+        Start 577: vertex_form_index_cpp/Cases/VertexFormIndex.Returns/12
+  59/79 Test #577: vertex_form_index_cpp/Cases/VertexFormIndex.Returns/12 ...***Failed    0.21 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\vertex_form_index.cpp(21): error: Expected equality of these values:
+    got
+      Which is: 2
+    c.want
+      Which is: 1
+  ...
+  [  FAILED  ] Cases/VertexFormIndex.Returns/12, where GetParam() = in=10, want=1
+
+  1 FAILED TEST
+
+        Start 578: vertex_form_index_cpp/Cases/VertexFormIndex.Returns/13
+  60/79 Test #578: vertex_form_index_cpp/Cases/VertexFormIndex.Returns/13 ...   Passed    0.21 sec
+  99% tests passed, 1 tests failed out of 79
+  Total Test time (real) =  10.86 sec
+  The following tests FAILED:
+    577 - vertex_form_index_cpp/Cases/VertexFormIndex.Returns/12 (Failed)
+  ```
+  упало что надо. возвращаю {10, 2}. `ctest --preset unit: ... 100% tests passed, 0 tests failed out of 79 Total Test time (real) =  11.46 sec`
+
+- аналогичные процедуры с point_distance_cpp. прогон unit-тестов после перевода на gtest и пересборки: 
+  ```
+  ...
+        Start 565: point_distance_cpp/Cases/PointDistance.Distance/0
+  47/87 Test #565: point_distance_cpp/Cases/PointDistance.Distance/0 ........   Passed    0.17 sec
+  ...
+  100% tests passed, 0 tests failed out of 87
+  Total Test time (real) =  13.16 sec
+  ```
+  тесты появились. теперь негатив контроль, в point_distance.cpp Case{Point{-1, -2, -2}, Point{0, 0, 0}, 3.0->3.2}
+  ctest --preset unit:
+  ```
+  ...
+  54/87 Test #572: point_distance_cpp/Cases/PointDistance.Distance/7 ........***Failed    0.24 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\point_distance.cpp(23): error: The difference between got and c.want is 0.20000000000000018, which exceeds 1e-9, where
+  got evaluates to 3,
+  c.want evaluates to 3.2000000000000002, and
+  1e-9 evaluates to 1.0000000000000001e-09.
+  ...
+  1 FAILED TEST
+
+        Start 573: point_distance_cpp/Cases/PointDistance.Distance/8
+  55/87 Test #573: point_distance_cpp/Cases/PointDistance.Distance/8 ........   Passed    0.11 sec
+  99% tests passed, 1 tests failed out of 87
+  Total Test time (real) =  12.90 sec
+  The following tests FAILED:
+    572 - point_distance_cpp/Cases/PointDistance.Distance/7 (Failed)
+  ```
+  упало, что и ожидалось. меняю значение на верное: `ctest --preset unit 100% tests passed, 0 tests failed out of 87 Total Test time (real) =  13.25 sec`
+
+- повтор всей цепочки действий с centtroid_cpp, прогон юнит тестов:
+  ```
+  ...
+        Start 574: centroid_cpp/Cases/Centroid.Computes/0
+  56/90 Test #574: centroid_cpp/Cases/Centroid.Computes/0 ...................   Passed    0.12 sec
+    ...
+    100% tests passed, 0 tests failed out of 90
+
+  Total Test time (real) =  13.84 sec
+  ```
+  меняю в centroid.cpp Case{std::vector<Point>{{5, -2, 3}}, Point{5, -2, 3->3.1}}. ctest --preset unit:
+  ```
+    ...
+      Start 574: centroid_cpp/Cases/Centroid.Computes/0
+  56/90 Test #574: centroid_cpp/Cases/Centroid.Computes/0 ...................***Failed    0.14 sec
+  ...
+  [ RUN      ] Cases/Centroid.Computes/0
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\centroid.cpp(25): error: The difference between got.z and c.want.z is 0.10000000000000009, which exceeds 1e-9, where
+  got.z evaluates to 3,
+  c.want.z evaluates to 3.1000000000000001, and
+  1e-9 evaluates to 1.0000000000000001e-09.
+
+  [  FAILED  ] Cases/Centroid.Computes/0, where GetParam() = pts={ (5.000, -2.000, 3.000) }, want=(5.000, -2.000, 3.100) 
+  ...
+  1 FAILED TEST
+
+        Start 575: centroid_cpp/Cases/Centroid.Computes/1
+  57/90 Test #575: centroid_cpp/Cases/Centroid.Computes/1 ...................   Passed    0.10 sec
+  99% tests passed, 1 tests failed out of 90
+  Total Test time (real) =  12.77 sec
+  The following tests FAILED:
+    574 - centroid_cpp/Cases/Centroid.Computes/0 (Failed)
+  ```
+  и меняю значение на нормальное. ctest --preset unit: `100% tests passed, 0 tests failed out of 90 Total Test time (real) =  13.89 sec`
+
+- повторяю перевод polygon_vertex.cpp на gtest и в tests/unit/CMakeLists меняю сборку тестового файла - теперь через
+  ф-цию. прогон ctest --preset unit после всего этого и пересборки: 
+  ```
+  ...
+          Start 584: polygon_vertex_cpp/Cases/PolygonVertex.Returns/6
+  66/96 Test #584: polygon_vertex_cpp/Cases/PolygonVertex.Returns/6 .........   Passed    0.13 sec
+  ...
+  100% tests passed, 0 tests failed out of 96
+  Total Test time (real) =  14.65 sec
+  ```
+  провоцирую падение. polygon_vertex.cpp: Case{1, 4, 0->1, 1}. пересборка и ctest --preset unit:
+  ```
+  ...
+  61/96 Test #579: polygon_vertex_cpp/Cases/PolygonVertex.Returns/1 .........***Failed    0.11 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\polygon_vertex.cpp(23): error: The difference between got.x and c.want_x is 0.99999999999999989, which exceeds 1e-9, where
+  got.x evaluates to 6.123233995736766e-17,
+  c.want_x evaluates to 1, and
+  1e-9 evaluates to 1.0000000000000001e-09.
+  [  FAILED  ] Cases/PolygonVertex.Returns/1, where GetParam() = i=1, n=4, want=(1, 1) (2 ms)
+  [----------] 1 test from Cases/PolygonVertex (2 ms total)
+  ...
+  1 FAILED TEST
+
+        Start 580: polygon_vertex_cpp/Cases/PolygonVertex.Returns/2
+  62/96 Test #580: polygon_vertex_cpp/Cases/PolygonVertex.Returns/2 .........   Passed    0.10 sec
+  99% tests passed, 1 tests failed out of 96
+  Total Test time (real) =  13.63 sec
+  The following tests FAILED:
+    579 - polygon_vertex_cpp/Cases/PolygonVertex.Returns/1 (Failed)
+  ```
+  далее, возвращаю 0 вместо 1 на положенном месте. ctest --preset unit: `100% tests passed, 0 tests failed out of 96 Total Test time (real) =  12.95 sec`
+
+- перевожу на gtest parse_int32.cpp, для tests/unit/CMakeLists.txt применяю свою ф-цию для его сборки. 
+  далее прогон ctest --preset unit:
+  ```
+  ...
+         Start 570: parse_int32_cpp/ErrCases/ParseInt32Err.Rejects/11
+  52/119 Test #570: parse_int32_cpp/ErrCases/ParseInt32Err.Rejects/11 ........   Passed    0.10 sec
+  ...
+  100% tests passed, 0 tests failed out of 119
+  Total Test time (real) =  16.87 sec
+  ```
+  делаю негатив. контроль для ошибочного теста. ии советует делать изменение именно в коде ошибки а не во входных
+  данных. так упадёт именно расхождение м-у got/want. в parse_int32.cpp: ErrCase{"5.5", number_error::not_number} -> ErrCase{"5.5", number_error::out_of_range}. пересборка и прогон ctest --preset unit:
+  ```
+  ...
+    46/119 Test #564: parse_int32_cpp/ErrCases/ParseInt32Err.Rejects/5 .........***Failed    0.11 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_int32.cpp(49): error: Expected equality of these values:
+    got.error()
+      Which is: 4-byte object <00-00 00-00>
+    c.want
+      Which is: 4-byte object <01-00 00-00>
+
+  [  FAILED  ] ErrCases/ParseInt32Err.Rejects/5, where GetParam() = in="5.5", want=code 1 (4 ms)
+  [----------] 1 test from ErrCases/ParseInt32Err (4 ms total)
+  ...
+  [  FAILED  ] ErrCases/ParseInt32Err.Rejects/5, where GetParam() = in="5.5", want=code 1
+
+  1 FAILED TEST
+
+          Start 565: parse_int32_cpp/ErrCases/ParseInt32Err.Rejects/6
+  47/119 Test #565: parse_int32_cpp/ErrCases/ParseInt32Err.Rejects/6 .........   Passed    0.11 sec
+  ...
+  99% tests passed, 1 tests failed out of 119
+  Total Test time (real) =  16.41 sec
+  The following tests FAILED:
+    564 - parse_int32_cpp/ErrCases/ParseInt32Err.Rejects/5 (Failed)
+  ```
+  возвращаю прежнюю категорию ошибки и прогоняю юнит тесты: `100% tests passed, 0 tests failed out of 119 Total Test time (real) =  17.50 sec`
+
+- parse_radius.cpp также перевожу на gtest и его сборку - на свою функцию. пересборка и прогон ctest --preset unit:
+  ```
+    ...
+        Start 623: parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/8
+  105/136 Test #623: parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/8 .......   Passed    0.12 sec
+    ...
+    136/136 Test #654: vertex_form_index_c ......................................   Passed    0.10 sec
+  100% tests passed, 0 tests failed out of 136
+  Total Test time (real) =  19.82 sec
+  ```
+  для негатив. контроля меняю ожидаемый код в parse_radius.cpp: ErrCase{"nan", number_error::not_finite->not_number} и прогоняю юнит-тесты:
+  ```
+          Start 624: parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/9
+  106/136 Test #624: parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/9 .......***Failed    0.11 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_radius.cpp(46): error: Expected equality of these values:
+    got.error()
+      Which is: 4-byte object <02-00 00-00>
+    c.want
+      Which is: 4-byte object <00-00 00-00>
+  ...
+  [  FAILED  ] ErrCases/ParseRadiusErr.Rejects/9, where GetParam() = in="nan", want=code 0
+
+  1 FAILED TEST
+
+          Start 625: parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/10
+  107/136 Test #625: parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/10 ......   Passed    0.10 sec
+  ...
+  99% tests passed, 1 tests failed out of 136
+
+  Total Test time (real) =  19.61 sec
+
+  The following tests FAILED:
+    624 - parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/9 (Failed)
+  ```
+  возвращаю код ошибки на правильный и ctest --preset unit: `100% tests passed, 0 tests failed out of 136 Total Test time (real) =  21.87 sec`
+
+- контрольно делаю сборку релиза и запускаю и на нём юнит тесты ctest --preset unit-release: 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset unit-release
+  Test project C:/Users/User/Desktop/inobitec_stud/build/release
+          Start 519: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  1/136 Test #519: parse_point_cpp/OkCases/ParsePointOk.Parses/0 ............   Passed    0.12 sec
+  ...
+  136/136 Test #654: vertex_form_index_c ......................................   Passed    0.01 sec
+  100% tests passed, 0 tests failed out of 136
+  Total Test time (real) =   5.30 sec
+  ```
+
+- спрашиваю и - на данном моменте все ветки контроля закрыты (понятно что ещё vm-прогоны будут). гвоорит что хорошо бы
+  погонять ошибки на обоих suite - и на OkCase, и на ErrCase. меняю след. вещи и говорю ии посмотреть результат прогона и подтвердить или нет, что нужные кейсы упали:
+  - parse_point.cpp ErrCase{"1 2 x", number_error::not_number->too_much}
+  - parse_int32.cpp OkCase{"+7", 7->8}
+  - parse_radius.cpp OkCase{"5.5", 5.5->5.8} 
+  результат:
+  ```
+  ...
+   18/136 Test #536: parse_point_cpp/ErrCases/ParsePointErr.Rejects/6 .........***Failed    0.13 sec
+  ...
+   33/136 Test #551: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/1 ............***Failed    0.12 sec
+  ...
+   92/136 Test #610: parse_radius_cpp/OkCases/ParseRadiusOk.Parses/1 ..........***Failed    0.11 sec
+  ...
+  98% tests passed, 3 tests failed out of 136
+
+Total Test time (real) =  20.68 sec
+
+The following tests FAILED:
+	536 - parse_point_cpp/ErrCases/ParsePointErr.Rejects/6 (Failed)
+	551 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/1 (Failed)
+	610 - parse_radius_cpp/OkCases/ParseRadiusOk.Parses/1 (Failed)
+  ```
+  убираю намеренные ошибки и гоняю тесты опять: `100% tests passed, 0 tests failed out of 136 Total Test time (real) =  19.78 sec`
+
+- в changelog уточнила формулировку - что все юнит-тесты с++ стороны переведены на gtest
 
 ## 8. Диалоги с DeepSeek
 

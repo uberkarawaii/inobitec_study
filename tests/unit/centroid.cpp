@@ -1,37 +1,40 @@
-#include <cmath>
-#include <cstdio>
-#include <print>
-#include <span>
+#include <gtest/gtest.h>
+
+#include <ostream>
 #include <vector>
 
 #include "../../common/geometry.hpp"
+#include "printers.hpp"
 
-// счётчик ошибок
-static int failures = 0;
+namespace {
+// тип кейса: облако точек и ожидаемый центроид
+struct Case {
+    std::vector<Point> pts;
+    Point want;
+};
 
-// сверка с ожидаемым центроидом с допуском (вещественная арифметика)
-static void check(std::span<const Point> pts, const Point& want) {
-    Point got = centroid(pts);
-    if (std::abs(got.x - want.x) > 1e-9 || std::abs(got.y - want.y) > 1e-9 || std::abs(got.z - want.z) > 1e-9) {
-        ++failures;
-        std::println(stderr, "FAIL: got ({:.3f},{:.3f},{:.3f}), want ({:.3f},{:.3f},{:.3f})", got.x, got.y, got.z,
-                     want.x, want.y, want.z);
-    }
+// класс-фикстура (suite), связанный с типом параметра Case
+class Centroid : public ::testing::TestWithParam<Case> {};
+
+// TEST_P - параметризованный вариант TEST. имя теста Computes.
+TEST_P(Centroid, Computes) {
+    const Case& c = GetParam();
+    Point got = centroid(c.pts);
+    EXPECT_NEAR(got.x, c.want.x, 1e-9);
+    EXPECT_NEAR(got.y, c.want.y, 1e-9);
+    EXPECT_NEAR(got.z, c.want.z, 1e-9);
 }
 
-int main() {
-    // одна точка
-    check(std::vector<Point>{{5, -2, 3}}, Point{5, -2, 3});
+// набор данных для suite Centroid
+INSTANTIATE_TEST_SUITE_P(Cases, Centroid,
+                         ::testing::Values(Case{std::vector<Point>{{5, -2, 3}}, Point{5, -2, 3}},
+                                           Case{std::vector<Point>{{1, 2, 3}, {-1, -2, -3}}, Point{0, 0, 0}},
+                                           Case{std::vector<Point>{{0, 0, 0}, {3, 6, 9}, {0, 0, 0}}, Point{1, 2, 3}},
+                                           Case{std::vector<Point>{{-4, -2, 0}, {-2, -4, 0}}, Point{-3, -3, 0}}));
 
-    // симметричный набор -> центр в нуле
-    check(std::vector<Point>{{1, 2, 3}, {-1, -2, -3}}, Point{0, 0, 0});
-
-    // среднее по трём точкам
-    check(std::vector<Point>{{0, 0, 0}, {3, 6, 9}, {0, 0, 0}}, Point{1, 2, 3});
-
-    // отрицательные координаты
-    check(std::vector<Point>{{-4, -2, 0}, {-2, -4, 0}}, Point{-3, -3, 0});
-
-    std::println(stderr, "centroid_cpp: {} failures", failures);
-    return failures == 0 ? 0 : 1;
+// для gtest - "как напечатать данные типа Case" в диагностике
+std::ostream& operator<<(std::ostream& os, const Case& c) {
+    os << "pts=" << ::testing::PrintToString(c.pts) << ", want=" << ::testing::PrintToString(c.want);
+    return os;
 }
+} // namespace

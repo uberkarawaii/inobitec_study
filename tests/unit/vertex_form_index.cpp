@@ -1,47 +1,36 @@
-#include <cstdio>
-#include <print>
+#include <gtest/gtest.h>
+
+#include <ostream>
 
 #include "../../common/string_utils.hpp"
 
-// счётчик ошибок
-static int failures = 0;
+namespace {
+// тип кейса: вход - число вершин, ожидание - индекс формы слова
+struct Case {
+    int in;
+    int want;
+};
 
-// сверка индекса формы
-static void check(int n, int want) {
-    int got = vertex_form_index(n);
-    if (got != want) {
-        ++failures;
-        std::println(stderr, "FAIL: {} -> {}, want {}", n, got, want);
-    }
+// класс-фикстура (suite), связанный с типом параметра Case
+class VertexFormIndex : public ::testing::TestWithParam<Case> {};
+
+// TEST_P - параметризованный вариант TEST. имя теста Returns.
+TEST_P(VertexFormIndex, Returns) {
+    const Case& c = GetParam();
+    int got = vertex_form_index(c.in);
+    EXPECT_EQ(got, c.want);
 }
 
-int main() {
-    // одна вершина
-    check(1, 0);
-    check(21, 0);
-    check(101, 0);
+// набор данных для suite VertexFormIndex
+INSTANTIATE_TEST_SUITE_P(Cases, VertexFormIndex,
+                         ::testing::Values(Case{1, 0}, Case{21, 0}, Case{101, 0}, Case{2, 1}, Case{3, 1}, Case{4, 1},
+                                           Case{22, 1}, Case{24, 1}, Case{11, 2}, Case{12, 2}, Case{14, 2}, Case{5, 2},
+                                           Case{10, 2}, Case{15, 2}, Case{20, 2}, Case{0, 2}, Case{100, 2},
+                                           Case{111, 2}));
 
-    // две-четыре вершины
-    check(2, 1);
-    check(3, 1);
-    check(4, 1);
-    check(22, 1);
-    check(24, 1);
-
-    // исключение: 11-14
-    check(11, 2);
-    check(12, 2);
-    check(14, 2);
-
-    // пять и больше / ноль
-    check(5, 2);
-    check(10, 2);
-    check(15, 2);
-    check(20, 2);
-    check(0, 2);
-    check(100, 2);
-    check(111, 2);
-
-    std::println(stderr, "vertex_form_index_cpp: {} failures", failures);
-    return failures == 0 ? 0 : 1;
+// для gtest - "как напечатать данные типа Case" в диагностике
+std::ostream& operator<<(std::ostream& os, const Case& c) {
+    os << "in=" << c.in << ", want=" << c.want;
+    return os;
 }
+} // namespace

@@ -60,7 +60,7 @@
 
 ## [Unreleased]
 ### Changed
-- юнит-тесты переводятся на GoogleTest с самодельных exe (return 0/1) (пока переведён только parse_point_cpp).
+- юнит-тесты (c++ часть) переведены на GoogleTest с самодельных exe.
   сделаны suit-ы - OkCase, ErrCase и свои типы данных под них; 
   TEST_P - генерация класса по suit и INSTANTIATE_TEST_SUITE_P - статический объект, хранит данные для вызова; 
   регистрация в ctest через gtest_discover_tests (TEST_PREFIX + NO_PRETTY_VALUES); 

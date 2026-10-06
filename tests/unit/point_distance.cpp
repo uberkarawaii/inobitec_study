@@ -1,44 +1,40 @@
-#include <cmath>
-#include <cstdio>
-#include <print>
+#include <gtest/gtest.h>
+
+#include <ostream>
 
 #include "../../common/geometry.hpp"
+#include "printers.hpp"
 
-// счётчик ошибок
-static int failures = 0;
+namespace {
+// тип кейса: две точки и ожидаемое расстояние между ними
+struct Case {
+    Point a;
+    Point b;
+    double want;
+};
 
-// сверка с ожидаемым расстоянием с допуском (вещественная арифметика)
-static void check(const Point& a, const Point& b, double want) {
-    double got = point_distance(a, b);
-    if (std::abs(got - want) > 1e-9) {
-        ++failures;
-        std::println(stderr, "FAIL: ({:.3f},{:.3f},{:.3f})-({:.3f},{:.3f},{:.3f}) -> {:.3f}, want {:.3f}", a.x, a.y,
-                     a.z, b.x, b.y, b.z, got, want);
-    }
+// класс-фикстура (suite), связанный с типом параметра Case
+class PointDistance : public ::testing::TestWithParam<Case> {};
+
+// TEST_P - параметризованный вариант TEST. имя теста Distance.
+TEST_P(PointDistance, Distance) {
+    const Case& c = GetParam();
+    double got = point_distance(c.a, c.b);
+    EXPECT_NEAR(got, c.want, 1e-9);
 }
 
-int main() {
-    const Point o{0, 0, 0};
+// набор данных для suite PointDistance
+INSTANTIATE_TEST_SUITE_P(
+    Cases, PointDistance,
+    ::testing::Values(Case{Point{0, 0, 0}, Point{0, 0, 0}, 0.0}, Case{Point{1, 2, 3}, Point{1, 2, 3}, 0.0},
+                      Case{Point{0, 0, 0}, Point{3, 0, 0}, 3.0}, Case{Point{0, 0, 0}, Point{0, 4, 0}, 4.0},
+                      Case{Point{0, 0, 0}, Point{0, 0, 7}, 7.0}, Case{Point{0, 0, 0}, Point{3, 4, 0}, 5.0},
+                      Case{Point{1, 2, 0}, Point{4, 6, 0}, 5.0}, Case{Point{-1, -2, -2}, Point{0, 0, 0}, 3.0},
+                      Case{Point{1, 2, 2}, Point{0, 0, 0}, 3.0}));
 
-    // нулевое расстояние (совпадающие точки)
-    check(o, o, 0.0);
-    check(Point{1, 2, 3}, Point{1, 2, 3}, 0.0);
-
-    // вырождение по одной оси
-    check(o, Point{3, 0, 0}, 3.0);
-    check(o, Point{0, 4, 0}, 4.0);
-    check(o, Point{0, 0, 7}, 7.0);
-
-    // 3-4-5 в плоскости
-    check(o, Point{3, 4, 0}, 5.0);
-    check(Point{1, 2, 0}, Point{4, 6, 0}, 5.0);
-
-    // отрицательные координаты: sqrt(1+4+4) = 3
-    check(Point{-1, -2, -2}, o, 3.0);
-
-    // трёхмерный случай: sqrt(1+4+4) = 3
-    check(Point{1, 2, 2}, o, 3.0);
-
-    std::println(stderr, "point_distance_cpp: {} failures", failures);
-    return failures == 0 ? 0 : 1;
+// для gtest - "как напечатать данные типа Case" в диагностике
+std::ostream& operator<<(std::ostream& os, const Case& c) {
+    os << "a=" << ::testing::PrintToString(c.a) << ", b=" << ::testing::PrintToString(c.b) << ", want=" << c.want;
+    return os;
 }
+} // namespace
