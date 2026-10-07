@@ -32,11 +32,14 @@ function(deploy_vcpkg_dlls target)
 # после линковки цели, переместить к ней те dll от которых она зависит в т.ч. транзитивно,
 # если их нет в папке у цели или если они изменились
 # COMMAND_EXPAND_LISTS - развернуть dll из единого через ; в отдельные аргументы
+# такие проблемы только на винде, под линуксом такого не возникнет
+if(WIN32)
   add_custom_command(TARGET ${target} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_RUNTIME_DLLS:${target}>
             $<TARGET_FILE_DIR:${target}>
     COMMAND_EXPAND_LISTS)
+endif()
 endfunction()
 
 # для smoke-цели - gtest-dll-ки через свою ф-цию, не vcpkg applocal-ом

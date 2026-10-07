@@ -4899,7 +4899,18 @@ The following tests FAILED:
     ии проверил логи - как и ожидалось, чисто, падений и не было. 
 
 - коммичу и запускаю на виртуалке. ии говорит, что вот эта гонка - виндоус-специфична (да, на линуксе другой механизм).
-  так что 
+  так что стресс-цикл тут не будет нужен - только сборки и тесты. делаю конфиг, далее build. получаю во время
+  билда ошибки вида
+  ```
+  [1/10] Linking CXX executable tests/unit/parse_int32_cpp
+  .../usr/bin/cmake -E copy_if_different /home/karavai/test/inobitec_study/build/debug/tests/unit && cd...
+  CMake Error: cmake version 4.2.3
+  Usage: /usr/bin/cmake -E <command> [arguments...]
+  ```
+  я подумала ему не нравится синтаксис, ии сказал нет. но в целом так и есть, - тут нужно и "что" и "куда", а у меня
+  на linux получилось только "куда". так получается т.к. shared библиотек нет (а есть lib/libgtest.a и lib/manual-link/libgtest_main.a) - ии это нашёл по файлу с выходом сборки. 
+
+- оборачиваю тело deploy_vcpkg_dlls в if(WIN32) для устранения такой ситуации
     
 
 ## 8. Диалоги с DeepSeek
