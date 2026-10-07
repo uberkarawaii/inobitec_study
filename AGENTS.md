@@ -4722,6 +4722,186 @@ The following tests FAILED:
 
 - в changelog уточнила формулировку - что все юнит-тесты с++ стороны переведены на gtest
 
+- делаю прогон на vm. 
+  ctest --preset full: `100% tests passed, 0 tests failed out of 575 Total Test time (real) =   3.79 sec`
+  ctest --preset full-release: `100% tests passed, 0 tests failed out of 575 Total Test time (real) =   1.69 sec`
+
+  негатив. контроль, общего характера, не каждого unit-теста с gtest. в parse_int32.cpp делаю ожидание для первого теста не 5, а 6 и в parse_point.cpp делаю для ErrCase для кейса "abc" категорию ошибки делаю не not_number,
+  а not_positive. ctest --preset unit
+  ```
+    32/136 Test #558: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ............***Failed    0.02 sec
+  ...
+  Expected equality of these values:
+    *got
+      Which is: 5
+    c.want
+      Which is: 6
+  ...
+  99/136 Test #625: parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/2 .......***Failed    0.02 sec
+  ...
+  /home/karavai/test/inobitec_study/tests/unit/parse_radius.cpp:46: Failure
+  Expected equality of these values:
+    got.error()
+      Which is: 4-byte object <00-00 00-00>
+    c.want
+      Which is: 4-byte object <06-00 00-00>
+
+  [  FAILED  ] ErrCases/ParseRadiusErr.Rejects/2, where GetParam() = in="abc", want=code 6 (0 ms)
+  [----------] 1 test from ErrCases/ParseRadiusErr (0 ms total)
+  ...
+  136/136 Test #662: vertex_form_index_c ......................................   Passed    0.01 sec
+
+  99% tests passed, 2 tests failed out of 136
+
+  Total Test time (real) =   2.31 sec
+
+  The following tests FAILED:
+    558 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 (Failed)
+    625 - parse_radius_cpp/ErrCases/ParseRadiusErr.Rejects/2 (Failed)
+  ```
+  вернула нормальные значения. ctest --preset unit: `100% tests passed, 0 tests failed out of 136 Total Test time (real) =   2.17 sec`
+
+  показываю это ии (полные файлы прогона из общей с vm папки) и говорю проверить. ии не видит противоречий / ошибок
+
+- ещё одна вещь которую ии напомнил - это падения при паралл. прононах сборки. я повторила эксперимент 
+  и есть паттерн того, что падает один раз повторился (а также оба раза падает именно на первом прогоне)
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --clean-first
+  [1/1] Cleaning all built files...                                                                                                        Cleaning... 91 files.                                                                                                                    [68/80] Linking C executable tests\unit\point_distance_c.exe                                                                             FAILED: [code=1] tests/unit/point_distance_c.exe                                                                                         C:\Windows\system32\cmd.exe /C "cd . && "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E vs_link_exe --msvc-ver=1951 --intdir=tests\unit\CMakeFiles\point_distance_c.dir --rc=C:\PROGRA~2\WI3CF2~1\10\bin\10.0.26100.0\x64\rc.exe --mt=C:\PROGRA~2\WI3CF2~1\10\bin\10.0.26100.0\x64\mt.exe --manifests  -- "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\bin\Hostx64\x64\link.exe" /nologo tests\unit\CMakeFiles\point_distance_c.dir\point_distance.c.obj  /out:tests\unit\point_distance_c.exe /implib:tests\unit\point_distance_c.lib /pdb:tests\unit\point_distance_c.pdb /version:0.0 /machine:x64 /debug  /subsystem:console /DEBUG  common\common_c_static.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && C:\Windows\system32\cmd.exe /C "cd /D C:\Users\User\Desktop\inobitec_stud\build\debug\tests\unit && D:\dev\vcpkg\vcpkg.exe z-applocal --target-binary=C:/Users/User/Desktop/inobitec_stud/build/debug/tests/unit/point_distance_c.exe --installed-bin-dir=C:/Users/User/Desktop/inobitec_stud/build/debug/vcpkg_installed/x64-windows/debug/bin""     The process cannot access the file because it is being used by another process.                                                          [77/80] Linking CXX executable tests\unit\polygon_vertex_cpp.exe                                                                         ninja: build stopped: subcommand failed.                                                                                                                                                                                                                                          c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --clean-first -j                                                           [1/1] Cleaning all built files...                                                                                                        Cleaning... 86 files.                                                                                                                    [80/80] Linking CXX executable tests\unit\vertex_form_index_cpp.exe                                                                                                                                                                                                               c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --clean-first -j                                                           [1/1] Cleaning all built files...                                                                                                        Cleaning... 91 files.                                                                                                                    [80/80] Linking CXX executable tests\unit\vertex_form_index_cpp.exe                                                                                                                                                                                                               c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --clean-first -j                                                           [1/1] Cleaning all built files...                                                                                                        Cleaning... 91 files.       
+  [80/80] Linking CXX executable tests\unit\vertex_form_index_cpp.exe                                          
+  ```
+  в этот раз упал не t3_cpp - значит дело не в дереве сборки. но падает не как-то закономерно, а просто после многих операций, просто "при редком" cmake --build build/debug --clean-first -j - падает. после такого первого - не падает.
+  уточняю это для ии и он немного меняет стратегию рассуждений (т.к. полагать что "на каждом первом" падает. и относит.чего падает - неясно). ии назвал эту ситуацию "интермиттентный флейк"
+
+  ии даёт подход, как с ним работать. 1. надо померить частоту падений
+  делаю это ps кодом, который помещаю в /sandbox. результат его прогона: failures: 3 / 40
+
+  ии посмотрел реузльтаты в build/debug/flake_*.log и там две разные причины падений. Выводы от ИИ:
+  ```
+  - Падающие цели разные, поведения два, но оба — про немедленное открытие только что созданного файла (exe/.pdb/[1]_tests.cmake). ФАКТ
+  - Ошибки двух видов: sharing violation (32) и access denied (5) — типично для внешнего real-time фильтра (AV/EDR), который в момент сканирования блокирует и открытие, и CreateProcess свежего exe. ПРЕДПОЛОЖЕНИЕ, ВЫСОКИЙ
+  - «Только первый прогон» было ложным следом — цикл это опроверг. ФАКТ
+  - Отдельно заметно: у gtest-целей в рецепт входит discovery, который запускает свежеслинкованный exe прямо во время сборки (gtest_discover_tests, POST_BUILD). Это тот самый риск, что мы отмечали ранее, и он делает цель уязвимой к сканеру. 
+  ```
+
+  что предлагает ии: в PS выполнить (исключить этот путь для дефендера) `PS C:\Users\User\Desktop\inobitec_stud> Add-MpPreference -ExclusionPath "C:\Users\User\Desktop\inobitec_stud\build"`, потом новая сессия native tools и оттуда `c:\Users\User\Desktop\inobitec_stud>powershell -ExecutionPolicy Bypass -File .\sandbox\measure.ps1`. выполняю эти шаги. результат: ... run 39 code=0 13,4s run 40 code=0 13,4s  failures: 2 / 40. то есть, дело было не в defender-е
+
+  след. шаг - понять что за процесс вызывает эту ситуацию. устанавливаю Sysinternals Process Monitor и запускаю 
+  Procmon.exe. в фильтрах:
+  - Result	is	SHARING VIOLATION	Include
+  - Result	is	ACCESS DENIED	Include
+  делаю backing file: c:\Users\User\Desktop\inobitec_stud\build\debug\procmon.pml; с тублара убираю все фильтры кроме
+  File System Activity, т.к. нужное мне событие лежит в этой области.
+  делаю запуск ctrl+e, потом запуск measure.ps1. из этого прогона видно, что падает из-за диагностической службы
+  виндоус (svchost.exe) а надо найти когда падает от check.exe. ии говорит выгрузить не отфильтрованное по 
+  ../desktop/inbitec_stud, а всё произошедшее в .csv что я и делаю. он смотрит csv и комментирует:
+
+  Что видно в procmon_build.csv
+  60+ событий вида (десятки разных PID, окно ~33 с):
+  ```  vcpkg.exe  <pid>  CreateFile  C:\Users\User\AppData\Local\Temp\vcpkg\vcpkg-2026-07-27.exe
+            SHARING VIOLATION   Desired Access: Write Data/Add File ... ShareMode: None
+  плюс:
+  vcpkg.exe  <pid>  CreateFile  D:\dev\vcpkg\vcpkg.exe   SHARING VIOLATION ... ShareMode: None
+  cmd.exe    <pid>  CreateFile  D:\dev\vcpkg\vcpkg.exe   SHARING VIOLATION ... Execute/Traverse
+  ```
+
+  То, что он нашёл - причина в механизме vcpkg-applocal. в рантайме vcpkg.exe делает свою копию и она ложится в %TEMP%\vcpkg\vcpkg-<версия>.exe и потом работает уже эта копия - это принцип работы vcpkg. чтобы главный vcpkg.exe
+  можно было обновить пока копия работает и в копии указана версия инструмента. в общем это вопрос его дизайна, с этим
+  ничего нельзя сделать. проблема в том, что каждый тест, задействующий сторонний пакет, а значит и вызывающий vcpkg, 
+  нуждается в vcpkg. потому к каждой программе привязана такая штука: link && vcpkg z-applocal - то есть вызов vcpkg.exe
+  для его клонирования в %TEMP%\vcpkg\vcpkg-<версия>.exe и при паралл. прогоне это могут сделать несколько программ. потому воззникает падение от того, что процесс занят. 
+
+  + важно: с vcpkg связываются не только тестовые задачи использующие библиотеки. от ии:
+  """
+  Механизм applocal (VCPKG_APPLOCAL_DEPS, по умолчанию ON) вешает POST_BUILD vcpkg z-applocal на каждую исполняемую цель и shared-DLL — независимо от того, линкуется она с vcpkg-библиотеками или нет. ФАКТ — это и в build.ninja видно: POST_BUILD … z-applocal есть у t1_dist_matrix_cpp, t3_bbox_c, t3_bbox_cpp, t4_*, common_*_shared.dll, run_case, check — у всех.
+  """ поэтому падали и обычные задачи. 
+
+  то есть падения вызывал механизм vcpkg applocal; служба svchost.exe просто получала отказы ACCESS DENIED от свежих .exe и это не роняло сборку. было два разных кода падения ACCESS DENIED + SHARING VIOLATION но оба они были из-за
+  механизма vcpkg applocal (от ии: Windows отдаёт разный код в зависимости от типа запрошенного доступа). 
+
+- дело было не в дефендере потому убираю его исключение 
+  PS C:\Users\User\Desktop\inobitec_stud> Remove-MpPreference -ExclusionPath "C:\Users\User\Desktop\inobitec_stud\build"
+
+- решение по вопросу vcpkg applocal: отключить механизм и копировать dll-ки библиотек средствами CMake. ии назвал
+  этот путь легитимным и распространённым. придётся вести зависимость руками (как будто менее надёжно) но для устранения постоянно возникающей проблемы - ок. и надо будет записать в changelog, что теперь на vcpkg в этом
+  вопросе не полагаемся во избежание проблемы
+
+# 2026-10-07
+*Что сделано*
+- спросила ии - убрать механизм vcpkg-applocal не обернётся проблемой на слое 20? т.к. возоможно там будет какой-то 
+  механизм, про который я не знаю, и это решение может всё усложнить. ии говорит нет, это никак добавочно не усложнит.
+  
+  делаю отключение vcpkg-applocal и ведение dll через CMake.
+- по объяснению ии, в этом мехнизме vcpkg делает так: переопределяет add_executable/add_library - сначала зовёт
+    оригинальные версии этих ф-ций, CMake-овские, и после при VCPKG_APPLOCAL_DEPS=ON "вешает POST_BUILD vcpkg z-applocal на каждую не-imported exe и каждую shared-библиотеку" (запуск vcpkg.exe, он делает свою копию в %TEMP%, работает уже копия)
+
+    то есть надо отключить VCPKG_APPLOCAL_DEPS. это можно сделать либо через CMakePresets.json, либо через 
+    CMakeLists.txt, корневой. со слов ии, второе надёжнее "для любого способа конфигурации". почему? потому что
+    если через CMakePresets.json, то отключение VCPKG_APPLOCAL_DEPS будет только при конфиге через пресеты. если же
+    сделать конфиг руками, или каким-то другим спососбом без участия пресета, то механизм не сработает. 
+    
+    потому для надёжности делаю через CMakeLists.txt: до project() прописываю set(VCPKG_APPLOCAL_DEPS OFF ...), т.к. внутри project() будет работа с vcpkg тулчейном, и там будет установлено значение VCPKG_APPLOCAL_DEPS, если его ещё нет. то есть если поставить до prokect() - на тот момент оно уже установлено и переустанавлваться не будет. сам механизм выключен
+
+- теперь раскладывание gtest-dll-ек через CMake; эти dll-ки нужны только тем целям, которые собиряются через
+    add_unit_gtest и smoke-тесту, остальным - не надо. tests/CMakeLists.txt до add_subdir unit записываю ф-цию
+    function(deploy_vcpkg_dlls target) - для самостоят. POST-BUILD копирования. 
+    добавляю deploy_vcpkg_dlls для gtest_smoke и в tests/unit/CMakeLists ф-цию add_unit_gtest перед discovery
+
+- переконфигурация (`cmake --fresh --preset debug и cmake --fresh --preset release`), т.к. теперь нет того механизма с
+  само-копированием vcpkg - а значит и сам граф изменился. и проверяю что в ninja нет следов механизма applocal:
+    ```
+    PS C:\Users\User\Desktop\inobitec_stud> Select-String -Path .\build\debug\build.ninja -Pattern 'z-applocal'
+    PS C:\Users\User\Desktop\inobitec_stud> Select-String -Path .\build\debug\build.ninja -Pattern 'ninja_required_version'
+
+    build\debug\build.ninja:21:ninja_required_version = 1.5
+    ```
+    то есть, команды z-applocal нет. ninja_required_version - есть (просто для понимания что Select-String ... рабочий и реально ищет подстроки).
+
+- прогоняю сборку и тесты для debug-сборки:
+    ```
+    c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+    [44/44] Linking CXX executable t3_bbox_cpp\main.exe
+
+    c:\Users\User\Desktop\inobitec_stud>ctest --preset full
+    ...
+    100% tests passed, 0 tests failed out of 654
+    
+    Total Test time (real) =  57.25 sec
+    ```
+    и для release
+    ```
+    c:\Users\User\Desktop\inobitec_stud>cmake --build build/release
+    [44/44] Linking CXX executable t3_bbox_cpp\main.exe
+
+    c:\Users\User\Desktop\inobitec_stud>ctest --preset full-release
+    100% tests passed, 0 tests failed out of 654
+
+    Total Test time (real) =  14.54 sec
+    ```
+
+- далее, прогоняю скрипт-замер падений `powershell -ExecutionPolicy Bypass -File .\sandbox\measure.ps1`: 
+    `... run 40 code=0 13,9s failures: 0 / 40` и говорю ии просмотреть логи прогонов. посмотрел, рассогласований нет, 
+    applocal ушёл, копирование происходит своей ф-цией. отмечает, что важно помнить: 
+    
+    (от ии) "deploy_vcpkg_dlls упадёт, если у цели пустой `$<TARGET_RUNTIME_DLLS>` (copy_if_different только с приёмником). Сейчас все вызывающие — gtest-цели, так что ок; на слое 20 для новых целей учесть". "Отсюда вывод на будущее (слой 20): вызывать deploy_vcpkg_dlls только для целей, реально линкующих vcpkg-shared, либо обернуть копию в проверку непустоты." у меня реализуется первый варинт - "вызывать deploy_vcpkg_dlls только для целей, реально линкующих vcpkg-shared". вопрос к ии - окей ли что у меня именно такой вариант или лучше код-страж?
+    (от ии)"Нормально — да, текущий подход рабочий и честный. МНЕНИЕ, ВЫСОКИЙ Более того, у него есть скрытое преимущество: если случайно вызвать на цели с пустым $<TARGET_RUNTIME_DLLS>, сборка громко падает — это fail-fast, а не тихое проглатывание ошибки." ок, тогда оставляю текущий механизм
+
+- записываю в "известные ограничения" факт о неиспользовании applocal-механизма. и в changelog также
+    
+- по совету ии прогоняю sandbox/measure.ps1 на release - просто для полноты понимания.
+    ```
+    c:\Users\User\Desktop\inobitec_stud>powershell -ExecutionPolicy Bypass -File .\sandbox\measure.ps1
+    ...
+    run 39 code=0 23,0s
+    run 40 code=0 23,3s
+    failures: 0 / 40
+    ``` 
+    ии проверил логи - как и ожидалось, чисто, падений и не было. 
+
+- коммичу и запускаю на виртуалке. ии говорит, что вот эта гонка - виндоус-специфична (да, на линуксе другой механизм).
+  так что 
+    
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.

@@ -4,6 +4,8 @@ function(add_unit_gtest target src lib)
   add_executable(${target} ${src})
   target_link_libraries(${target} PRIVATE ${lib} GTest::gtest_main)
   configure_target(${target} ON)
+  # gtest-dll-ки через свою ф-цию, не vcpkg applocal-ом. до discover - к его моменту dll уже будут на месте 
+  deploy_vcpkg_dlls(${target})
   # увидит все кейсы и сделает их отдельными тестами, а не под-тестами в составе одной сущности
   # опред. префикс для фильтрации через пресеты, по имени
   # убирать GetParam() - разнящееся м-у сборками число - из имени теста

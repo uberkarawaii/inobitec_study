@@ -27,6 +27,21 @@ configure_target(gtest_smoke OFF)
 target_link_libraries(gtest_smoke PRIVATE GTest::gtest_main)
 add_test(NAME gtest_smoke COMMAND gtest_smoke)
 
+# ф-ция для копирования библиотеч. dll руками, т.к. vcpkg applocal отключён во избежание конфликтов при -j
+function(deploy_vcpkg_dlls target)
+# после линковки цели, переместить к ней те dll от которых она зависит в т.ч. транзитивно,
+# если их нет в папке у цели или если они изменились
+# COMMAND_EXPAND_LISTS - развернуть dll из единого через ; в отдельные аргументы
+  add_custom_command(TARGET ${target} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:${target}>
+            $<TARGET_FILE_DIR:${target}>
+    COMMAND_EXPAND_LISTS)
+endfunction()
+
+# для smoke-цели - gtest-dll-ки через свою ф-цию, не vcpkg applocal-ом
+deploy_vcpkg_dlls(gtest_smoke)
+
 # юнит-тесты
 add_subdirectory(unit)
 

@@ -65,5 +65,8 @@
   TEST_P - генерация класса по suit и INSTANTIATE_TEST_SUITE_P - статический объект, хранит данные для вызова; 
   регистрация в ctest через gtest_discover_tests (TEST_PREFIX + NO_PRETTY_VALUES); 
   читаемая диагностика через PrintTo/operator<<.
+- выключен механизм vcpkg applocal для устранения конфликтов на параллельной сборке. копирование нужных библиотечных dll
+  осуществляется через ф-цию deploy_vcpkg_dlls (tests/CMakeLists.txt) - ф-ция применяется для целей, которые используют
+  фреймворк gtest
 ### Added
 - tests/unit/printers.hpp - общие принтеры для диагностики gtest

@@ -65,6 +65,9 @@ endif()
 
 message(STATUS "vcpkg baseline : ${VCPKG_BASELINE} (reachable in $ENV{VCPKG_DEV_ROOT})")
 
+# выключение механизма vcpkg applocal, т.к. он вызывает конфликты (мн-во пересозданий себя в %TEMP%) при -j билде
+set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Deploy vcpkg runtime DLLs via CMake instead of vcpkg applocal" FORCE)
+
 # имя проекта сохранится в CMAKE_PROJECT_NAME
 # определяются яызки проекта: с с++; определится компилятор; 
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
