@@ -19,6 +19,11 @@
 
 #include "parse_codes.h"
 
+// для с++ потребителя будет внешней си-функцией, с с-abi, без манглинга. для си-потребителя - не влияет
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct Point {
     double x;
     double y;
@@ -40,5 +45,9 @@ COMMON_API struct Point centroid(const struct Point* pts, int n);
 
 // для получения вершин правильного N-угольника
 COMMON_API struct Point polygon_vertex(int i, int n);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -4960,6 +4960,216 @@ The following tests FAILED:
 - делаю клон в отдельную папку, делаю на нём конфиг, сборку, тесты и говорю ии проверить логи прогонов. перепрогоняю 
   всё для дебага (cmake --fresh --preset debug потом cmake --build build/debug --clean-first и тесты) - там сначала получился no-op, опять говорю ии перепроверить. всё, теперь норма - полный цикл на свежем клоне, без падений
 
+- переношу Си-часть юнит-тестов на gtest. сначала, оборачиваю содержимое string_utils.h, geometry.h в условную 
+  компиляцию `#ifdef __cplusplus extern "C" ...`. я знаю что с++ будет манглировать (по-особому изменять имена в бинарнике), а си - нет, и потому надо сделать так, чтобы бинарный код си и с++ сходился. но понимание у меня примерное, спрашиваю ии для уточнения. итог: с++ манглирует имена ф-ций, а си - почти нет. и от этого происходят различия в таблице символов бинаря. если вот так слинковать, то будет unresolved external symbol - То есть ф-ции с ожидаемым именем не будет (что надо будет, но имя будет не то). и вот оборачивая в extern "C" мы говорим с++ - это внешняя си-функция, её не надо манглировать. тогда используется Си-шный application binary interface. и важно, что делаем не просто extern "C" сразу - это именно для с++, потому оборачиваем в #ifdef __cplusplus; для си-потребителей ничего не меняется
+
+  оборачиваю string_utils.h, geometry.h содержимое #ifdef __cplusplus...
+  parse_codes.h не затрагивается, т.к. там нет линкуемых символов - это константы времени компиляции, не лежат в памяти, а подставляются компилятором на соотв. места. 
+
+- создаю printers_c.hpp симметричный printers.hpp. включить его в юнит тесты Си-стороны нельзя - у struct Point из
+  geometry.h и Point из geometry.hpp разное содержимое (на с++ стороне есть operator== и Point - это тип, а не структура). это приведёт к конфликту Point-ов, так что завожу отдельный printers_c.hpp, чтобы gtest верно выводил теперь уже структуру точки
+
+- первым на Gtest переношу parse_point.c - теперь он будет parse_point_c.cpp - чтобы корректно связаться с gtest
+  от с++ версии отличаться здесь будут: заголовки (.h string_utils+geometry + printers_c.hpp); std::string (.c_str() из него), а не std::string_view - потому что на си надо нулл-терминир. строку; struct Point, а не тип, и инициализируется Point через {1, 2, 3} (аггрегатор). в TEST_P вызов устроен по-другому - получается не точка, а код от вызова метода парса строки с поданной строкой и пустой стркутурой точки. потом этот код сравнивается с желаемым (а не ASSERT_TRUE(got.has_value()) как на с++ потому что уже нет ссылок, а только два int). и сравнение идёт каждого поля с каждым (EXPECT_EQ(p.x, c.want.x)), т.к. на Си operator== уже нету как такового. и вызов самой тестируемой ф-ции
+  отличается: для с++ это OkCase{"1 2 3", Point{1, 2, 3}}, а для си это OkCase{"1 2 3", {1, 2, 3}}
+
+- также, делаю tests/unit/trim_string_c.cpp и tests/unit/centroid_c.cpp и вношу туда код из зеркальных .cpp с++ стороны
+  с некоторыми изменениями, для соответствия Си-стороне 
+
+# 2026-10-08
+*Что сделано*
+- переношу на gtest parse_int32_c.cpp, parse_radius_c.cpp, is_empty_c.cpp, is_hex_prefix_c.cpp, point_distance_c.cpp,
+  polygon_vertex_c.cpp, vertex_form_index_c.cpp - копия с с++ версии (кроме is_hex_prefix_c.cpp, там копия с небольшой поправкой с is_empty.cpp) и внесение правок по типам и сигнатурам ф-ций под Си-версии string_utils/geometry, где необходимо
+- в tests/unit/cmakelistst.txt переношу C-юнит тесты на ф-цию add_unit_gtest
+- удаляю tests/unit/*.c - теперь они же делаются с с++ обёрткой, через gtest. и .с уже не нужны, т.к. это были бы две
+  точки истины, а сейчас точка истины переходит в gtest. и форматирую их
+- далее конфиг, сборка и тесты - debug, потом release:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --preset debug
+  -- ninja: D:/Program Files (x86)/Microsoft Visual Studio/18
+  
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [15/38] Building CXX object tests\unit\CMakeFiles\point_distance_c.dir\point_distance_c.cpp.obj
+  FAILED: [code=2]...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\point_distance_c.cpp(6): fatal error C1083: Cannot open include file: 'printers_c.h': No such file or directory
+  ...
+  // переписываю на .hpp потому что такого файла с .h нет
+
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [15/15] Linking CXX executable tests\unit\point_distance_c.exe
+  
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset unit
+  ...
+  263/263 Test #781: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.21 sec
+  100% tests passed, 0 tests failed out of 263
+  Total Test time (real) =  40.61 sec
+  
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset full
+  ...
+  781/781 Test #781: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.28 sec
+  100% tests passed, 0 tests failed out of 781
+  Total Test time (real) =  74.21 sec
+  ```
+
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --preset release
+  ...
+  -- Configuring done (3.0s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/release
+
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/release
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/release
+  [38/38] Linking CXX executable tests\unit\parse_point_c.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset full-release
+  ...
+  781/781 Test #781: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.01 sec
+  100% tests passed, 0 tests failed out of 781
+  Total Test time (real) =  21.78 sec
+  ```
+- теперь негативный контроль. меняю следующее:
+  - centroid_c.cpp Case{{{5, -2, 3}}, {5, -2, 3->4}}
+  - is_empty_c.cpp Case{"a  ", 0->1}
+  - is_hex_prefix_c.cpp Case{"0x", 1->0}
+  - parse_int32_c.cpp OkCase{"+7", 7->-7}; ErrCase{"3000000000", NUMBER_OUT_OF_RANGE->NUMBER_NOT_NUMBER}
+  - parse_point_c.cpp OkCase{"1 2 3", {1, 2, 3->4}}; ErrCase{"1e400 0 0", NUMBER_OUT_OF_RANGE->NUMBER_NOT_NUMBER}
+  - parse_radius_c.cpp OkCase{"5.5", 5.5->5.0}; ErrCase{"inf", NUMBER_NOT_FINITE->NUMBER_OUT_OF_RANGE}
+  - point_distance_c.cpp Case{{0, 0, 0}, {3, 4, 0}, 5.0->5.1}
+  - polygon_vertex_c.cpp Case{2, 4, -1->1, 0}
+  - trim_string_c.cpp Case{"  abc  ", "abC"}
+  - vertex_form_index_c.cpp Case{2, 1->0}
+
+  пересборка и ctest --preset unit:
+  ```
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+  ...
+   32/263 Test #550: parse_point_c/OkCases/ParsePointOk.Parses/0 ..............***Failed    0.11 sec
+   ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_point_c.cpp(32): error: Expected equality of these values:
+    p.z
+      Which is: 3
+    c.want.z
+      Which is: 4
+  ...
+   55/263 Test #573: parse_point_c/ErrCases/ParsePointErr.Rejects/12 ..........***Failed    0.11 sec
+   ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_point_c.cpp(57): error: Expected equality of these values:
+    code
+      Which is: 2
+    c.want
+      Which is: 1
+  ...
+   88/263 Test #606: parse_int32_c/OkCases/ParseInt32Ok.Parses/1 ..............***Failed    0.12 sec
+   ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_int32_c.cpp(26): error: Expected equality of these values:
+    res
+      Which is: 7
+    c.want
+      Which is: -7
+  ...
+  110/263 Test #628: parse_int32_c/ErrCases/ParseInt32Err.Rejects/14 ..........***Failed    0.22 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_int32_c.cpp(50): error: Expected equality of these values:
+    code
+      Which is: 2
+    c.want
+      Which is: 1
+  ...
+  124/263 Test #642: is_empty_c/Cases/IsEmpty.Detects/5 .......................***Failed    0.13 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\is_empty_c.cpp(25): error: Expected equality of these values:
+    got
+      Which is: 0
+    c.want
+      Which is: 1
+  ...
+  132/263 Test #650: is_hex_prefix_c/Cases/IsHexPrefix.Detects/5 ..............***Failed    0.11 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\is_hex_prefix_c.cpp(25): error: Expected equality of these values:
+    got
+      Which is: 1
+    c.want
+      Which is: 0
+  ...
+  145/263 Test #663: trim_string_c/Cases/TrimStr.Trims/0 ......................***Failed    0.11 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\trim_string_c.cpp(26): error: Expected equality of these values:
+    got
+      Which is: "abc"
+    c.want.c_str()
+      Which is: "abC"
+  ...
+  166/263 Test #684: point_distance_c/Cases/PointDistance.Distance/5 ..........***Failed    0.22 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\point_distance_c.cpp(23): error: The difference between got and c.want is 0.099999999999999645, which exceeds 1e-9, where
+  got evaluates to 5,
+  c.want evaluates to 5.0999999999999996, and
+  1e-9 evaluates to 1.0000000000000001e-09.
+  ...
+  174/263 Test #692: centroid_c/Cases/Centroid.Computes/0 .....................***Failed    0.22 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\centroid_c.cpp(25): error: The difference between got.z and c.want.z is 1, which exceeds 1e-9, where
+  got.z evaluates to 3,
+  c.want.z evaluates to 4, and
+  1e-9 evaluates to 1.0000000000000001e-09.
+  ...
+  187/263 Test #705: polygon_vertex_c/Cases/PolygonVertex.Returns/2 ...........***Failed    0.24 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\polygon_vertex_c.cpp(23): error: The difference between got.x and c.want_x is 2, which exceeds 1e-9, where
+  got.x evaluates to -1,
+  c.want_x evaluates to 1, and
+  1e-9 evaluates to 1.0000000000000001e-09.
+  ...
+  211/263 Test #729: parse_radius_c/OkCases/ParseRadiusOk.Parses/1 ............***Failed    0.22 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_radius_c.cpp(25): error: The difference between res and c.want is 0.5, which exceeds 1e-9, where
+  res evaluates to 5.5,
+  c.want evaluates to 5, and
+  1e-9 evaluates to 1.0000000000000001e-09.
+  ...
+  224/263 Test #742: parse_radius_c/ErrCases/ParseRadiusErr.Rejects/8 .........***Failed    0.27 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_radius_c.cpp(47): error: Expected equality of these values:
+    code
+      Which is: 3
+    c.want
+      Which is: 2
+  ...
+  249/263 Test #767: vertex_form_index_c/Cases/VertexFormIndex.Returns/3 ......***Failed    0.11 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\vertex_form_index_c.cpp(21): error: Expected equality of these values:
+    got
+      Which is: 1
+    c.want
+      Which is: 0
+  ...
+  95% tests passed, 13 tests failed out of 263
+
+  Total Test time (real) =  39.64 sec
+
+  The following tests FAILED:
+    550 - parse_point_c/OkCases/ParsePointOk.Parses/0 (Failed)
+    573 - parse_point_c/ErrCases/ParsePointErr.Rejects/12 (Failed)
+    606 - parse_int32_c/OkCases/ParseInt32Ok.Parses/1 (Failed)
+    628 - parse_int32_c/ErrCases/ParseInt32Err.Rejects/14 (Failed)
+    642 - is_empty_c/Cases/IsEmpty.Detects/5 (Failed)
+    650 - is_hex_prefix_c/Cases/IsHexPrefix.Detects/5 (Failed)
+    663 - trim_string_c/Cases/TrimStr.Trims/0 (Failed)
+    684 - point_distance_c/Cases/PointDistance.Distance/5 (Failed)
+    692 - centroid_c/Cases/Centroid.Computes/0 (Failed)
+    705 - polygon_vertex_c/Cases/PolygonVertex.Returns/2 (Failed)
+    729 - parse_radius_c/OkCases/ParseRadiusOk.Parses/1 (Failed)
+    742 - parse_radius_c/ErrCases/ParseRadiusErr.Rejects/8 (Failed)
+    767 - vertex_form_index_c/Cases/VertexFormIndex.Returns/3 (Failed)
+  ```
+- откатываю намеренные ошибки и заново прогоняю 
+  `ctest --preset unit 100% tests passed, 0 tests failed out of 263 Total Test time (real) =  42.27 sec`
+
+  также прогоняю `ctest --preset full 100% tests passed, 0 tests failed out of 781 Total Test time (real) =  78.03 sec`
+  и также `cmake --build build/release [20/20] Linking CXX executable tests\unit\parse_point_c.exe` и 
+  `ctest --preset full-release 100% tests passed, 0 tests failed out of 781 Total Test time (real) =  19.71 sec`
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.

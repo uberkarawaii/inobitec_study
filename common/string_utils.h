@@ -22,6 +22,11 @@
 
 #include "parse_codes.h"
 
+// для с++ потребителя будет внешней си-функцией, с с-abi, без манглинга. для си-потребителя - не влияет
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // массив символов из входного потока до \0 через динамич. массив
 COMMON_API char* get_string(int* len);
 
@@ -48,5 +53,9 @@ COMMON_API int vertex_form_index(int N);
 
 // при --version первым аргументом вернёт версию программы
 COMMON_API bool handle_version_flag(int argc, char* argv[]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
