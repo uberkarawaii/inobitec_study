@@ -5267,6 +5267,111 @@ The following tests FAILED:
   Total Test time (real) =  19.66 sec
   ```
 
+- приступаю к правкам / "доделать", которые появились после того, как я начала делать gtest. первое - в соотв. 4.9.7
+  "Тесты проверяют все три канала" - буду делать так, чтобы при тесте на успешное выполнение проверялся не только stdout+ex_code, как сейчас, но и std_err на пустоту. и в обратную - при тесте на ошибку - не только stderr+ex_code, как сейчас, но и stdout на пустоту. какие архитектурные решения тут приняты (от вопроса ии при планировании):
+  - будет проверка check --empty, она будет смотреть, что файл весит 0байт - любой символ отлавливается
+  - "кого проверять?" "того, кто не является параметром stream" - т.е., в рамках такого подхода невозможно иметь
+    программу, пишущую что-то в оба канала. она либо успешно выполнилась и напечатала в stdout, либо упала и написала в stderr. в рамках моего проекта - ложится логично, но я не раз видела, когда перенаправляла потоки 
+    в файлы, чтобы потом увидеть полный вывод, что может быть так: `... >a.txt 2>b.txt` - то есть существуют программы, которые нормально печатают и в out, И в err. к ии: как смотришь на это? так, что именно для моего проекта - это логичное решение? или стоит задуматься о двухканальности. я склоняюсь к первому, что для этого проекта - ок. но всё равно спрошу. 
+
+    ии: говорит про "по логике проекта - печать только в один канал". это не "общее правило", а именно для моих простых
+    утилит. так конечно существуют программы, где м.б. напечатано и out, и err. и если у меня когда-либо будет потоковый
+    вывод (наподобие того, что я когда-то имела в t4_c, вроде) - то есть смысл делать двухканальность. то есть, если кто-то печатает что-то пока не ошибка, то да, есть смысл двухканальности. пока такого нет, ии также говорить, что двухканал. не делаем, но ещё: "Когда появится реальная причина — прогресс/--verbose в stderr при данных в stdout (слой 11, протоколирование) — тогда расширяешь: второй result-тест на второй канал, а «тихий» перестаёт быть пустым.". пока я не понимаю что это, просто принимаю как тезис. 
+
+    и отсутствие двухканальности нужно зафиксировать, а не держать в уме. согласна, напишу это в readme
+
+  - нет отключения проверки пустоты для не-stream канала. то есть, всегда всем проверяют не-stream канал на пустоту.
+    от ии "Кейса с непустыми обоими каналами сейчас нет и быть не может в текущей модели." - что согласуется с прошлым пунктом и что я про него думала.
+
+- tests/check.cpp добавляю режим --empty <file>. написала небходимое, отдаю на проверку ии и исправляю все замечания
+- tests/CMakeLists.txt - в function(add_case...) добавляю третий тест - проверка "обратного" канала. для этого завожу
+  соотв. переменные в блоке if(${stream} EQUAL 1) ... else ... и использую их в 3 тесте. забыла фикстуру, ии при проверке это заметил (что проверка пустоты инвертированного - только после основного теста). добавляю фикстуру
+  для EMPTY_TEST
+
+- сборка и прононы, и потом ctest --preset full:
+  `ctest --preset full 100% tests passed, 0 tests failed out of 1039 Total Test time (real) =  83.26 sec`
+  и то же самое для релиза, после чего ctest --preset full-release:
+  `100% tests passed, 0 tests failed out of 1039 Total Test time (real) =  24.05 sec`
+  по совету ии также параллельный прогон ctest --test-dir build/debug -j8 (в т.ч. чтобы увидеть, что фикстуры работают)
+  ```
+  ...
+            Start  112: t2_c_eof_name_stderr
+            Start   10: t1_c_float_stderr
+            Start   58: t1_cpp_empty_stderr
+            Start  604: t4_cpp_radius_plus_plus_stderr
+            Start  121: t2_c_empty_vertexes_stderr
+            Start   70: t1_cpp_double_plus_stderr
+  1033/1039 Test  #601: t4_cpp_radius_negative_stderr ............................   Passed    0.05 sec
+  1034/1039 Test  #112: t2_c_eof_name_stderr .....................................   Passed    0.05 sec
+  1035/1039 Test   #10: t1_c_float_stderr ........................................   Passed    0.03 sec
+  1036/1039 Test   #58: t1_cpp_empty_stderr ......................................   Passed    0.02 sec
+  1037/1039 Test  #604: t4_cpp_radius_plus_plus_stderr ...........................   Passed    0.02 sec
+  1038/1039 Test  #121: t2_c_empty_vertexes_stderr ...............................   Passed    0.01 sec
+  1039/1039 Test   #70: t1_cpp_double_plus_stderr ................................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 1039
+
+  Total Test time (real) =  44.65 sec
+  ```
+
+- негатив. контроль. t1_c делаю добавление лишнего вывода в stderr
+  ```
+  if (i == j)
+                printf("%8.3f", 0.0);
+                fprintf(stderr, "k");
+                ...
+  ```
+  и t2_cpp добавляю вывод в stdout, когда это не надо
+  ```
+  if (name.empty()) {
+        std::cerr << "Пустой ввод вместо имени фигуры\n";
+        std::cout << "Фигура";
+        return exit_code::no_in;
+    }
+  ```
+
+  ```
+  ctest --preset full
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+  ...
+    44/1039 Test   #44: t1_c_norm_stderr_empty ...................................***Failed    0.01 sec
+  check failed: --empty
+  result   : C:/Users/User/Desktop/inobitec_stud/build/debug/tests/results/t1_c_norm.err (3 bytes)
+  expected : empty (0 bytes)
+  found    : "kkk"
+  ...
+  47/1039 Test   #47: t1_c_plus_stderr_empty ...................................***Failed    0.01 sec
+  check failed: --empty
+  result   : C:/Users/User/Desktop/inobitec_stud/build/debug/tests/results/t1_c_plus.err (3 bytes)
+  expected : empty (0 bytes)
+  found    : "kkk"
+  ...
+  и т.д.
+
+   176/1039 Test  #176: t2_cpp_empty_name_stdout_empty ...........................***Failed    0.01 sec
+  check failed: --empty
+  result   : C:/Users/User/Desktop/inobitec_stud/build/debug/tests/results/t2_cpp_empty_name.out (6 bytes)
+  expected : empty (0 bytes)
+  found    : "\xD4\xE8\xE3\xF3\xF0\xE0"
+  ...
+
+  99% tests passed, 6 tests failed out of 1039
+
+  Total Test time (real) =  85.37 sec
+
+  The following tests FAILED:
+    44 - t1_c_norm_stderr_empty (Failed)
+    47 - t1_c_plus_stderr_empty (Failed)
+    50 - t1_c_leading_spaces_stderr_empty (Failed)
+    53 - t1_c_space_plus_stderr_empty (Failed)
+    56 - t1_c_leading_zero_stderr_empty (Failed)
+    176 - t2_cpp_empty_name_stdout_empty (Failed)
+  ```
+  всё откатываю и ещё раз `ctest --preset full 100% tests passed, 0 tests failed out of 1039 Total Test time (real) =  82.64 sec`
+
+*Что не получилось*
+- не забыть сделать. когда появится check --empty и будет им реальная проверка не-stream канала - (это от ии, когда буду писать - описать как я вижу) "Раздел «тесты» / описание check (README:73 + строка про --empty). Там же — одна строка контракта: «сверяемый канал несёт контент, второй по контракту задач обязан быть пуст; проверяется check --empty»."
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.

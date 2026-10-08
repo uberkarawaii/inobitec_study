@@ -125,16 +125,29 @@ constexpr std::size_t kContextBefore = 16;
 } // namespace
 
 int main(int argc, char* argv[]) {
-    // проверка что аргумента ровно 3
-    if (argc != 4) {
-        std::println(stderr, "3 arguments expected (--flag <file_result> <file_expected>). Received {} arguments",
-                     argc - 1);
+    if (argc < 2) {
+        std::println(stderr, "Flag expected: --contains/--equal <file_result> <file_expected> or --empty <file>");
         return 1;
     }
-    // проверка флага - если это ни тот и ни другой флаг, то это ошибка
+
     std::string_view flag{argv[1]};
-    if (flag != "--contains" && flag != "--equal") {
-        std::println(stderr, "Unknown flag {}. Expected --contains or --equal", argv[1]);
+    // проверка флага - если это ни один из флагов, то это ошибка. и печать того, что ожидали / получили
+    if (flag != "--contains" && flag != "--equal" && flag != "--empty") {
+        std::println(stderr, "Unknown flag {}. Expected --contains or --equal or --empty.", argv[1]);
+        return 1;
+    }
+
+    // если флаг --empty - ждём два аргумента. иначе - 3
+    const int how_many_args = (flag == "--empty") ? 3 : 4;
+    // если к-во аргументов не подчинается тому, что ожидаем в завис. от флага, - кинуть ошибку
+    if (argc != how_many_args) {
+        std::println(stderr,
+                     "Given sequence doesnt suit any expectation. Expectations: (1) --contains/--equal <file_result> "
+                     "<file_expected> (2) --empty <file>. Received {} argument(s):",
+                     argc - 1);
+        for (int i = 1; i < argc; ++i)
+            std::print(stderr, " [{}]", argv[i]);
+        std::println(stderr, "");
         return 1;
     }
 
@@ -147,6 +160,18 @@ int main(int argc, char* argv[]) {
     }
     // r1 (как и r2 далее) не будет больше использоваться. потому её ссылка опустошается и отдаётся result
     std::string result = std::move(*r1);
+
+    // до взаимодействия с argv[3] - ветка с --empty, т.к. в этом случае нет argv[3]
+    if (flag == "--empty") {
+        if (result.size() > 0) {
+            std::println(stderr, "check failed: --empty");
+            std::println(stderr, "  result   : {} ({} bytes)", argv[2], result.size());
+            std::println(stderr, "  expected : empty (0 bytes)");
+            std::println(stderr, "  found    : \"{}\"", escape_window(result, 0, kWindowBytes));
+            return 1;
+        }
+        return 0;
+    }
 
     auto r2 = file_to_bytes_string(argv[3]);
     if (!r2) {

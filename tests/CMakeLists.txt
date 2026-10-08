@@ -109,9 +109,13 @@ add_test(NAME ${CODE_TEST} COMMAND $<TARGET_FILE:run_case> ${expected_excode}
 if(${stream} EQUAL 1)
   set(PROGRAMM_RESULT ${STDOUT_FILE})
   set(RESULT_TEST "${test_name}_stdout")
+  set(OTHER_STREAM ${STDERR_FILE})
+  set(EMPTY_TEST "${test_name}_stderr_empty")
 elseif(${stream} EQUAL 2)
   set(PROGRAMM_RESULT ${STDERR_FILE})
   set(RESULT_TEST "${test_name}_stderr")
+  set(OTHER_STREAM ${STDOUT_FILE})
+  set(EMPTY_TEST "${test_name}_stdout_empty")
 endif()
 
 # установка флага для check - совпадение / содержание. зависит от check_flag
@@ -130,16 +134,23 @@ add_test(NAME ${RESULT_TEST} COMMAND
  ${PROGRAMM_RESULT} 
  ${EXPECTED_PATH})
 
+# тест_3 на то, что не-stream канал пустой
+add_test(NAME ${EMPTY_TEST} COMMAND $<TARGET_FILE:check> --empty ${OTHER_STREAM})
+
 # ${CMAKE_SOURCE_DIR} - изначальный корень с корневым  CMakeLists.txt
 # ${CMAKE_CURRENT_SOURCE_DIR} - подпапка в корне с текущим CMakeLists.txt
 # по аналогии и с ${CMAKE_BINARY_DIR}/${CMAKE_CURRENT_BINARY_DIR}
 
-# фикстуры чтобы тесты шли в порядке: 1) тест на код 2) проверка выходного файла
+# фикстуры чтобы тесты шли в порядке: 
+# 1) тест на код 2) проверка выходного файла 3) проверка пустоты файла инвертированного канала
 # тест на код CODE_TEST порождает сущность test_name 
 set_tests_properties(${CODE_TEST} PROPERTIES FIXTURES_SETUP ${test_name})
 # тест с проверкой выходного файла RESULT_TEST нуждается в сущности test_name, 
 # которую породит CODE_TEST. поэтому CODE_TEST, потом - RESULT_TEST  
 set_tests_properties(${RESULT_TEST} PROPERTIES FIXTURES_REQUIRED ${test_name})
+# проверка что инвертированный канал пуст. только после того, 
+# как осн. тест прошёл и файлы обоих каналов появились
+set_tests_properties(${EMPTY_TEST} PROPERTIES FIXTURES_REQUIRED ${test_name})
   
 endfunction()
 
