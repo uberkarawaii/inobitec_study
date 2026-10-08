@@ -5170,6 +5170,103 @@ The following tests FAILED:
   и также `cmake --build build/release [20/20] Linking CXX executable tests\unit\parse_point_c.exe` и 
   `ctest --preset full-release 100% tests passed, 0 tests failed out of 781 Total Test time (real) =  19.71 sec`
 
+- на vm делаю реконфиг, пересобрку и полные тесты. 
+
+  ```
+  cmake --fresh --preset debug 
+  ...
+  -- Configuring done (1.6s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/debug
+
+  cmake --fresh --preset release
+  ...
+  -- Found Threads: TRUE
+  -- Configuring done (1.3s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/release
+
+  cmake --build build/debug
+  ...
+  [43/44] Linking CXX executable tests/unit/centroid_c
+  [44/44] Linking CXX executable tests/unit/parse_radius_c
+
+  cmake --build build/release
+  [1/44] Building C object common/CMakeFiles/common_c_shared.dir/string_utils.c.o
+  [2/44] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o
+  ...
+  [44/44] Linking CXX executable tests/unit/parse_radius_c
+
+  ctest --preset debug
+  Test project /home/karavai/test/inobitec_study/build/debug
+        Start   1: format-check
+  1/789 Test   #1: format-check .............................................   Passed    0.41 sec
+  ...
+          Start 789: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  789/789 Test #789: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.01 sec
+  100% tests passed, 0 tests failed out of 789
+  Total Test time (real) =   8.10 sec
+
+  ctest --preset release 
+  Test project /home/karavai/test/inobitec_study/build/release
+        Start   1: format-check
+  1/789 Test   #1: format-check .............................................   Passed    0.15 sec
+  ...
+        Start 788: vertex_form_index_c/Cases/VertexFormIndex.Returns/16
+  788/789 Test #788: vertex_form_index_c/Cases/VertexFormIndex.Returns/16 .....   Passed    0.00 sec
+        Start 789: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  789/789 Test #789: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.00 sec
+  100% tests passed, 0 tests failed out of 789
+  Total Test time (real) =   2.63 sec
+  ```
+  далее делаю негатив. контроль (centroid_c.cpp: первый тест, ожидание
+  меняю с {5, -2, 3} на {5, 2, 3} и в parse_point_c.cpp ErrCase{"1 2 3 nan", NUMBER_TOO_MUCH->NUMBER_NOT_NUMBER}). пересборка и `ctest --preset unit`.
+  ```
+  Test project /home/karavai/test/inobitec_study/build/debug
+        Start 527: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+  ...
+          Start 574: parse_point_c/ErrCases/ParsePointErr.Rejects/5
+  48/263 Test #574: parse_point_c/ErrCases/ParsePointErr.Rejects/5 ...........***Failed    0.02 sec
+  ...
+  /home/karavai/test/inobitec_study/tests/unit/parse_point_c.cpp:57: Failure
+  Expected equality of these values:
+    code
+      Which is: 5
+    c.want
+      Which is: 1
+  ...
+          Start 700: centroid_c/Cases/Centroid.Computes/0
+  ...
+  /home/karavai/test/inobitec_study/tests/unit/centroid_c.cpp:24: Failure
+  The difference between got.y and c.want.y is 4, which exceeds 1e-9, where
+  got.y evaluates to -2,
+  c.want.y evaluates to 2, and
+  1e-9 evaluates to 1.0000000000000001e-09.
+  ...
+    263/263 Test #789: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.02 sec
+  99% tests passed, 2 tests failed out of 26
+  Total Test time (real) =   4.06 sec
+  The following tests FAILED:
+    574 - parse_point_c/ErrCases/ParsePointErr.Rejects/5 (Failed)
+    700 - centroid_c/Cases/Centroid.Computes/0 (Failed)
+  ``` 
+  возвращаю нормальные значения, пересобираю и `ctest --preset full 100% tests passed, 0 tests failed out of 789 Total Test time (real) =   7.17 sec`
+
+- делаю клон и на нём делаю конфиг, сборку и тесты. результат тестов: 
+  ```
+  Test project D:/test1/inobitec_study/build/debug
+  ...
+  100% tests passed, 0 tests failed out of 781
+
+  Total Test time (real) =  80.20 sec
+
+  Test project D:/test1/inobitec_study/build/release
+  ...
+  100% tests passed, 0 tests failed out of 781
+
+  Total Test time (real) =  19.66 sec
+  ```
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.

@@ -69,5 +69,11 @@
   осуществляется через ф-цию deploy_vcpkg_dlls (tests/CMakeLists.txt) - ф-ция применяется для целей, которые используют
   фреймворк gtest. ф-ция windows-only - её тело обёрнуто в это условие, т.к. конфликты с vcpkg applocal возникают только
   на винде ввиду механизма связи с shared-библиотеками
+- юнит-тесты C-части переведены на GoogleTest: файлы <функция>_c.cpp 
+  (включают C-заголовок `common/*.h`, линкуются к `*_c_static`), старые самодельные tests/unit/*.c удалены;
+- в common/geometry.h и common/string_utils.h добавлена обёртка extern "C": 
+  C-библиотеки корректно связываются с C++-тестами; для C-потребителей инертно (скрыто за #ifdef __cplusplus).
 ### Added
 - tests/unit/printers.hpp - общие принтеры для диагностики gtest
+- tests/unit/printers_c.hpp — принтер для C-структуры Point
+- add_unit_gtest (единая сборка/регистрация gtest-цели в tests/unit/CMakeLists.txt)
