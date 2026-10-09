@@ -5368,9 +5368,65 @@ The following tests FAILED:
     176 - t2_cpp_empty_name_stdout_empty (Failed)
   ```
   всё откатываю и ещё раз `ctest --preset full 100% tests passed, 0 tests failed out of 1039 Total Test time (real) =  82.64 sec`
+- и прогон на виртуалке ctest --preset full 
+  ```
+    1050/1051 Test #1050: vertex_form_index_c/Cases/VertexFormIndex.Returns/16 .....   Passed    0.01 sec
+            Start 1051: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  1051/1051 Test #1051: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.02 sec
 
-*Что не получилось*
-- не забыть сделать. когда появится check --empty и будет им реальная проверка не-stream канала - (это от ии, когда буду писать - описать как я вижу) "Раздел «тесты» / описание check (README:73 + строка про --empty). Там же — одна строка контракта: «сверяемый канал несёт контент, второй по контракту задач обязан быть пуст; проверяется check --empty»."
+  100% tests passed, 0 tests failed out of 1051
+
+  Total Test time (real) =   8.22 sec
+  ```
+
+  ctest --preset full-release 
+  ```
+  1050/1051 Test #1050: vertex_form_index_c/Cases/VertexFormIndex.Returns/16 .....   Passed    0.00 sec
+            Start 1051: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  1051/1051 Test #1051: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 1051
+
+  Total Test time (real) =   3.08 sec
+  ```
+
+- по совету ии (т.к. до этого это вообще не проверялось) руками проверяю, как себя ведёт check на неверных входах.
+  ручная проверка - все ожидаемо неправильные команды + подтверждение, что после них exit-code = 1, то есть происходит 
+  выход по return 1:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>build\debug\tests\check.exe
+  Flag expected: --contains/--equal <file_result> <file_expected> or --empty <file>
+
+  c:\Users\User\Desktop\inobitec_stud>echo %errorlevel%
+  1
+
+  c:\Users\User\Desktop\inobitec_stud>build\debug\tests\check.exe --foo x y
+  Unknown flag --foo. Expected --contains or --equal or --empty.
+
+  c:\Users\User\Desktop\inobitec_stud>echo %errorlevel%
+  1
+
+  c:\Users\User\Desktop\inobitec_stud>build\debug\tests\check.exe --equal a
+  Given sequence doesnt suit any expectation. Expectations: (1) --contains/--equal <file_result> <file_expected> (2) --empty <file>. Received 2 argument(s):
+  [--equal] [a]
+
+  c:\Users\User\Desktop\inobitec_stud>echo %errorlevel%
+  1
+
+  c:\Users\User\Desktop\inobitec_stud>build\debug\tests\check.exe --empty a b
+  Given sequence doesnt suit any expectation. Expectations: (1) --contains/--equal <file_result> <file_expected> (2) --empty <file>. Received 3 argument(s):
+  [--empty] [a] [b]
+
+  c:\Users\User\Desktop\inobitec_stud>echo %errorlevel%
+  1
+  ```
+
+*Что заметила при работе с deepseek*
+- предлагает "- НАБЛЮДЕНИЕ §4.9.7 Ветки самого check на неверные аргументы (argc < 2, незнакомый флаг, arity) не
+  покрыты ни одним тестом — это «код на доверии». Негативный контроль проверял ветку --empty, а не CLI-валидацию check. Если захочешь — можно разово руками дёрнуть check без аргументов / с --foo / с --equal a и убедиться, что сообщения вменяемые (у тебя там как раз менялся вывод argv)."
+  тесты на это заводить не будем, т.к.: с нормальными флагами много тестов и оно работает; делается не ручной вызов check (ручного вообще нет сейчас); ещё, как я думаю - это тестовая обвязка и её саму тестировать - нет смысла, это
+  не продукт. просто руками посмотреть, что работает как ожидалось - ок, не более. хотя ии говорит: "Идея «само-тестов обвязки» уже отложена с триггером. В журнале 2026-09-21..." тем не менее, этот триггер ещё не наступил. 
+
 
 ## 8. Диалоги с DeepSeek
 
