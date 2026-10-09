@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     }
     if (N < MIN_SIZE || N > MAX_SIZE) {
         fprintf(stderr, "N должно быть в диапазоне [3;20]. Получено: %s", lineN);
-        return usage;
+        return data;
     }
 
     // вершины. Х и У это косинусы и синусы от углов

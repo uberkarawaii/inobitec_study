@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Кол-во вершин должно быть положительным. Получено: %" PRId32 "\n", N);
         free(s);
         free(s_num);
-        return usage;
+        return data;
     }
 
     // массив словоформ со склонением

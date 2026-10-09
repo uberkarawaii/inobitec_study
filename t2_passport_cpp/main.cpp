@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     const int V = *parsed;
     if (V < 1) {
         std::cerr << " ол-во вершин должно быть положительным. ѕолучено: " << V << "\n";
-        return exit_code::usage;
+        return exit_code::data;
     }
 
     // массив словоформ . через vertex_form_index(V) будет индекс дл€ верной формы из этого массива

@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     // проверяем диапазон
     if (N < 3 || N > 20) {
         std::cerr << "N должно быть в диапазоне [3;20]. Получено: " << lineN << '\n';
-        return exit_code::usage;
+        return exit_code::data;
     }
 
     std::vector<Point> points(N);

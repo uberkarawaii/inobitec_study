@@ -18,9 +18,11 @@ set(VERSION_ARG "--version")
 # === T1 C TESTS ====
 # входные данные с ошибками
 add_case(t1_c_empty t1_c "${EMPTY_ARG}" t1_nul "${NO_INPUT}" EQ t1_nul "${ERR}")
+add_case(t1_c_spaces t1_c "${EMPTY_ARG}" t1_spaces "${NO_INPUT}" EQ t1_nul "${ERR}")
 add_case(t1_c_abc t1_c "${EMPTY_ARG}" t1_abc "${DATA}" EQ t1_abc "${ERR}")
 add_case(t1_c_float t1_c "${EMPTY_ARG}" t1_float "${DATA}" EQ t1_float "${ERR}")
-add_case(t1_c_high t1_c "${EMPTY_ARG}" t1_high "${USAGE}" EQ t1_high "${ERR}")
+add_case(t1_c_high t1_c "${EMPTY_ARG}" t1_high "${DATA}" EQ t1_high "${ERR}")
+add_case(t1_c_low t1_c "${EMPTY_ARG}" t1_low "${DATA}" EQ t1_low "${ERR}")
 add_case(t1_c_double_plus t1_c "${EMPTY_ARG}" t1_double_plus "${DATA}" EQ t1_double_plus "${ERR}")
 add_case(t1_c_plus_abc t1_c "${EMPTY_ARG}" t1_plus_abc "${DATA}" EQ t1_plus_abc "${ERR}")
 add_case(t1_c_plus_minus t1_c "${EMPTY_ARG}" t1_plus_minus "${DATA}" EQ t1_plus_minus "${ERR}")
@@ -28,12 +30,13 @@ add_case(t1_c_plus_only t1_c "${EMPTY_ARG}" t1_plus_only "${DATA}" EQ t1_plus_on
 add_case(t1_c_overflow t1_c "${EMPTY_ARG}" t1_overflow "${DATA}" EQ t1_overflow "${ERR}")
 add_case(t1_c_overflow_big t1_c "${EMPTY_ARG}" t1_overflow_big "${DATA}" EQ t1_overflow_big "${ERR}")
 add_case(t1_c_overflow_neg t1_c "${EMPTY_ARG}" t1_overflow_neg "${DATA}" EQ t1_overflow_neg "${ERR}")
-add_case(t1_c_int32_max t1_c "${EMPTY_ARG}" t1_int32_max "${USAGE}" EQ t1_int32_max "${ERR}")
+add_case(t1_c_int32_max t1_c "${EMPTY_ARG}" t1_int32_max "${DATA}" EQ t1_int32_max "${ERR}")
 add_case(t1_c_hex t1_c "${EMPTY_ARG}" t1_hex "${DATA}" EQ t1_hex "${ERR}")
 # нормальные входные данные
 add_case(t1_c_norm t1_c "${EMPTY_ARG}" t1_test1 "${SUCCESS}" EQ t1_test1 "${OUT}")
 add_case(t1_c_plus t1_c "${EMPTY_ARG}" t1_plus "${SUCCESS}" EQ t1_test1 "${OUT}")
 add_case(t1_c_leading_spaces t1_c "${EMPTY_ARG}" t1_leading_spaces "${SUCCESS}" EQ t1_test1 "${OUT}")
+add_case(t1_c_test2 t1_c "${EMPTY_ARG}" t1_test2 "${SUCCESS}" EQ t1_test2 "${OUT}")
 add_case(t1_c_space_plus t1_c "${EMPTY_ARG}" t1_space_plus "${SUCCESS}" EQ t1_test1 "${OUT}")
 add_case(t1_c_leading_zero t1_c "${EMPTY_ARG}" t1_leading_zero "${SUCCESS}" EQ t1_leading_zero "${OUT}")
 
@@ -41,9 +44,11 @@ add_case(t1_c_leading_zero t1_c "${EMPTY_ARG}" t1_leading_zero "${SUCCESS}" EQ t
 # === T1 CPP TESTS ====
 # входные данные с ошибками
 add_case(t1_cpp_empty t1_cpp "${EMPTY_ARG}" t1_nul "${NO_INPUT}" EQ t1_nul "${ERR}")
+add_case(t1_cpp_spaces t1_cpp "${EMPTY_ARG}" t1_spaces "${NO_INPUT}" EQ t1_nul "${ERR}")
 add_case(t1_cpp_abc t1_cpp "${EMPTY_ARG}" t1_abc "${DATA}" EQ t1_abc "${ERR}")
 add_case(t1_cpp_float t1_cpp "${EMPTY_ARG}" t1_float "${DATA}" EQ t1_float "${ERR}")
-add_case(t1_cpp_high t1_cpp "${EMPTY_ARG}" t1_high "${USAGE}" EQ t1_high "${ERR}")
+add_case(t1_cpp_high t1_cpp "${EMPTY_ARG}" t1_high "${DATA}" EQ t1_high "${ERR}")
+add_case(t1_cpp_low t1_cpp "${EMPTY_ARG}" t1_low "${DATA}" EQ t1_low "${ERR}")
 add_case(t1_cpp_double_plus t1_cpp "${EMPTY_ARG}" t1_double_plus "${DATA}" EQ t1_double_plus "${ERR}")
 add_case(t1_cpp_plus_abc t1_cpp "${EMPTY_ARG}" t1_plus_abc "${DATA}" EQ t1_plus_abc "${ERR}")
 add_case(t1_cpp_plus_minus t1_cpp "${EMPTY_ARG}" t1_plus_minus "${DATA}" EQ t1_plus_minus "${ERR}")
@@ -51,12 +56,13 @@ add_case(t1_cpp_plus_only t1_cpp "${EMPTY_ARG}" t1_plus_only "${DATA}" EQ t1_plu
 add_case(t1_cpp_overflow t1_cpp "${EMPTY_ARG}" t1_overflow "${DATA}" EQ t1_overflow "${ERR}")
 add_case(t1_cpp_overflow_big t1_cpp "${EMPTY_ARG}" t1_overflow_big "${DATA}" EQ t1_overflow_big "${ERR}")
 add_case(t1_cpp_overflow_neg t1_cpp "${EMPTY_ARG}" t1_overflow_neg "${DATA}" EQ t1_overflow_neg "${ERR}")
-add_case(t1_cpp_int32_max t1_cpp "${EMPTY_ARG}" t1_int32_max "${USAGE}" EQ t1_int32_max "${ERR}")
+add_case(t1_cpp_int32_max t1_cpp "${EMPTY_ARG}" t1_int32_max "${DATA}" EQ t1_int32_max "${ERR}")
 add_case(t1_cpp_hex t1_cpp "${EMPTY_ARG}" t1_hex "${DATA}" EQ t1_hex "${ERR}")
 # нормальные входные данные
 add_case(t1_cpp_norm t1_cpp "${EMPTY_ARG}" t1_test1 "${SUCCESS}" EQ t1_test1 "${OUT}")
 add_case(t1_cpp_plus t1_cpp "${EMPTY_ARG}" t1_plus "${SUCCESS}" EQ t1_test1 "${OUT}")
 add_case(t1_cpp_leading_spaces t1_cpp "${EMPTY_ARG}" t1_leading_spaces "${SUCCESS}" EQ t1_test1 "${OUT}")
+add_case(t1_cpp_test2 t1_cpp "${EMPTY_ARG}" t1_test2 "${SUCCESS}" EQ t1_test2 "${OUT}")
 add_case(t1_cpp_space_plus t1_cpp "${EMPTY_ARG}" t1_space_plus "${SUCCESS}" EQ t1_test1 "${OUT}")
 add_case(t1_cpp_leading_zero t1_cpp "${EMPTY_ARG}" t1_leading_zero "${SUCCESS}" EQ t1_leading_zero "${OUT}")
 
@@ -68,7 +74,7 @@ add_case(t2_c_eof_vertexes t2_c "${EMPTY_ARG}" t2_eof_vertexes "${NO_INPUT}" EQ 
 add_case(t2_c_empty_vertexes t2_c "${EMPTY_ARG}" t2_empty_vertexes "${NO_INPUT}" EQ t2_empty_vertexes "${ERR}")
 add_case(t2_c_fractional_vertexes t2_c "${EMPTY_ARG}" t2_fractional_vertexes "${DATA}" EQ t2_fractional_vertexes "${ERR}")
 add_case(t2_c_nan_vertexes t2_c "${EMPTY_ARG}" t2_nan_vertexes "${DATA}" EQ t2_nan_vertexes "${ERR}")
-add_case(t2_c_negative_vertexes t2_c "${EMPTY_ARG}" t2_negative_vertexes "${USAGE}" EQ t2_negative_vertexes "${ERR}")
+add_case(t2_c_negative_vertexes t2_c "${EMPTY_ARG}" t2_negative_vertexes "${DATA}" EQ t2_negative_vertexes "${ERR}")
 add_case(t2_c_double_plus t2_c "${EMPTY_ARG}" t2_double_plus "${DATA}" EQ t2_double_plus "${ERR}")
 add_case(t2_c_plus_abc t2_c "${EMPTY_ARG}" t2_plus_abc "${DATA}" EQ t2_plus_abc "${ERR}")
 add_case(t2_c_plus_minus t2_c "${EMPTY_ARG}" t2_plus_minus "${DATA}" EQ t2_plus_minus "${ERR}")
@@ -77,12 +83,15 @@ add_case(t2_c_overflow t2_c "${EMPTY_ARG}" t2_overflow "${DATA}" EQ t2_overflow 
 add_case(t2_c_overflow_big t2_c "${EMPTY_ARG}" t2_overflow_big "${DATA}" EQ t2_overflow_big "${ERR}")
 add_case(t2_c_overflow_neg t2_c "${EMPTY_ARG}" t2_overflow_neg "${DATA}" EQ t2_overflow_neg "${ERR}")
 add_case(t2_c_hex t2_c "${EMPTY_ARG}" t2_hex "${DATA}" EQ t2_hex "${ERR}")
+add_case(t2_c_zero_vertexes t2_c "${EMPTY_ARG}" t2_zero_vertexes "${DATA}" EQ t2_zero_vertexes "${ERR}")
 # нормальные входные данные
 add_case(t2_c_norm t2_c "${EMPTY_ARG}" t2_input "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_c_plus t2_c "${EMPTY_ARG}" t2_plus "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_c_leading_spaces t2_c "${EMPTY_ARG}" t2_leading_spaces "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_c_space_plus t2_c "${EMPTY_ARG}" t2_space_plus "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_c_leading_zero t2_c "${EMPTY_ARG}" t2_leading_zero "${SUCCESS}" EQ t2_leading_zero "${OUT}")
+add_case(t2_c_name_with_spaces t2_c "${EMPTY_ARG}" t2_name_with_spaces "${SUCCESS}" EQ t2_name_with_spaces "${OUT}")
+add_case(t2_c_one_vertex t2_c "${EMPTY_ARG}" t2_one_vertex "${SUCCESS}" EQ t2_one_vertex "${OUT}")
 
 # === T2 CPP TESTS ===
 # входные данные с ошибками
@@ -92,7 +101,7 @@ add_case(t2_cpp_eof_vertexes t2_cpp "${EMPTY_ARG}" t2_eof_vertexes "${NO_INPUT}"
 add_case(t2_cpp_empty_vertexes t2_cpp "${EMPTY_ARG}" t2_empty_vertexes "${NO_INPUT}" EQ t2_empty_vertexes "${ERR}")
 add_case(t2_cpp_fractional_vertexes t2_cpp "${EMPTY_ARG}" t2_fractional_vertexes "${DATA}" EQ t2_fractional_vertexes "${ERR}")
 add_case(t2_cpp_nan_vertexes t2_cpp "${EMPTY_ARG}" t2_nan_vertexes "${DATA}" EQ t2_nan_vertexes "${ERR}")
-add_case(t2_cpp_negative_vertexes t2_cpp "${EMPTY_ARG}" t2_negative_vertexes "${USAGE}" EQ t2_negative_vertexes "${ERR}")
+add_case(t2_cpp_negative_vertexes t2_cpp "${EMPTY_ARG}" t2_negative_vertexes "${DATA}" EQ t2_negative_vertexes "${ERR}")
 add_case(t2_cpp_double_plus t2_cpp "${EMPTY_ARG}" t2_double_plus "${DATA}" EQ t2_double_plus "${ERR}")
 add_case(t2_cpp_plus_abc t2_cpp "${EMPTY_ARG}" t2_plus_abc "${DATA}" EQ t2_plus_abc "${ERR}")
 add_case(t2_cpp_plus_minus t2_cpp "${EMPTY_ARG}" t2_plus_minus "${DATA}" EQ t2_plus_minus "${ERR}")
@@ -101,12 +110,15 @@ add_case(t2_cpp_overflow t2_cpp "${EMPTY_ARG}" t2_overflow "${DATA}" EQ t2_overf
 add_case(t2_cpp_overflow_big t2_cpp "${EMPTY_ARG}" t2_overflow_big "${DATA}" EQ t2_overflow_big "${ERR}")
 add_case(t2_cpp_overflow_neg t2_cpp "${EMPTY_ARG}" t2_overflow_neg "${DATA}" EQ t2_overflow_neg "${ERR}")
 add_case(t2_cpp_hex t2_cpp "${EMPTY_ARG}" t2_hex "${DATA}" EQ t2_hex "${ERR}")
+add_case(t2_cpp_zero_vertexes t2_cpp "${EMPTY_ARG}" t2_zero_vertexes "${DATA}" EQ t2_zero_vertexes "${ERR}")
 # нормальные входные данные
 add_case(t2_cpp_norm t2_cpp "${EMPTY_ARG}" t2_input "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_cpp_plus t2_cpp "${EMPTY_ARG}" t2_plus "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_cpp_leading_spaces t2_cpp "${EMPTY_ARG}" t2_leading_spaces "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_cpp_space_plus t2_cpp "${EMPTY_ARG}" t2_space_plus "${SUCCESS}" EQ t2_norm "${OUT}")
 add_case(t2_cpp_leading_zero t2_cpp "${EMPTY_ARG}" t2_leading_zero "${SUCCESS}" EQ t2_leading_zero "${OUT}")
+add_case(t2_cpp_name_with_spaces t2_cpp "${EMPTY_ARG}" t2_name_with_spaces "${SUCCESS}" EQ t2_name_with_spaces "${OUT}")
+add_case(t2_cpp_one_vertex t2_cpp "${EMPTY_ARG}" t2_one_vertex "${SUCCESS}" EQ t2_one_vertex "${OUT}")
 
 # === T3 C TESTS ===
 # тест на io-fail - только под UNIX
@@ -120,6 +132,7 @@ add_case(t3_c_too_few_args_case t3_c "${EMPTY_ARG}" t3_too_few_args_case "${DATA
 add_case(t3_c_too_much_args_case t3_c "${EMPTY_ARG}" t3_too_much_args_case "${DATA}" EQ t3_too_much_args_case "${ERR}")
 add_case(t3_c_extra_nan t3_c "${EMPTY_ARG}" t3_extra_nan "${DATA}" EQ t3_extra_nan "${ERR}")
 add_case(t3_c_x_y_z_4k t3_c "${EMPTY_ARG}" t3_x_y_z_4k "${DATA}" EQ t3_x_y_z_4k "${ERR}")
+add_case(t3_c_x_y_z_k4 t3_c "${EMPTY_ARG}" t3_x_y_z_k4 "${DATA}" EQ t3_x_y_z_k4 "${ERR}")
 add_case(t3_c_inf_coord t3_c "${EMPTY_ARG}" t3_inf_coord "${DATA}" EQ t3_inf_coord "${ERR}")
 add_case(t3_c_x_ky_z t3_c "${EMPTY_ARG}" t3_x_ky_z "${DATA}" EQ t3_x_ky_z "${ERR}")
 add_case(t3_c_x_yk_z t3_c "${EMPTY_ARG}" t3_x_yk_z "${DATA}" EQ t3_x_yk_z "${ERR}")
@@ -163,6 +176,7 @@ add_case(t3_cpp_too_few_args_case t3_cpp "${EMPTY_ARG}" t3_too_few_args_case "${
 add_case(t3_cpp_too_much_args_case t3_cpp "${EMPTY_ARG}" t3_too_much_args_case "${DATA}" EQ t3_too_much_args_case "${ERR}")
 add_case(t3_cpp_extra_nan t3_cpp "${EMPTY_ARG}" t3_extra_nan "${DATA}" EQ t3_extra_nan "${ERR}")
 add_case(t3_cpp_x_y_z_4k t3_cpp "${EMPTY_ARG}" t3_x_y_z_4k "${DATA}" EQ t3_x_y_z_4k "${ERR}")
+add_case(t3_cpp_x_y_z_k4 t3_cpp "${EMPTY_ARG}" t3_x_y_z_k4 "${DATA}" EQ t3_x_y_z_k4 "${ERR}")
 add_case(t3_cpp_inf_coord t3_cpp "${EMPTY_ARG}" t3_inf_coord "${DATA}" EQ t3_inf_coord "${ERR}")
 add_case(t3_cpp_x_ky_z t3_cpp "${EMPTY_ARG}" t3_x_ky_z "${DATA}" EQ t3_x_ky_z "${ERR}")
 add_case(t3_cpp_x_yk_z t3_cpp "${EMPTY_ARG}" t3_x_yk_z "${DATA}" EQ t3_x_yk_z "${ERR}")
