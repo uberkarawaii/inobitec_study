@@ -2,14 +2,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../common/cli.h"
 #include "../common/exit_codes.h"
 #include "../common/geometry.h"
 #include "../common/parse_codes.h"
 #include "../common/string_utils.h"
 
+static const char HELP_TEXT[] =
+    "t3_bbox: bounding box и центроид облака точек\n"
+    "»спользование: [--help] [--version]\n"
+    "¬ход (stdin): точки \"x y z\" (по одной в строке) до EOF.\n"
+    "¬ыводит количество точек, min/max по ос€м, центроид и среднее рассто€ние до\n"
+    "центроида (3 знака).\n"
+    " оды возврата: 0 Ч успех; 65 Ч некорректные данные; 66 Ч нет входных данных; 74 Ч сбой ввода-вывода.";
+
 int main(int argc, char* argv[]) {
     // если первый аргумент --version - отдаЄм версию и завершаем
     if (handle_version_flag(argc, argv))
+        return 0;
+    // если первый арг. --help/-h - выводим справку и завершаем
+    if (handle_help_flag(argc, argv, HELP_TEXT))
         return 0;
 
     int len;

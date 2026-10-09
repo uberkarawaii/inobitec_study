@@ -43,6 +43,3 @@ COMMON_API std::expected<double, number_error> parse_radius(std::string_view r_l
 // форма слова "вершина" со склонением.
 // функция отдаёт индекс, по которому в массиве лежит нужная форма слова
 COMMON_API int vertex_form_index(int N);
-
-// при --version первым аргументом вернёт версию программы
-COMMON_API bool handle_version_flag(int argc, char* argv[]);

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../common/cli.h"
 #include "../common/exit_codes.h"
 #include "../common/geometry.h"
 #include "../common/parse_codes.h"
@@ -11,9 +12,17 @@
 #define MAX_SIZE 20
 #define MIN_SIZE 3
 
+static const char HELP_TEXT[] = "t1_dist_matrix: матрица попарных рассто€ний вершин N-угольника\n"
+                                "»спользование: [--help] [--version]\n"
+                                "¬ход (stdin): целое N, 3 <= N <= 20.\n"
+                                " оды возврата: 0 Ч успех; 65 Ч некорректные данные; 66 Ч нет входных данных.";
+
 int main(int argc, char* argv[]) {
     // если первый аргумент --version - отдаЄм версию и завершаем
     if (handle_version_flag(argc, argv))
+        return 0;
+    // если первый арг. --help/-h - выводим справку и завершаем
+    if (handle_help_flag(argc, argv, HELP_TEXT))
         return 0;
 
     // получение числа N

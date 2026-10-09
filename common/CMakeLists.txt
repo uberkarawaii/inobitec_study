@@ -7,8 +7,8 @@ include_directories(${CMAKE_BINARY_DIR}/generated)
 # [<type>] - static
 # [EXCLUDE_FROM_ALL] - не установлено, деолтно false, то есть target включится в all
 # <sources> = geometry.c/cpp / string_utils.c/cpp; header-ы cmake должен подтянуть сам 
-add_library(common_cpp_static STATIC geometry.cpp string_utils.cpp)
-add_library(common_c_static STATIC geometry.c string_utils.c)
+add_library(common_cpp_static STATIC geometry.cpp string_utils.cpp cli.cpp)
+add_library(common_c_static STATIC geometry.c string_utils.c cli.c)
 
 # target_compile_definitions - именно для директив препроцессора
 # здесь - для добавления флага COMMON_STATIC
@@ -30,8 +30,8 @@ configure_target(common_c_static ON)
 
 
 # === T2 СБОРКА СТАТИЧ. БИБЛИОТЕКИ
-add_library(string_utils_cpp_static STATIC string_utils.cpp)
-add_library(string_utils_c_static STATIC string_utils.c)
+add_library(string_utils_cpp_static STATIC string_utils.cpp cli.cpp)
+add_library(string_utils_c_static STATIC string_utils.c cli.c)
 
 target_compile_definitions(string_utils_cpp_static PUBLIC COMMON_STATIC) 
 target_compile_definitions(string_utils_c_static PUBLIC COMMON_STATIC)
@@ -41,8 +41,8 @@ configure_target(string_utils_c_static ON)
 
 
 # === T3-T4 СБОРКА ДИНАМИЧЕСКОЙ БИБЛИОТЕКИ ===
-add_library(common_cpp_shared SHARED geometry.cpp string_utils.cpp)
-add_library(common_c_shared SHARED geometry.c string_utils.c)
+add_library(common_cpp_shared SHARED geometry.cpp string_utils.cpp cli.cpp)
+add_library(common_c_shared SHARED geometry.c string_utils.c cli.c)
 
 # тут PRIVATE, т.к. main t3-t4 не должны иметь этот флаг, чтобы у них внутри был dllimport
 target_compile_definitions(common_cpp_shared PRIVATE COMMON_EXPORTS)

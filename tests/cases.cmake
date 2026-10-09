@@ -14,6 +14,8 @@ set(VERSION_EXPECT "${CMAKE_CURRENT_BINARY_DIR}/version.expect")
 file(WRITE "${VERSION_EXPECT}" "${PROJECT_VERSION}")
 # аргумент который будет подаваться в программы, чтобы они вывели версию
 set(VERSION_ARG "--version")
+set(HELP_ARG "--help")
+set(HELP_SHORT_ARG "-h")
 
 # === T1 C TESTS ====
 # входные данные с ошибками
@@ -398,3 +400,24 @@ add_case(t3_c_version    t3_c    "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERS
 add_case(t3_cpp_version  t3_cpp  "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
 add_case(t4_c_version    t4_c    "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
 add_case(t4_cpp_version  t4_cpp  "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+
+# === тесты на справку (--help / -h) ===
+add_case(t1_c_help        t1_c   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t1_help "${OUT}")
+add_case(t1_c_help_short  t1_c   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t1_help "${OUT}")
+add_case(t1_cpp_help        t1_cpp   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t1_help "${OUT}")
+add_case(t1_cpp_help_short  t1_cpp   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t1_help "${OUT}")
+
+add_case(t2_c_help        t2_c   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t2_help "${OUT}")
+add_case(t2_c_help_short  t2_c   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t2_help "${OUT}")
+add_case(t2_cpp_help        t2_cpp   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t2_help "${OUT}")
+add_case(t2_cpp_help_short  t2_cpp   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t2_help "${OUT}")
+
+add_case(t3_c_help        t3_c   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
+add_case(t3_c_help_short  t3_c   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
+add_case(t3_cpp_help        t3_cpp   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
+add_case(t3_cpp_help_short  t3_cpp   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
+
+add_case(t4_c_help        t4_c   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
+add_case(t4_c_help_short  t4_c   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
+add_case(t4_cpp_help        t4_cpp   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
+add_case(t4_cpp_help_short  t4_cpp   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")

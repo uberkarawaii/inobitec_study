@@ -2,13 +2,24 @@
 #include <iostream>
 #include <string>
 
+#include "../common/cli.hpp"
 #include "../common/exit_codes.hpp"
 #include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
+constexpr std::string_view kHelpText = R"(t2_passport: паспорт фигуры
+»спользование: [--help] [--version]
+¬ход (stdin): название фигуры (строка, может быть из нескольких слов), затем
+целое число вершин V > 0.
+¬ыводит: ‘игура Ђ<название>ї: <V> <вершина|вершины|вершин>.
+ оды возврата: 0 Ч успех; 65 Ч некорректные данные; 66 Ч нет входных данных.)";
+
 int main(int argc, char* argv[]) {
     // если первый аргумент --version - отдаЄм версию и завершаем
     if (handle_version_flag(argc, argv))
+        return 0;
+    // если первый арг. --help/-h - выводим справку и завершаем
+    if (handle_help_flag(argc, argv, kHelpText))
         return 0;
 
     // проверка что им€ фигуры - не пустое

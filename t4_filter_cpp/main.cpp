@@ -8,10 +8,18 @@
 #include <string_view>
 #include <vector>
 
+#include "../common/cli.hpp"
 #include "../common/exit_codes.hpp"
 #include "../common/geometry.hpp"
 #include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
+
+constexpr std::string_view kHelpText = R"(t4_filter: фильтр точек по радиусу
+»спользование: <R> [--help] [--version]
+R Ч радиус: вещественное, R > 0.
+¬ход (stdin): точки "x y z" (по одной в строке) до EOF.
+¬ыводит в stdout только точки, рассто€ние от начала координат до которых меньше R.
+ оды возврата: 0 Ч успех; 64 Ч неверные аргументы; 65 Ч некорректные данные; 66 Ч нет входных данных; 74 Ч сбой ввода-вывода.)";
 
 // отдаЄт вектор с точками; при ошибке печатает сообщение и возвращает его код
 std::expected<std::vector<Point>, int> get_points() {
@@ -79,6 +87,9 @@ int main(int argc, char* argv[]) {
     // если первый аргумент --version - отдаЄм версию и завершаем
     if (handle_version_flag(argc, argv))
         return 0;
+    // если первый арг. --help/-h - выводим справку и завершаем
+    if (handle_help_flag(argc, argv, kHelpText))
+        return 0;
 
     // откл. синхронизации, иначе EOF и io-fail станут неразличимы из-за чтени€ через fgetc
     std::ios::sync_with_stdio(false);
@@ -89,6 +100,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "ќжидалс€ радиус; его значение не было введено\n";
         else
             std::cerr << "ќжидалс€ радиус; были введены лишние аргументы\n";
+        print_help_hint();
         return exit_code::usage;
     }
 
@@ -107,6 +119,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "–адиус выходит за допустимый диапазон: " << r_line << "\n";
         else if (parsedR.error() == number_error::empty)
             std::cerr << "ќжидалс€ радиус; получена строка без значени€\n";
+        print_help_hint();
         return exit_code::usage;
     }
     double R = *parsedR;

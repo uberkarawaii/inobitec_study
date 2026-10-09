@@ -5438,6 +5438,8 @@ The following tests FAILED:
 
   при чистом вызове --help - вывод help в stdout и exit_code = 0; если это хинт на help - usage-сообщение, то оно будет вместе с выводом ошибки в stderr и ex_code = 64. делаю, основывась на этом решении, решение в пользу стр.291, а не стр.284 (возможно придётся переделать, если я неправильно поняла)
 
+  после --help/-h никаких других аргументов быть не должно. argc == 2 строго
+
 - к вопросу исправления (t1 «N вне 3;20», t2 «отрицательное число вершин»)
   вопрос к ии: хочу переделать эти коды на 65, поддерживаешь? да, поддерживает. потому исправляю след. места: t1_c t1_cpp: N < MIN_SIZE || N > MAX_SIZE ... return usage -> data и return exit_code::usage->return exit_code::data;
   t2_c t2_cpp: if (N < 1) return usage->data и так же на с++ стороне. 
@@ -5472,9 +5474,72 @@ The following tests FAILED:
   - t2 имя из нескольких символов не проверяется - делаю t2_name_with_spaces
   - отвутствует пустая строка среди точек t3-t4 - добавляю в t3_test2 и t4_test2 пустые строки м-у некоторыми x y z.
   для всех пунктов выше делаю входные данные, ожидания, и добавляю в тесты через cases.cmake пересобираю и прогоняю тесты. 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 1081
 
+  Total Test time (real) =  87.06 sec
+  
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 1081
+
+  Total Test time (real) =  20.37 sec
+  ```
+  
+  и на вритуалке те же тесты full `100% tests passed, 0 tests failed out of 1093 Total Test time (real) =   8.48 sec`
+  и full-release `100% tests passed, 0 tests failed out of 1093 Total Test time (real) =   3.30 sec`
+
+- возвращаюсь к тому, чтобы сделать --help/-h, создаю common/ cli.h/hpp и cli.c/ccp. Из string_utils удаляю
+  handle_version_flag - из заголовков и реализаций. после всех правок cli, добавляю его к string_utils/common библиотекам через common/CMakeLists.txt к common_cpp_static, common_c_static, string_utils_cpp_static, string_utils_c_static, common_cpp_shared, common_c_shared. ко всем t1-t4 добавляю инклуд заголовка cli и делаю 
+  проверку на первый арг. --help; t1-t4 добавляю ветку проверки --help и печать текста справки. в t4 добавляю print_help_hint() - для печати хинта на help при ex_code=64
+
+- говорю ии дополнить эталоны t4 где нужен хинт - он расположен после основного err-сообщения. он дополняет 
+  эталоны и прогоняет сборку и тесты. он нашёл недостающие заголовки (отсутств. или транзитивно входившие), поехавший
+  формат, скобки где-то не было. исправил и прогнал тесты на t4:
+  ```
+  $ cd "C:\Users\User\Desktop\inobitec_stud"; "=== t4 tests ==="; ctest --test-dir build/debug -R "t4_" 2>&1 | Select-String -Pattern 'tests passed|tests failed' | ForEach-Object { $_.Line }
+  === t4 tests ===
+  100% tests passed, 0 tests failed out of 336
+  ```
+- теперь тест-кейсы --help/-h. ии предлагает сделать эталоны извлечением текста из си-шного HELP_TEXT. говорю ему 
+  сделать это. добавляю в cases.cmake HELP_ARG и HELP_ARG_SHORT и делаю с ними тесты для всех программ - после тестов
+  на --version. прогоняю: `cmake --preset debug -- Configuring done (3.2s) -- Generating done (0.1s)` 
+  ```
+  ctest --preset debug
+  ...
+  1128/1129 Test #1128: vertex_form_index_c/Cases/VertexFormIndex.Returns/16 .....   Passed    0.11 sec
+          Start 1129: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  1129/1129 Test #1129: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 1129
+
+  Total Test time (real) =  82.56 sec
+  ```
+  и на релизе
+  ```
+  cmake --preset release
+  -- vcpkg triplet  : x64-windows
+  -- Configuring done (3.3s)
+  -- Generating done (0.1s) 
+
+  cmake --build/release
+  [70/71] Linking CXX executable tests\unit\vertex_form_index_c.exe
+
+  ctest --preset full-release
+  ...
+  1128/1129 Test #1128: vertex_form_index_c/Cases/VertexFormIndex.Returns/16 .....   Passed    0.11 sec
+          Start 1129: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  1129/1129 Test #1129: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 1129
+
+  Total Test time (real) =  81.73 sec
+  ```
 
 *Что не получилось*
+- TODO: Негативный контроль: испортить help-литерал в t1_c → t1_c_help/t1_c_help_short падают
 - если вывод help при чистом вызове должен быть в stderr, то надо будет исправить архитектуру, тк сейчас она такова:
   "тест на успех - вывод в stdout, stderr обязан быть пуст. тест на ошибку, - вывод в stderr, stdout пуст". если же help будет печатать в stderr при ex-code=0 это вызовет рассогласование. мне не кажется, что так будет, - это не совсем логично, но если так будет - нужно будет переделать. 
 
@@ -5486,7 +5551,7 @@ The following tests FAILED:
   284 говорит: "вывод справки через `std::cerr`/`std::println(stderr, ...)`"
   291 говорит: "`--help` → справка в stdout, exit code 0" 
 
-  следующий вариант кажется мне логичным, потому буду его придерживаться: если вызов prog --help - вывод help в stdout и exit_code = 0; если это хинт на help - usage-сообщение, то оно будет вместе с выводом ошибки в stdout и ex_code = 64
+  следующий вариант кажется мне логичным, потому буду его придерживаться: если вызов prog --help - вывод help в stdout и exit_code = 0; если это хинт на help - usage-сообщение, то оно будет вместе с выводом ошибки в stderr и ex_code = 64
 
 
 ## 8. Диалоги с DeepSeek

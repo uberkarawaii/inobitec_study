@@ -7,14 +7,25 @@
 #include <string>
 #include <vector>
 
+#include "../common/cli.hpp"
 #include "../common/exit_codes.hpp"
 #include "../common/geometry.hpp"
 #include "../common/parse_codes.hpp"
 #include "../common/string_utils.hpp"
 
+constexpr std::string_view kHelpText = R"(t3_bbox: bounding box и центроид облака точек
+»спользование: [--help] [--version]
+¬ход (stdin): точки "x y z" (по одной в строке) до EOF.
+¬ыводит количество точек, min/max по ос€м, центроид и среднее рассто€ние до
+центроида (3 знака).
+ оды возврата: 0 Ч успех; 65 Ч некорректные данные; 66 Ч нет входных данных; 74 Ч сбой ввода-вывода.)";
+
 int main(int argc, char* argv[]) {
     // если первый аргумент --version - отдаЄм версию и завершаем
     if (handle_version_flag(argc, argv))
+        return 0;
+    // если первый арг. --help/-h - выводим справку и завершаем
+    if (handle_help_flag(argc, argv, kHelpText))
         return 0;
 
     // откл. синхронизации, иначе EOF и io-fail станут неразличимы из-за чтени€ через fgetc

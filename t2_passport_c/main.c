@@ -3,13 +3,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../common/cli.h"
 #include "../common/exit_codes.h"
 #include "../common/parse_codes.h"
 #include "../common/string_utils.h"
 
+static const char HELP_TEXT[] = "t2_passport: паспорт фигуры\n"
+                                "»спользование: [--help] [--version]\n"
+                                "¬ход (stdin): название фигуры (строка, может быть из нескольких слов), затем\n"
+                                "целое число вершин V > 0.\n"
+                                "¬ыводит: ‘игура Ђ<название>ї: <V> <вершина|вершины|вершин>.\n"
+                                " оды возврата: 0 Ч успех; 65 Ч некорректные данные; 66 Ч нет входных данных.";
+
 int main(int argc, char* argv[]) {
     // если первый аргумент --version - отдаЄм версию и завершаем
     if (handle_version_flag(argc, argv))
+        return 0;
+    // если первый арг. --help/-h - выводим справку и завершаем
+    if (handle_help_flag(argc, argv, HELP_TEXT))
         return 0;
 
     //  считывание строки полностью

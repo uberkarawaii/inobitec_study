@@ -4,10 +4,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../common/cli.h"
 #include "../common/exit_codes.h"
 #include "../common/geometry.h"
 #include "../common/parse_codes.h"
 #include "../common/string_utils.h"
+
+static const char HELP_TEXT[] = "t4_filter: фильтр точек по радиусу\n"
+                                "Использование: <R> [--help] [--version]\n"
+                                "R — радиус: вещественное, R > 0.\n"
+                                "Вход (stdin): точки \"x y z\" (по одной в строке) до EOF.\n"
+                                "Выводит в stdout только точки, расстояние от начала координат до которых меньше R.\n"
+                                "Коды возврата: 0 — успех; 64 — неверные аргументы; 65 — некорректные данные; 66 — нет "
+                                "входных данных; 74 — сбой ввода-вывода.";
 
 int get_points(struct Point** points, int* points_size, int* points_capacity) {
     // счётчик для вывода ошибок и длина текущей строки
@@ -108,6 +117,9 @@ int main(int argc, char* argv[]) {
     // если первый аргумент --version - отдаём версию и завершаем
     if (handle_version_flag(argc, argv))
         return 0;
+    // если первый арг. --help/-h - выводим справку и завершаем
+    if (handle_help_flag(argc, argv, HELP_TEXT))
+        return 0;
 
     // проверки радиуса - кол-во аргументов и сам радиус (число ли, конечен ли, неотрицателен ли)
     if (argc != 2) {
@@ -115,33 +127,34 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "Ожидался радиус; его значение не было введено\n");
         else
             fprintf(stderr, "Ожидался радиус; были введены лишние аргументы\n");
+        print_help_hint();
         return usage;
     }
 
     double r = 0;
     const int r_code = parse_radius(argv[1], &r);
-    if (r_code == NUMBER_EMPTY) {
-        fprintf(stderr, "Ожидался радиус; получена строка без значения\n");
-        return usage;
-    }
+    // если проблемы с радиусом, то это проблема вызова - печатается ошибка, хинт на help и выход с кодом usage
+    if (r_code) {
+        if (r_code == NUMBER_EMPTY) {
+            fprintf(stderr, "Ожидался радиус; получена строка без значения\n");
+        }
 
-    if (r_code == NUMBER_NOT_NUMBER) {
-        fprintf(stderr, "Радиус должен быть числом. Получено: %s\n", argv[1]);
-        return usage;
-    }
+        else if (r_code == NUMBER_NOT_NUMBER) {
+            fprintf(stderr, "Радиус должен быть числом. Получено: %s\n", argv[1]);
+        }
 
-    if (r_code == NUMBER_OUT_OF_RANGE) {
-        fprintf(stderr, "Радиус выходит за допустимый диапазон: %s\n", argv[1]);
-        return usage;
-    }
+        else if (r_code == NUMBER_OUT_OF_RANGE) {
+            fprintf(stderr, "Радиус выходит за допустимый диапазон: %s\n", argv[1]);
+        }
 
-    if (r_code == NUMBER_NOT_FINITE) {
-        fprintf(stderr, "Радиус должен быть конечным числом. Получено: %s\n", argv[1]);
-        return usage;
-    }
+        else if (r_code == NUMBER_NOT_FINITE) {
+            fprintf(stderr, "Радиус должен быть конечным числом. Получено: %s\n", argv[1]);
+        }
 
-    if (r_code == NUMBER_NOT_POSITIVE) {
-        fprintf(stderr, "Радиус должен быть положительным. Получено: %s\n", argv[1]);
+        else if (r_code == NUMBER_NOT_POSITIVE) {
+            fprintf(stderr, "Радиус должен быть положительным. Получено: %s\n", argv[1]);
+        }
+        print_help_hint();
         return usage;
     }
 
