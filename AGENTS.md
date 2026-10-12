@@ -5804,6 +5804,23 @@ The following tests FAILED:
   Total Test time (real) =  14.58 se
   ```
   нужные тесты появились. говорю ии просмотреть логи тестов для верности. 
+  теперь сборка и потом прогон на vm:
+  ```
+  ctest --preset full
+  Test project /home/karavai/test/inobitec_study/build/debug
+  ...
+  100% tests passed, 0 tests failed out of 1176
+
+  Total Test time (real) =   8.93 sec
+
+  ctest --preset full-release
+  Test project /home/karavai/test/inobitec_study/build/release
+  ...
+  100% tests passed, 0 tests failed out of 1176
+
+  Total Test time (real) =   3.45 sec
+  ```
+- changelog убираю опечати и ошибку (написала -v вместо -h)
 
 ## 8. Диалоги с DeepSeek
 
