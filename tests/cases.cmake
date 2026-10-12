@@ -18,6 +18,9 @@ set(HELP_ARG "--help")
 set(HELP_SHORT_ARG "-h")
 set(UNKNOWN_ARG "--foo")
 set(UNKNOWN_ARGS --foo bar)
+set(HELP_EXTRA --help extra)
+set(HELP_SHORT_EXTRA -h extra)
+set(VERSION_EXTRA --version extra)
 
 # === T1 C TESTS ====
 # входные данные с ошибками
@@ -433,10 +436,41 @@ add_case(t2_cpp_arg_unknown t2_cpp "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_u
 add_case(t3_c_arg_unknown   t3_c   "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
 add_case(t3_cpp_arg_unknown t3_cpp "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
 
-# несколько аргументов
+# несколько аргументов - 
 add_case(t1_c_arg_unknown_multi   t1_c   "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
 add_case(t1_cpp_arg_unknown_multi t1_cpp "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
 add_case(t2_c_arg_unknown_multi   t2_c   "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
 add_case(t2_cpp_arg_unknown_multi t2_cpp "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
 add_case(t3_c_arg_unknown_multi   t3_c   "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
 add_case(t3_cpp_arg_unknown_multi t3_cpp "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
+
+# тесты с лишними аргументами после правильного аргумента. должны проходить по принципу help wins
+add_case(t1_c_help_extra         t1_c   "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t1_help "${OUT}")
+add_case(t1_c_help_short_extra   t1_c   "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t1_help "${OUT}")
+add_case(t1_cpp_help_extra       t1_cpp "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t1_help "${OUT}")
+add_case(t1_cpp_help_short_extra t1_cpp "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t1_help "${OUT}")
+
+add_case(t2_c_help_extra         t2_c   "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t2_help "${OUT}")
+add_case(t2_c_help_short_extra   t2_c   "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t2_help "${OUT}")
+add_case(t2_cpp_help_extra       t2_cpp "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t2_help "${OUT}")
+add_case(t2_cpp_help_short_extra t2_cpp "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t2_help "${OUT}")
+
+add_case(t3_c_help_extra         t3_c   "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
+add_case(t3_c_help_short_extra   t3_c   "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
+add_case(t3_cpp_help_extra       t3_cpp "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
+add_case(t3_cpp_help_short_extra t3_cpp "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
+
+add_case(t4_c_help_extra         t4_c   "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
+add_case(t4_c_help_short_extra   t4_c   "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
+add_case(t4_cpp_help_extra       t4_cpp "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
+add_case(t4_cpp_help_short_extra t4_cpp "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
+
+#  при вызове --version
+add_case(t1_c_version_extra   t1_c   "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t1_cpp_version_extra t1_cpp "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t2_c_version_extra   t2_c   "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t2_cpp_version_extra t2_cpp "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t3_c_version_extra   t3_c   "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t3_cpp_version_extra t3_cpp "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t4_c_version_extra   t4_c   "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
+add_case(t4_cpp_version_extra t4_cpp "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")

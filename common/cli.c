@@ -9,7 +9,7 @@
 
 // при --version первым аргументом вернёт версию программы
 bool handle_version_flag(int argc, char* argv[]) {
-    if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+    if (argc >= 2 && strcmp(argv[1], "--version") == 0) {
         printf("%s\n", INOBITEC_STUD_VERSION);
         return 1;
     } else {
@@ -20,7 +20,7 @@ bool handle_version_flag(int argc, char* argv[]) {
 // при вызове программы с --help / -h будет выводиться справка help_text
 // принимает help_text без \n в конце и печатает уже с концевым переносом
 bool handle_help_flag(int argc, char* argv[], const char* help_text) {
-    if (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
+    if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
         printf("%s\n", help_text);
         return 1;
     } else {

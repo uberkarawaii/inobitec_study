@@ -6092,6 +6092,80 @@ The following tests FAILED:
   -- Configuring done
   ninja: no work to do.
   ```
+- как поступить с --help на примере известных утилит. я сделала 
+  ```
+  git --help / -h - stdout errlevel=0 
+  git --helpp - ошибка + хинт, всё в stderr errlevel != 0 
+  git --help me - stderr команда не найдена. т.к. у него есть возможность писать что-то после git
+  fatal: 'C:/Program Files/Git/mingw64/share/doc/git-doc/gitme.html': documentation file not found.
+  errlevel!=0 
+
+  cmake --help / -h - stdout errlevel=0
+  cmake --helpp - stderr+hint errlevel!=0 
+  cmake --help help - stdout
+  Argument "help" to --help did not match any keywords.  Use --help without any arguments to print CMake help information.
+  т.к. тут ничего нельзя задать после help. errlevel!=0 
+
+  cl /help - stdout errlevel=0 
+  cl /heljp - stderr errlevel!=0 
+  cl /help help - stdout та же справка. не обращает внимание на лишнее errlevel=0 
+  ```
+  ии говорит результат не совсем чистый, т.к. тут есть "подкоманды" help. надо смотреть по утлитам у которых их нет.
+  также, ии советует делать это под линуксом, т.к. эталонные реализации - "GNU coreutils". делаю на vm
+  ```
+  ls --help - stdout
+  ls --hhh - stderr + хинт на help
+  ls --help hhh - stdout обычный вывод (hhh проигнорирован)
+
+  grep --help - stdout
+  grep --ddd - stderr + хинт на help
+  grep --help foo - stdout обычный вывод (foo проигнорирован)
+
+  cp --help - stdout 
+  cp --hdp - stderr + хинт на help
+  cp --help can - stdout обычный вывод (can проигнорирован)
+
+  python3 - Та же логика
+  
+  sed --help - stdout
+  sed --dkg - stderr + полная справка как при --help, и сверху написано "нераспознанный параметр"
+  sed --help me - stdout справка и игноририрование me
+  ```
+  в смысле вывода stdout при чистом help - это то, что у меня есть. и при неверном написании параметра - падаем
+  и вывод stderr. но при лишнем аргументе после верного help все эти утилиты не падают - им всё равно на лишний
+  аргумент. мне кажется, надо сделать так же - т.к. мусор после --help/-h по факту не вредит, т.к. мы не 
+  ждём help с аргументами как git - у меня такого нет. спрошу ии, согласен ли он с такми решением. да, он за такое
+  решение и говорит что это подход «help wins». делаю у себя так же
+- argc == 2 -> argc >= 2 в common/cli.* - только проверка первого арг. на корректность написания. теперь
+  при вызове --help extra / -h extra не должно быть падений. если же --trash то t1-t3 - сообщение
+  что вызов с парам. не предусмотрен и хинт на справку. t4 - сообщение про неверный радиус + хинт.
+  в cases.cmake добавляю новые кейсы с --help extra - результат должен быть как и у таких же с --help 
+- проверяю только первый арг. на то, что он потенциальный help (не GNU «win», даже если --help не первый) - мне 
+  кажется излишним для моих утилит, ии тоже это же сказал. так что делаю данный вариант
+- нужно сделать также help wins для version - вношу и для него такую же правку в cli (argc == 2 -> argc >= 2)
+- делаю правки в readme, changelog (ии нашёл опечатк / что нужно внести после help wins принципа)
+- пересборка cmake --preset debug / release (-- Build files have been written to: C:/Users/User/Desktop/inobitec_stud
+  build/debug / -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/release)
+  ребилд и ctest --preset full / full-release
+  ```
+  C:\Users\User\Desktop\inobitec_stud>ctest --preset full
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+  ...
+  1236/1236 Test #1236: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.15 sec
+
+  100% tests passed, 0 tests failed out of 1236
+
+  Total Test time (real) =  98.73 sec
+
+  C:\Users\User\Desktop\inobitec_stud>ctest --preset full-release
+  Test project C:/Users/User/Desktop/inobitec_stud/build/release
+  ...
+  1236/1236 Test #1236: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 1236
+
+  Total Test time (real) =  23.47 sec
+  ``` 
   
 *Что заметила при работе с deepseek*
 - ранее говорил что надо не забыть проверить "else()-ветка «неизвестный компилятор»" - то где проверяем инструменты
