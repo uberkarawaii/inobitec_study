@@ -16,6 +16,8 @@ file(WRITE "${VERSION_EXPECT}" "${PROJECT_VERSION}")
 set(VERSION_ARG "--version")
 set(HELP_ARG "--help")
 set(HELP_SHORT_ARG "-h")
+set(UNKNOWN_ARG "--foo")
+set(UNKNOWN_ARGS --foo bar)
 
 # === T1 C TESTS ====
 # входные данные с ошибками
@@ -421,3 +423,20 @@ add_case(t4_c_help        t4_c   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t4_h
 add_case(t4_c_help_short  t4_c   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 add_case(t4_cpp_help        t4_cpp   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 add_case(t4_cpp_help_short  t4_cpp   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
+
+# === тесты на неизвестные аргументы (t1-t3 не принимают аргументов) ===
+# один аргумент
+add_case(t1_c_arg_unknown   t1_c   "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
+add_case(t1_cpp_arg_unknown t1_cpp "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
+add_case(t2_c_arg_unknown   t2_c   "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
+add_case(t2_cpp_arg_unknown t2_cpp "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
+add_case(t3_c_arg_unknown   t3_c   "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
+add_case(t3_cpp_arg_unknown t3_cpp "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
+
+# несколько аргументов
+add_case(t1_c_arg_unknown_multi   t1_c   "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
+add_case(t1_cpp_arg_unknown_multi t1_cpp "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
+add_case(t2_c_arg_unknown_multi   t2_c   "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
+add_case(t2_cpp_arg_unknown_multi t2_cpp "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
+add_case(t3_c_arg_unknown_multi   t3_c   "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
+add_case(t3_cpp_arg_unknown_multi t3_cpp "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")

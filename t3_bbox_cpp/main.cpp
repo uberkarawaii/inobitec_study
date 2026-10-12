@@ -28,6 +28,16 @@ int main(int argc, char* argv[]) {
     if (handle_help_flag(argc, argv, kHelpText))
         return 0;
 
+    // программа не принимает аргументов
+    if (argc != 1) {
+        std::print(stderr, "ќжидалс€ вызов без аргументов. ѕолучено:");
+        for (int i = 1; i < argc; ++i)
+            std::print(stderr, " {}", argv[i]);
+        std::print(stderr, "\n");
+        print_help_hint();
+        return exit_code::usage;
+    }
+
     // откл. синхронизации, иначе EOF и io-fail станут неразличимы из-за чтени€ через fgetc
     std::ios::sync_with_stdio(false);
     // считывание начальных x y z в массив; сначала строка, потом число

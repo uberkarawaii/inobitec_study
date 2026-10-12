@@ -22,6 +22,16 @@ int main(int argc, char* argv[]) {
     if (handle_help_flag(argc, argv, kHelpText))
         return 0;
 
+    // программа не принимает аргументов
+    if (argc != 1) {
+        std::print(stderr, "Ожидался вызов без аргументов. Получено:");
+        for (int i = 1; i < argc; ++i)
+            std::print(stderr, " {}", argv[i]);
+        std::print(stderr, "\n");
+        print_help_hint();
+        return exit_code::usage;
+    }
+
     // получение N
     std::string lineN;
     // считывание строки, проверка на пустоту

@@ -1,5 +1,6 @@
 #include <array>
 #include <iostream>
+#include <print>
 #include <string>
 
 #include "../common/cli.hpp"
@@ -21,6 +22,15 @@ int main(int argc, char* argv[]) {
     // если первый арг. --help/-h - выводим справку и завершаем
     if (handle_help_flag(argc, argv, kHelpText))
         return 0;
+    // программа не принимает аргументов
+    if (argc != 1) {
+        std::print(stderr, "ќжидалс€ вызов без аргументов. ѕолучено:");
+        for (int i = 1; i < argc; ++i)
+            std::print(stderr, " {}", argv[i]);
+        std::print(stderr, "\n");
+        print_help_hint();
+        return exit_code::usage;
+    }
 
     // проверка что им€ фигуры - не пустое
     std::string name;

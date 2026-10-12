@@ -23,6 +23,15 @@ int main(int argc, char* argv[]) {
     // если первый арг. --help/-h - выводим справку и завершаем
     if (handle_help_flag(argc, argv, HELP_TEXT))
         return 0;
+    // программа не принимает аргументов
+    if (argc != 1) {
+        fprintf(stderr, "Ожидался вызов без аргументов. Получено:");
+        for (int i = 1; i < argc; ++i)
+            fprintf(stderr, " %s", argv[i]);
+        fprintf(stderr, "\n");
+        print_help_hint();
+        return usage;
+    }
 
     int len;
     char* s = NULL;

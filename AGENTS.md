@@ -5697,12 +5697,113 @@ The following tests FAILED:
   `add_executable, configure_target, target_link_libraries, add_test, deploy_vcpkg_dlls(gtest_smoke)` которые были необходимы для добавления gtest. после удаляю tests/gtest_smoke.cpp. переконфиг и все тесты:
   ```
   ctest --preset full
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+          Start    1: format-check
+   1/1128 Test    #1: format-check .............................................   Passed    0.82 sec
+          Start    2: t1_c_empty_code
   ...
   100% tests passed, 0 tests failed out of 1128
 
   Total Test time (real) =  90.54 sec
+
+  ctest --preset full-release
+  Test project C:/Users/User/Desktop/inobitec_stud/build/release
+          Start    1: format-check
+   1/1128 Test    #1: format-check .............................................   Passed    0.29 sec
+          Start    2: t1_c_empty_code
+          ...  
+  100% tests passed, 0 tests failed out of 1128
+
+  Total Test time (real) =  25.11 sec
   ```
   и на vm
+  ```
+  ctest --preset full
+  Test project /home/karavai/test/inobitec_study/build/debug
+          Start    1: format-check
+   1/1140 Test    #1: format-check .............................................   Passed    0.30 sec
+          Start    2: t1_c_empty_code
+   2/1140 Test    #2: t1_c_empty_code ..........................................   Passed    0.02 sec
+  ...
+  1140/1140 Test #1140: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 1140
+
+  Total Test time (real) =   8.53 sec
+
+  ctest --preset full-release
+  Test project /home/karavai/test/inobitec_study/build/release
+          Start    1: format-check
+   1/1140 Test    #1: format-check .............................................   Passed    0.15 sec
+  ...
+          Start 1140: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  1140/1140 Test #1140: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 1140
+
+  Total Test time (real) =   3.36 sec
+  ```
+- ридми "известные ограничения" убираю факт пр string_utils, handle_version_flag - так как теперь данная ф-ция 
+  перенесена в модуль cli.
+- на заключительном промпте ии напомнил, что не было сделано near-miss probe (--helpp, --help extra, -v, %errorlevel%)
+  делаю его на первой задаче, получается 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t1_dist_matrix_c\main.exe --helpp
+  Получен пустой ввод вместо целого N^C
+  c:\Users\User\Desktop\inobitec_stud>echo %errorlevel%
+  -1073741510
+
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t1_dist_matrix_c\main.exe --help extra
+  Получен пустой ввод вместо целого N^C
+  c:\Users\User\Desktop\inobitec_stud>echo %errorlevel%
+  -1073741510
+
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t1_dist_matrix_c\main.exe -v
+  Получен пустой ввод вместо целого N
+  c:\Users\User\Desktop\inobitec_stud>echo %errorlevel%
+  66
+  ```
+  мне кажется, это не совсем тот результат, который мы хотим. потому что хотим, как я понимаю, если это не version и не
+  help команды, то надо упасть с "непонятный флаг". то же самое рассуждение даю ии, он говорит, что в рамках слоя 10
+  есть смысл обработать неверный аргумент (не --version/--help/-v) - для этого проверка после первых двух if на help/version. для t1-t3, т.к. t4 уже хорошо реагирует на непонятный флаг и лишние аргументы:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t4_filter_c\main.exe -v
+  Радиус должен быть числом. Получено: -v
+  Для справки вызовите программу с параметром --help или -h
+
+  c:\Users\User\Desktop\inobitec_stud>build\debug\t4_filter_c\main.exe --help extra
+  Ожидался радиус; были введены лишние аргументы
+  Для справки вызовите программу с параметром --help или -h
+  ```
+  и потом нужно будет сделать тесты на неправильные вызовы help/version 
+
+- ии говорит о структуре changelog, "fresh first" - потому переношу блок unreleased выше "## [0.1.0] - 2026-10-01"
+
+- t1-t3 делаю блок проверки после if-веток на help и version - будет вывод сообщения, что программу нужно вызывать
+  без аргументов, что был получен "мусор", и хинт на help для понимания, как можно вызвать программу корректно.
+  в tests/cases.cmake добавляю `set(UNKNOWN_ARG "--foo")` и `set(UNKNOWN_ARGS --foo bar)` и тесты с ними, а также эталоны tests/expect/t_arg_unknown и t_arg_unknown_multi - говорю ии сделать эталоны
+- пересобираю и прогоняю тесты. падает вторая с++ 
+  `C:\Users\User\Desktop\inobitec_stud\t2_passport_cpp\main.cpp(26): error C2672: 'std::print': no matching overloaded function found` - забыла заголовок #include <print> - включаю его. ещё раз пересборка дебага и релиза и тесты
+  ```
+  ctest --preset full
+  ...
+   865/1164 Test  #865: t4_cpp_help_short_stderr_empty ...........................   Passed    0.01 sec
+          Start  866: t1_c_arg_unknown_code
+  866/1164 Test  #866: t1_c_arg_unknown_code ....................................   Passed    0.11 sec
+            Start  867: t1_c_arg_unknown_stderr
+  867/1164 Test  #867: t1_c_arg_unknown_stderr ..................................   Passed    0.01 sec
+  ...
+  100% tests passed, 0 tests failed out of 1164
+
+  Total Test time (real) =  76.84 sec
+
+  ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 1164
+
+  Total Test time (real) =  14.58 se
+  ```
+  нужные тесты появились. говорю ии просмотреть логи тестов для верности. 
 
 ## 8. Диалоги с DeepSeek
 
