@@ -6166,6 +6166,26 @@ The following tests FAILED:
 
   Total Test time (real) =  23.47 sec
   ``` 
+  и то же на vm, реконфиг, сборка и прогоны
+  ```
+  Test project /home/karavai/test/inobitec_study/build/debug
+  ...
+  1247/1248 Test #1247: vertex_form_index_c/Cases/VertexFormIndex.Returns/16 .....   Passed    0.01 sec
+          Start 1248: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  1248/1248 Test #1248: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 1248
+
+  Total Test time (real) =   8.00 sec
+
+  Test project /home/karavai/test/inobitec_study/build/release
+  ...
+  1248/1248 Test #1248: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 1248
+
+  Total Test time (real) =   3.00 sec
+  ```
   
 *Что заметила при работе с deepseek*
 - ранее говорил что надо не забыть проверить "else()-ветка «неизвестный компилятор»" - то где проверяем инструменты
