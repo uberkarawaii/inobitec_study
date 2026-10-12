@@ -5906,13 +5906,126 @@ The following tests FAILED:
   -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/debug
   ninja: no work to do.
   ```
+- делаю те же проверки на vm. `cmake --fresh --preset debug`:
+  ```
+  -- ninja: /usr/bin/ninja
+  -- vcpkg baseline : 1577f17ee57f42a0ef6d75bbb82cb37d0b76d7e8 (reachable in /home/karavai/dev/vcpkg)
+  ...
+  CMake Warning at cmake/toolchain_versions.cmake:26 (message):
+    CMake 4.2 is different from tested 4.3
+  Call Stack (most recent call first):
+    CMakeLists.txt:84 (check_component)
+
+
+  -- GCC 15.2 is same with tested 15.2
+  -- Ninja 1.13 is same with tested 1.13
+  CMake Warning at cmake/toolchain_versions.cmake:26 (message):
+    git 2.53 is different from tested 2.54
+  Call Stack (most recent call first):
+    CMakeLists.txt:122 (check_component)
+
+
+  -- vcpkg-tool 2026-07-27 is same with tested 2026-07-27
+  ...
+  ```
+  release - то же самое.
+  гит и CMake не сходятся по версиям. хотя на этих версиях я уже не раз тестировала. изначально мне хотелось 
+  оставить вот так, т.к. warning - не падение. и цена невелика. но ии говорит, что честнее сделать "список" tested
+  (*_TESTED) - т.к. проект на двух ОС и честнее говорить, что на вот этой весии тоже tested. потому так и сделаю.
+  но этот момент также показал негатив. контроль на warning, потому остался только негатив. на FATAL_ERROR. меняю gcc min на 99 (было 14) и `cmake --fresh --preset debug`:
+  ```
+  ...
+  -- Detecting CXX compile features
+  -- Detecting CXX compile features - done
+  CMake Warning at cmake/toolchain_versions.cmake:26 (message):
+    CMake 4.2 is different from tested 4.3
+  Call Stack (most recent call first):
+    CMakeLists.txt:84 (check_component)
+
+
+  CMake Error at cmake/toolchain_versions.cmake:23 (message):
+    GCC 15.2 is older than minimal 99.  upgrade the version
+  Call Stack (most recent call first):
+    CMakeLists.txt:92 (check_component)
+
+
+  -- Configuring incomplete, errors occurred!
+  ```
+  и откатываю (те же 2 warning-а) и прогоняю тесты
+  ```
+  Test project /home/karavai/test/inobitec_study/build/debug
+  ...
+  1176/1176 Test #1176: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 1176
+
+  Total Test time (real) =   8.98 sec
+
+  Test project /home/karavai/test/inobitec_study/build/release
+  ...
+  100% tests passed, 0 tests failed out of 1176
+
+  Total Test time (real) =   3.30 sec
+  ```
+- вношу правки чтобы *_TESTED были списками с проверенными версиями и в function check_component добавляю ветку для 
+  проверки наличия версии в списке. в ридми, "Версии инструментов", для CMake и гит в колону "проверено на" 
+  добавляю версии инструментов vm-ки. и также в ридми делаю правки формулировок в отношении того, что теперь проверенная версия теперь не единственная, а это списко 
+- снова конфиги и тесты. конфиг при негатив. тесте, миним. версия=73
+  ```
+  ...
+  CMake Error at cmake/toolchain_versions.cmake:25 (message):
+  MSVC 19.51 is older than minimal 19.73.  upgrade the version
+  Call Stack (most recent call first):
+  CMakeLists.txt:89 (check_component)
+  ...
+  ```
+  откатываю minmun, меняю MSVC_TESTED с 51 на 0
+  ```
+  -- CMake 4.3 is same with tested 4.3;4.2
+  CMake Warning at cmake/toolchain_versions.cmake:32 (message):
+    MSVC 19.51 is not one of tested 19.0
+  Call Stack (most recent call first):
+    CMakeLists.txt:89 (check_component)
+
+
+  -- Ninja 1.13 is same with tested 1.13
+  ...
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/debug
+  ```
+  меняю MSVC_TESTED обратно на 51. реконфиги и тесты. 
+  ```
+  cmake --fresh --preset debug
+  ...
+  -- vcpkg-tool 2026-07-27 is same with tested 2026-07-27
+  -- vcpkg toolchain: D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake
+  -- vcpkg instance : D:/dev/vcpkg
+  -- vcpkg triplet  : x64-windows
+  -- GTest 1.18.0 is same with tested 1.18.0
+  -- Configuring done (4.8s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/debug
+
+  cmake --fresh --preset release
+  ...
+  -- MSVC 19.51 is same with tested 19.51
+  -- Ninja 1.13 is same with tested 1.13
+  -- git 2.54 is same with tested 2.54;2.53
+  -- vcpkg-tool 2026-07-27 is same with tested 2026-07-27
+  -- vcpkg toolchain: D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake
+  -- vcpkg instance : D:/dev/vcpkg
+  -- vcpkg triplet  : x64-windows
+  -- GTest 1.18.0 is same with tested 1.18.0
+  -- Configuring done (4.8s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/release
+  ```
+
+  ctest --preset full: `100% tests passed, 0 tests failed out of 1164 Total Test time (real) =  80.36 sec`
+  ctest --preset full-release: `100% tests passed, 0 tests failed out of 1164 Total Test time (real) =  17.61 sec`
 
 *Что не получилось*
-- cmake/toolchain_versions.cmake проверить что CMAKE_CONFIGURE_DEPENDS работает
+- else()-ветка «неизвестный компилятор»
 - Расхождение в репо: cmake_minimum_required(3.22), а --fresh требует 3.24 (README:153). Не трогаю молча — предлагаю отдельно решить, поднимать ли min до 3.24. ФАКТ
-- git: точную «tested»-версию сниму с машины; практический min 2.0 — МНЕНИЕ, СРЕДНИЙ, если хочешь иначе — скажи.
-- робастность execute_process для Ninja (97) и git (106) без RESULT_VARIABLE — если команда не отработает, _*_raw пуст, и check_component напечатает Ninja  is different... с пустым значением. Не fatal, но диагностика поплывёт. МНЕНИЕ, СРЕДНИЙ на этом масштабе можно оставить, но зафиксировать.
-
 
 ## 8. Диалоги с DeepSeek
 
