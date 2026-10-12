@@ -27,7 +27,7 @@ function(check_component name actual tested min)
     list(FIND tested "${actual}" _tested_idx)
     if(NOT _tested_idx EQUAL -1)
       # когда actual входит в список проверенных
-      message(STATUS "${name} ${actual} is same with tested ${tested}")
+      message(STATUS "${name} ${actual} is one of tested ${tested}")
     else()
       message(WARNING "${name} ${actual} is not one of tested ${tested}")
     endif()

@@ -6023,9 +6023,90 @@ The following tests FAILED:
   ctest --preset full: `100% tests passed, 0 tests failed out of 1164 Total Test time (real) =  80.36 sec`
   ctest --preset full-release: `100% tests passed, 0 tests failed out of 1164 Total Test time (real) =  17.61 sec`
 
-*Что не получилось*
-- else()-ветка «неизвестный компилятор»
-- Расхождение в репо: cmake_minimum_required(3.22), а --fresh требует 3.24 (README:153). Не трогаю молча — предлагаю отдельно решить, поднимать ли min до 3.24. ФАКТ
+- и на виртуиалке. негатив. контроль с фатальной ошибкой
+  ```
+  ...
+  CMake Error at cmake/toolchain_versions.cmake:25 (message):
+  GCC 15.2 is older than minimal 99.  upgrade the version
+  Call Stack (most recent call first):
+    CMakeLists.txt:92 (check_component)
+
+
+  -- Configuring incomplete, errors occurred!
+  ```
+  с предупреждением
+  ```
+  ...
+  All requested installations completed successfully in: 43.5 us
+  -- Running vcpkg install - done
+  -- CMake 4.2 is same with tested 4.3;4.2
+  CMake Warning at cmake/toolchain_versions.cmake:32 (message):
+    GCC 15.2 is not one of tested 14
+  Call Stack (most recent call first):
+    CMakeLists.txt:92 (check_component)
+
+
+  -- Ninja 1.13 is same with tested 1.13
+  ...
+  ```
+  чистые на дебаге и релизе
+  ```
+  ...
+  All requested installations completed successfully in: 77.6 us
+  -- Running vcpkg install - done
+  -- CMake 4.2 is same with tested 4.3;4.2
+  -- GCC 15.2 is same with tested 15.2
+  -- Ninja 1.13 is same with tested 1.13
+  -- git 2.53 is same with tested 2.54;2.53
+  -- vcpkg-tool 2026-07-27 is same with tested 2026-07-27
+  -- vcpkg toolchain: /home/karavai/dev/vcpkg/scripts/buildsystems/vcpkg.cmake
+  -- vcpkg instance : /home/karavai/dev/vcpkg
+  -- vcpkg triplet  : x64-linux
+  -- GTest 1.18.0 is same with tested 1.18.0
+  -- Configuring done (1.0s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/debug
+
+  ...
+  All requested installations completed successfully in: 28.8 us
+  -- Running vcpkg install - done
+  -- CMake 4.2 is same with tested 4.3;4.2
+  -- GCC 15.2 is same with tested 15.2
+  -- Ninja 1.13 is same with tested 1.13
+  -- git 2.53 is same with tested 2.54;2.53
+  -- vcpkg-tool 2026-07-27 is same with tested 2026-07-27
+  -- vcpkg toolchain: /home/karavai/dev/vcpkg/scripts/buildsystems/vcpkg.cmake
+  -- vcpkg instance : /home/karavai/dev/vcpkg
+  -- vcpkg triplet  : x64-linux
+  -- GTest 1.18.0 is same with tested 1.18.0
+  -- Configuring done (6.1s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/release
+  ```
+- ии на финальной проверке советует сделать реконфиг-проверку на vm, что и делаю. трогаю cmake/toolchain_versions.cmake
+  - немного меняю комментарий. и потом cmake --build build/debug
+  ```
+  cmake/toolchain_versions.cmake[0/1] Re-running CMake...
+  -- CMake 4.2 is same with tested 4.3;4.2
+  ... (6 STATUS)
+  -- Configuring done
+  ninja: no work to do.
+  ```
+  
+*Что заметила при работе с deepseek*
+- ранее говорил что надо не забыть проверить "else()-ветка «неизвестный компилятор»" - то где проверяем инструменты
+  после project() и там 2 ветки на gcc и msvc. теперь говорит, что проверять не обязательно. Далее доводы от ии:
+  - Это одна строка message(WARNING); класс риска — нулевой (никакой логики, только печать).
+  - Проект поддерживает два тулчейна: MSVC (Windows) и GCC (VM). clang не входит в поддержку — иначе пришлось бы заводить для него ветку в configure_target (сейчас там if(MSVC)/else с GCC-флагами) и подгонять vcpkg-триплет  (x64-windows — MSVC ABI). Полноценный конфиг проекта под clang упадёт на других местах, не на нашей ветке.
+  - «Проверка» через clang на самом деле проверяла бы CMake/clang/vcpkg, а не нашу однострочную ветку — цена не оправдана.
+
+  я тоже думала про довод о том, что полетит не только этот момент при clang и для него надо править много др. мест, 
+  которые сейчать контроллируют только 2 компилятора. поэтому именно проверку не делаю, просто фиксирую, что наблюдений
+  на ней не проводилась, она существует для защиты от потенциальной ситуации, "на всякий случай".
+
+- ранее говорил "Расхождение в репо: cmake_minimum_required(3.22), а --fresh требует 3.24 (README:153). 
+  Не трогаю молча — предлагаю отдельно решить, поднимать ли min до 3.24. ФАКТ" теперь, около финальной проверки, переспросила. и теперь он приводит (я помню что описывала этот момент, про расхождение --fresh/удаление build на 3.24/3.22) - вот он привёл тот же довод. я не вижу какие тут могут быть расхождения, он скорее всего просто упомянул это увидев, что это другая версия от установленной. по факту же для проекта нужен минимум 3.22 у меня стоит 3.24 - что
+  вполне проходит по критерию. так что не поднимаю минимум, в этом нет смысла.
 
 ## 8. Диалоги с DeepSeek
 
