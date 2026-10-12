@@ -73,6 +73,64 @@ set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Deploy vcpkg runtime DLLs via CMake inst
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
 project(inobitec_stud VERSION 0.1.0 LANGUAGES C CXX)
 
+# === ПРОВЕРКА ВЕРСИЙ КОМПОНЕНТОВ ===
+# файл с ф-цией проверки и константами версий компонентов
+include(${CMAKE_SOURCE_DIR}/cmake/toolchain_versions.cmake)
+# добавляем к списку зависимостей ещё одну: при изменении toolchain_versions.cmake произойдёт реконфиг
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/cmake/toolchain_versions.cmake")
+
+# CMake: нормализуем "4.3.1" -> "4.3" и сверяем с MIN/TESTED
+to_major_minor(_cmake_ver "${CMAKE_VERSION}")
+check_component(CMake "${_cmake_ver}" "${TOOLCHAIN_CMAKE_TESTED}" "${TOOLCHAIN_CMAKE_MIN}")
+
+# компилятор: MSVC или GCC; сравнение по major.minor
+if(MSVC)
+  to_major_minor(_cc_ver "${CMAKE_CXX_COMPILER_VERSION}")   # "19.51.36247.0" -> "19.51"
+  check_component(MSVC "${_cc_ver}" "${TOOLCHAIN_MSVC_TESTED}" "${TOOLCHAIN_MSVC_MIN}")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  to_major_minor(_cc_ver "${CMAKE_CXX_COMPILER_VERSION}")   # "15.2.0" -> "15.2"
+  check_component(GCC "${_cc_ver}" "${TOOLCHAIN_GCC_TESTED}" "${TOOLCHAIN_GCC_MIN}")
+else()
+  message(WARNING "Unknown compiler '${CMAKE_CXX_COMPILER_ID}'; version not checked")
+endif()
+
+# Ninja: версия через --version; NINJA_EXECUTABLE найден до project()
+if(NINJA_EXECUTABLE)
+  execute_process(
+  COMMAND "${NINJA_EXECUTABLE}" --version
+  OUTPUT_VARIABLE _ninja_raw
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE _ninja_rc)                         
+  # проверка на нормальный код завершения дочернего процесса               
+  if(_ninja_rc STREQUAL "0")
+    to_major_minor(_ninja_ver "${_ninja_raw}")       # "1.13.2" -> "1.13"
+    check_component(Ninja "${_ninja_ver}" "${TOOLCHAIN_NINJA_TESTED}" "0")
+  else()
+    message(WARNING "could not determine Ninja version (result: ${_ninja_rc}); version check skipped")
+  endif()
+endif()
+
+# git: строка вида "git version 2.54.0.windows.1"; GIT_EXECUTABLE найден до project()
+# без to_major_minor т.к. у гита строка версии начинается с "git version" - потому простым regex-ом
+execute_process(
+  COMMAND "${GIT_EXECUTABLE}" --version
+  OUTPUT_VARIABLE _git_raw
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE _git_rc)
+if(_git_rc STREQUAL "0")
+  string(REGEX MATCH "[0-9]+\\.[0-9]+" _git_ver "${_git_raw}")   # -> "2.54"
+  check_component(git "${_git_ver}" "${TOOLCHAIN_GIT_TESTED}" "${TOOLCHAIN_GIT_MIN}")
+else()
+    message(WARNING "could not determine Git version (result: ${_git_rc}); version check skipped")
+endif()
+
+# vcpkg-tool: версия из метаданных клона; сравнение точное (дата релиза)
+# CMAKE_MATCH_1 - результат последнего string(REGEX MATCH), содержит группу ([0-9-]+)
+file(READ "$ENV{VCPKG_DEV_ROOT}/scripts/vcpkg-tool-metadata.txt" _vcpkg_meta)
+string(REGEX MATCH "VCPKG_TOOL_RELEASE_TAG=([0-9-]+)" _vm "${_vcpkg_meta}")
+check_component(vcpkg-tool "${CMAKE_MATCH_1}" "${TOOLCHAIN_VCPKG_TOOL_TESTED}" "0")
+
+
 # какой инстанс vcpkg реально подключён - защита от тихой подмены инструмента
 # CMAKE_TOOLCHAIN_FILE путь к скрипт vcpkg.cmake
 # Z_VCPKG_ROOT_DIR корень vcpkg, вычисляется им самим. т.е. из какого инстанса идёт инструмент

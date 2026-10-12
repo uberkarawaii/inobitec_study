@@ -5821,6 +5821,98 @@ The following tests FAILED:
   Total Test time (real) =   3.45 sec
   ```
 - changelog убираю опечати и ошибку (написала -v вместо -h)
+- доделываю версионирование (фиксация всех компонентов проекта и смена версий при переходе на новый функционал или при
+  ручной установке по мере небходимости)
+  - создаю модуль cmake/toolchain_versions.cmake где прописываю ф-цию сравнения текущей версии и вердикта в зависимости
+    от результата (падаем / warning / status если совпало) и константы с версиями _min/_tested
+  - для компонентов, у которых нет минималки, буду передавать "0" (альтернатива - keyword-параметр и парс ф-цией CMake).
+    останавливаюсь на варианте с "0" т.к. у меня немного компонентов, это легче, ии тоже говорил, что при моём масштабе больше склоняется к этому варианту. при необходимости переведу этот момент на keyword-параметр+парс CMake
+  - по совету ии делаю небольшую ф-цию для нормализцаии (только  major.minor) для некоторых компонентов. ровно для
+    тех, для которых патчи не играют роли (компилятор, CMake, Ninja, git). а где пины и там будут играть роль - не
+    будет обрезки (gtest и vcpkg-tool)
+  - в главном CMakeLists.txt добавляю include(...toolchain_versions.cmake) и 
+    set_property(...CMAKE_CONFIGURE_DEPENDS ..toolchain_versions.cmake) - чтобы при изменении toolchain_versions был реконфиг автоматически.
+  - после set_property добавляю вызовы check_component для всего тулсета (кроме библиотеки gtest, её версия проверится
+    в tests/CMakeLists.txt - также вношу проверку и для неё)
+  - при неизвестном компиляторе (типа clang) будет warning с сообщением об этом и что проверки версии не было
+  - для ninja, git ии советует делать проверку после execute_process (который нужен для снятия версии) - что этот
+    execute_process завершился успешно. а если нет - чтобы был warning об этом, а не тихо пошли дальше. выполнаяю этот совет
+  - для gtest не ставлю минималку в виде 1.18.0 и в таблице "Версии инструментов" прописываю, что минималка фиксируется
+    через sha baseline и оттуда - в cmake/toolchain_versions.cmake *_TESTED; baseline контроллирует минималку, а не 
+    я второй точкой истины через переменную
+- после всех дополнений делаю пересборку. `cmake --fresh --preset debug`:
+  ```
+  ...
+  -- Detecting CXX compile features - done
+  -- CMake 4.3 is same with tested 4.3
+  -- MSVC 19.51 is same with tested 19.51
+  -- Ninja 1.13 is same with tested 1.13
+  -- git 2.54 is same with tested 2.54
+  -- vcpkg-tool 2026-07-27 is same with tested 2026-07-27
+  -- vcpkg toolchain: D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake
+  -- vcpkg instance : D:/dev/vcpkg
+  -- vcpkg triplet  : x64-windows
+  -- GTest 1.18.0 is same with tested 1.18.0
+  -- Configuring done (6.5s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/debug
+  ```
+  видно, что проверки версий инструментов появились. так же делаю `cmake --fresh --preset release`, там есть
+  `-- CMake 4.3 is same with tested 4.3 -- MSVC 19.51 is same with tested 19.51 ...`
+- далее негатив. контроль: `TOOLCHAIN_MSVC_MIN="19.37->19.99"` и `cmake --fresh --preset debug`. ожидаю FATAL_ERROR
+  ```
+  ...
+  -- Detecting CXX compile features - done
+  -- CMake 4.3 is same with tested 4.3
+  CMake Error at cmake/toolchain_versions.cmake:23 (message):
+    MSVC 19.51 is older than minimal 19.99.  upgrade the version
+  Call Stack (most recent call first):
+    CMakeLists.txt:89 (check_component)
+
+
+  -- Configuring incomplete, errors occurred!
+  ```
+  откатываю MSVC_MIN как и нужно на 99, после TOOLCHAIN_MSVC_TESTED "19.51"->"19.0" и `cmake --fresh --preset debug`.
+  ожидаю WARNING и продолжение выполнения
+  ```
+  ...
+  -- Detecting CXX compile features - done
+  -- CMake 4.3 is same with tested 4.3
+  CMake Warning at cmake/toolchain_versions.cmake:26 (message):
+    MSVC 19.51 is different from tested 19.0
+  Call Stack (most recent call first):
+    CMakeLists.txt:89 (check_component)
+
+
+  -- Ninja 1.13 is same with tested 1.13
+  -- git 2.54 is same with tested 2.54
+  ...
+  ```
+  откатываю к TOOLCHAIN_MSVC_TESTED "19.51", опять конфиг, сборка и прогон всех тестов `ctest --preset full`
+  ```
+  ...
+  100% tests passed, 0 tests failed out of 1164
+
+  Total Test time (real) =  93.27 sec
+  ```
+- ии напомнил что надо проверить Reconfigure-зависимость - тронуть cmake/toolchain_versions.cmake и 
+  пересборать - это должно вызвать реконфиг. дополняю один комментарий и `cmake --build build/debug`:
+  ```
+  [0/1] Re-running CMake...
+  -- ninja: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe
+  ...
+  -- Configuring done (3.2s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/debug
+  ninja: no work to do.
+  ```
+
+*Что не получилось*
+- cmake/toolchain_versions.cmake проверить что CMAKE_CONFIGURE_DEPENDS работает
+- Расхождение в репо: cmake_minimum_required(3.22), а --fresh требует 3.24 (README:153). Не трогаю молча — предлагаю отдельно решить, поднимать ли min до 3.24. ФАКТ
+- git: точную «tested»-версию сниму с машины; практический min 2.0 — МНЕНИЕ, СРЕДНИЙ, если хочешь иначе — скажи.
+- робастность execute_process для Ninja (97) и git (106) без RESULT_VARIABLE — если команда не отработает, _*_raw пуст, и check_component напечатает Ninja  is different... с пустым значением. Не fatal, но диагностика поплывёт. МНЕНИЕ, СРЕДНИЙ на этом масштабе можно оставить, но зафиксировать.
+
 
 ## 8. Диалоги с DeepSeek
 

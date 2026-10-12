@@ -4,7 +4,6 @@ configure_target(run_case OFF)
 add_executable(check check.cpp)
 configure_target(check OFF)
 
-# дымовая цель gtest
 # find_package с gtest именно тут т.к. корневому CMakeLists gtest не нужен
 # find_package(GTest - найди и прочитай описание пакета GTest
 # в описании сказано, как библиотека называется для CMake, где бинарники, headers
@@ -13,6 +12,9 @@ configure_target(check OFF)
 find_package(GTest CONFIG REQUIRED)
 # благодаря vcpkg GTestConfig.cmake найдётся. т.к. vcpkg.cmake Добавил build/<cfg>/vcpkg_installed/.../share
 # в список каталогов по которому CMake ведёт поиск
+
+# проверка версии gtest на соответствие tested-версии
+check_component(GTest "${GTest_VERSION}" "${LIB_GTEST_TESTED}" "0")
 
 # find_package(GTest...) - сама библиотека; include(GoogleTest) - хелперы для gtest 
 # грузит GoogleTest.cmake - будут доступны gtest_add_tests и gtest_discover_tests (для целей, залинкованных с GTest)
