@@ -197,7 +197,7 @@ cmake --build build/debug --target format-check
 ```
 
 **прогон тестов с пресетами**
-прогнать все тесты (формат, smoke, E2E, unit) (посмотреть список: ctest --list-presets)
+прогнать все тесты (формат, E2E, unit) (посмотреть список: ctest --list-presets)
 ```
 ctest --preset full          # debug, все тесты
 ctest --preset full-release  # release, все тесты

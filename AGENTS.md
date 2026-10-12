@@ -5539,7 +5539,6 @@ The following tests FAILED:
   ```
 
 *Что не получилось*
-- TODO: Негативный контроль: испортить help-литерал в t1_c → t1_c_help/t1_c_help_short падают
 - если вывод help при чистом вызове должен быть в stderr, то надо будет исправить архитектуру, тк сейчас она такова:
   "тест на успех - вывод в stdout, stderr обязан быть пуст. тест на ошибку, - вывод в stderr, stdout пуст". если же help будет печатать в stderr при ex-code=0 это вызовет рассогласование. мне не кажется, что так будет, - это не совсем логично, но если так будет - нужно будет переделать. 
 
@@ -5553,6 +5552,157 @@ The following tests FAILED:
 
   следующий вариант кажется мне логичным, потому буду его придерживаться: если вызов prog --help - вывод help в stdout и exit_code = 0; если это хинт на help - usage-сообщение, то оно будет вместе с выводом ошибки в stderr и ex_code = 64
 
+# 2026-10-10
+*Что сделано*
+- негативный контроль для тестов на h/help. по совету ии, здесь негатив. контроль будет выглядеть так: испортить
+  в t1_dist_matrix_c/main.c в HELP_TEXT букву или слово, пересобираю и 
+  прогоняю `ctest --test-dir build/debug -R "_help" --output-on-failure` - все тесты на help. ожидаю падения t1_c
+  при командах -h/--help. 
+  ```
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 819: t1_c_help_code
+  1/48 Test #819: t1_c_help_code ...................   Passed    0.10 sec
+        Start 820: t1_c_help_stdout
+  2/48 Test #820: t1_c_help_stdout .................***Failed    0.01 sec
+  check failed: --equal
+    result   : C:/Users/User/Desktop/inobitec_stud/build/debug/tests/results/t1_c_help.out (212 bytes, normalized)
+    expected : C:/Users/User/Desktop/inobitec_stud/tests/expect/t1_help (212 bytes, normalized)
+    first difference at byte 13 (normalization: CR removed, trailing LFs stripped)
+      expected: "t1_dist_matrix: \xEC\xE0\xF2\xF0\xE8\xF6\xE0 \xEF\xEE\xEF\xE0\xF0\xED\xFB\xF5 \xF0\xE0\xF1\xF1\xF2\xEE\xFF\xED\xE8\xE9 \xE2\xE5\xF0\xF8\xE8\xED N-\xF3\xE3\xEE\xEB\xFC\xED\xE8\xEA\xE0\n\xC8\xF1\xEF\xEE\xEB\xFC\xE7\xEE\xE2\xE0\xED\xE8\xE5: [--help] [--versio..."
+      result  : "t1_dist_matri\xF5: \xEC\xE0\xF2\xF0\xE8\xF6\xE0 \xEF\xEE\xEF\xE0\xF0\xED\xFB\xF5 \xF0\xE0\xF1\xF1\xF2\xEE\xFF\xED\xE8\xE9 \xE2\xE5\xF0\xF8\xE8\xED N-\xF3\xE3\xEE\xEB\xFC\xED\xE8\xEA\xE0\n\xC8\xF1\xEF\xEE\xEB\xFC\xE7\xEE\xE2\xE0\xED\xE8\xE5: [--help] [--versio..."
+
+        Start 821: t1_c_help_stderr_empty
+  3/48 Test #821: t1_c_help_stderr_empty ...........   Passed    0.01 sec
+        Start 822: t1_c_help_short_code
+  4/48 Test #822: t1_c_help_short_code .............   Passed    0.10 sec
+        Start 823: t1_c_help_short_stdout
+  5/48 Test #823: t1_c_help_short_stdout ...........***Failed    0.01 sec
+  check failed: --equal
+    result   : C:/Users/User/Desktop/inobitec_stud/build/debug/tests/results/t1_c_help_short.out (212 bytes, normalized)
+    expected : C:/Users/User/Desktop/inobitec_stud/tests/expect/t1_help (212 bytes, normalized)
+    first difference at byte 13 (normalization: CR removed, trailing LFs stripped)
+      expected: "t1_dist_matrix: \xEC\xE0\xF2\xF0\xE8\xF6\xE0 \xEF\xEE\xEF\xE0\xF0\xED\xFB\xF5 \xF0\xE0\xF1\xF1\xF2\xEE\xFF\xED\xE8\xE9 \xE2\xE5\xF0\xF8\xE8\xED N-\xF3\xE3\xEE\xEB\xFC\xED\xE8\xEA\xE0\n\xC8\xF1\xEF\xEE\xEB\xFC\xE7\xEE\xE2\xE0\xED\xE8\xE5: [--help] [--versio..."
+      result  : "t1_dist_matri\xF5: \xEC\xE0\xF2\xF0\xE8\xF6\xE0 \xEF\xEE\xEF\xE0\xF0\xED\xFB\xF5 \xF0\xE0\xF1\xF1\xF2\xEE\xFF\xED\xE8\xE9 \xE2\xE5\xF0\xF8\xE8\xED N-\xF3\xE3\xEE\xEB\xFC\xED\xE8\xEA\xE0\n\xC8\xF1\xEF\xEE\xEB\xFC\xE7\xEE\xE2\xE0\xED\xE8\xE5: [--help] [--versio..."
+
+        Start 824: t1_c_help_short_stderr_empty
+  6/48 Test #824: t1_c_help_short_stderr_empty .....   Passed    0.01 sec
+        Start 825: t1_cpp_help_code
+  7/48 Test #825: t1_cpp_help_code .................   Passed    0.11 sec
+        Start 826: t1_cpp_help_stdout
+  8/48 Test #826: t1_cpp_help_stdout ...............   Passed    0.01 sec
+        Start 827: t1_cpp_help_stderr_empty
+  9/48 Test #827: t1_cpp_help_stderr_empty .........   Passed    0.01 sec
+        Start 828: t1_cpp_help_short_code
+  10/48 Test #828: t1_cpp_help_short_code ...........   Passed    0.12 sec
+        Start 829: t1_cpp_help_short_stdout
+  11/48 Test #829: t1_cpp_help_short_stdout .........   Passed    0.01 sec
+        Start 830: t1_cpp_help_short_stderr_empty
+  12/48 Test #830: t1_cpp_help_short_stderr_empty ...   Passed    0.01 sec
+        Start 831: t2_c_help_code
+  13/48 Test #831: t2_c_help_code ...................   Passed    0.12 sec
+      Start 832: t2_c_help_stdout
+    ...
+        Start 864: t4_cpp_help_short_code
+  46/48 Test #864: t4_cpp_help_short_code ...........   Passed    0.13 sec
+        Start 865: t4_cpp_help_short_stdout
+  47/48 Test #865: t4_cpp_help_short_stdout .........   Passed    0.01 sec
+        Start 866: t4_cpp_help_short_stderr_empty
+  48/48 Test #866: t4_cpp_help_short_stderr_empty ...   Passed    0.01 sec
+
+  96% tests passed, 2 tests failed out of 48
+
+  Total Test time (real) =   2.22 sec
+
+  The following tests FAILED:
+    820 - t1_c_help_stdout (Failed)
+    823 - t1_c_help_short_stdout (Failed)
+  ```
+  падение того, что и хотели. откатываю на английскую "x", пересобираю и прогняю `ctest --test-dir build/debug -R "_help" --output-on-failure`: `100% tests passed, 0 tests failed out of 48 Total Test time (real) =   2.20 sec` 
+
+- прогоняю на vm. cmake --build build/debug
+  ```
+  [0/1] Re-running CMake...
+  -- ninja: /usr/bin/ninja
+  -- vcpkg baseline : 1577f17ee57f42a0ef6d75bbb82cb37d0b76d7e8 (reachable in /home/karavai/dev/vcpkg)
+  ...
+  [1/2] Cleaning all built files...
+  Cleaning... 95 files.
+  ...
+  [80/82] Linking CXX executable tests/unit/vertex_form_index_cpp
+  [81/82] Linking CXX executable tests/unit/vertex_form_index_c
+  [82/82] Linking CXX executable tests/unit/parse_radius_c
+  ```
+  cmake --build build/release
+  ```
+  -- Running vcpkg install - done
+  -- vcpkg toolchain: /home/karavai/dev/vcpkg/scripts/buildsystems/vcpkg.cmake
+  -- vcpkg instance : /home/karavai/dev/vcpkg
+  -- vcpkg triplet  : x64-linux
+  ...
+  [1/2] Cleaning all built files...
+  Cleaning... 95 files.
+  [1/82] Building C object common/CMakeFiles/common_c_static.dir/string_utils.c.o
+  [2/82] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o.
+  ...
+  [81/82] Building CXX object tests/unit/CMakeFiles/parse_radius_c.dir/parse_radius_c.cpp.o
+  [82/82] Linking CXX executable tests/unit/parse_radius_c
+  ```
+  ctest --preset full
+  ```
+  Test project /home/karavai/test/inobitec_study/build/debug
+            Start    1: format-check
+    1/1141 Test    #1: format-check .............................................   Passed    0.41 sec
+  ...
+            Start 1140: vertex_form_index_c/Cases/VertexFormIndex.Returns/16
+  1140/1141 Test #1140: vertex_form_index_c/Cases/VertexFormIndex.Returns/16 .....   Passed    0.01 sec
+            Start 1141: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  1141/1141 Test #1141: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 1141
+
+  Total Test time (real) =   8.37 sec
+  ```
+  ctest --preset full-release
+  ```
+  Test project /home/karavai/test/inobitec_study/build/release
+          Start    1: format-check
+   1/1141 Test    #1: format-check .............................................   Passed    0.15 sec
+   ...
+             Start 1140: vertex_form_index_c/Cases/VertexFormIndex.Returns/16
+  1140/1141 Test #1140: vertex_form_index_c/Cases/VertexFormIndex.Returns/16 .....   Passed    0.00 sec
+            Start 1141: vertex_form_index_c/Cases/VertexFormIndex.Returns/17
+  1141/1141 Test #1141: vertex_form_index_c/Cases/VertexFormIndex.Returns/17 .....   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 1141
+
+  Total Test time (real) =   3.05 sec
+  ```
+  негатив тест тем же образом, как на винде. пересобираю и тесты: `ctest --test-dir build/debug -R "_help" --output-on-failure`
+  ```
+  ...
+  96% tests passed, 2 tests failed out of 48
+
+  Total Test time (real) =   0.25 sec
+
+  The following tests FAILED:
+    832 - t1_c_help_stdout (Failed)
+    835 - t1_c_help_short_stdout (Failed)
+  ```
+  откатываю ошибку, пересобираю и опять тесты `ctest --preset full` `100% tests passed, 0 tests failed out of 1141 Total Test time (real) =   8.21 sec`. даю ии просмотреть все выводы - ок, проверка на vm-ке прошла
+
+# 2026-10-12 
+*Что сделано*
+- удаляю gtest_smoke, т.к. он был подтверждением того, что связь с gtest есть. теперь же на gtest переведены все
+  юнит-тесты и подтверждение подключения Gtest - в них самих. потому из tests/CMakeLists.txt удаляю 
+  `add_executable, configure_target, target_link_libraries, add_test, deploy_vcpkg_dlls(gtest_smoke)` которые были необходимы для добавления gtest. после удаляю tests/gtest_smoke.cpp. переконфиг и все тесты:
+  ```
+  ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 1128
+
+  Total Test time (real) =  90.54 sec
+  ```
+  и на vm
 
 ## 8. Диалоги с DeepSeek
 

@@ -18,15 +18,6 @@ find_package(GTest CONFIG REQUIRED)
 # грузит GoogleTest.cmake - будут доступны gtest_add_tests и gtest_discover_tests (для целей, залинкованных с GTest)
 include(GoogleTest)
 
-# маленькая тестовая программа
-add_executable(gtest_smoke gtest_smoke.cpp)
-# конфигурируется как тестовая обвязка, не продукт для тестирования
-configure_target(gtest_smoke OFF)
-# GTest::gtest_main появилось на этапе find_package, как и др. импортированные цели 
-# (это пути к headers / .lib) 
-target_link_libraries(gtest_smoke PRIVATE GTest::gtest_main)
-add_test(NAME gtest_smoke COMMAND gtest_smoke)
-
 # ф-ция для копирования библиотеч. dll руками, т.к. vcpkg applocal отключён во избежание конфликтов при -j
 function(deploy_vcpkg_dlls target)
 # после линковки цели, переместить к ней те dll от которых она зависит в т.ч. транзитивно,
@@ -41,9 +32,6 @@ if(WIN32)
     COMMAND_EXPAND_LISTS)
 endif()
 endfunction()
-
-# для smoke-цели - gtest-dll-ки через свою ф-цию, не vcpkg applocal-ом
-deploy_vcpkg_dlls(gtest_smoke)
 
 # юнит-тесты
 add_subdirectory(unit)
