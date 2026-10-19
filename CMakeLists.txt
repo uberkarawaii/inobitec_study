@@ -154,7 +154,6 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
                                
 # === ТИП СБОРКИ ===
 # определение debug / release; делается через -DCMAKE_BUILD_TYPE=...
@@ -181,6 +180,8 @@ endif()
 # === ПОСТРОИТЬ КОМАНДЫ КОМПИЛЯЦИИ И ЛИНКА ===
 function(configure_target trgt DBG)
 if(MSVC)
+  # минимальная поддерживаемая ОС - win7 (и все дальнейшие)
+  target_compile_definitions(${trgt} PRIVATE _WIN32_WINNT=0x0601)
   # в msvc /Zi, /EHsc, /DEBUG  будут дублироваться, но прописываются для ясности
   # target_compile_options - произвольные флаги компилятора 
   # PRIVATE даёт нетранзитивность: А (этот объект) и Б к нему сможет линковаться. а когда К линк. к Б, то К не будет линк. к А

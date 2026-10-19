@@ -2,5 +2,5 @@
   "name": "inobitec-stud",
   "version": "0.1.0",
   "builtin-baseline": "1577f17ee57f42a0ef6d75bbb82cb37d0b76d7e8",
-  "dependencies": [ "gtest" ]
+  "dependencies": [ "gtest", "boost-process" ]
 }

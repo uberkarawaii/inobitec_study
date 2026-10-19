@@ -38,6 +38,10 @@ endfunction()
 # юнит-тесты
 add_subdirectory(unit)
 
+# е2е-тесты
+add_subdirectory(e2e)
+
+# если нет такой поддиректории, создаём её
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results")
 
 # test_name - имя таргета теста
@@ -146,3 +150,5 @@ endfunction()
 
 # в cases.cmake находятся все тест-кейсы
 include(cases.cmake)
+
+
