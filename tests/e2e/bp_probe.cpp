@@ -6,6 +6,7 @@
 #include <format>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <print>
 #include <string>
 #include <system_error>
@@ -28,6 +29,14 @@ const std::string err_file = std::format("{}/probe.err", dir);
 
 std::vector<std::string> args = {"2 3", "2\" 3", "10\\", "++10", ""};
 } // namespace
+
+struct file_closer {
+    void operator()(std::FILE* f) const noexcept {
+        if (f)
+            std::fclose(f);
+    }
+};
+using file_ptr = std::unique_ptr<std::FILE, file_closer>;
 
 // чтение файла в виде байтов
 std::string read_file_binary(const std::string& path) {
@@ -53,10 +62,18 @@ struct run_result {
 };
 
 // запуск ребЄнка
-run_result run(const std::string& exe1, const std::vector<std::string>& args1, const std::string& in_path,
-               const std::string& out_path, const std::string& err_path) {
+run_result run_impl(const std::string& exe1, const std::vector<std::string>& args1, std::FILE* in,
+                    const std::string& out_path, const std::string& err_path) {
     run_result r;
-    bp::child c(exe1, bp::args = args1, bp::std_in<in_path, bp::std_out> out_path, bp::std_err > err_path, r.ec);
+    file_ptr out(std::fopen(out_path.c_str(), "wb"));
+    file_ptr err(std::fopen(err_path.c_str(), "wb"));
+    if (!out || !err) {
+        r.ec = std::error_code(errno, std::generic_category());
+        std::println(stderr, "cannot open output files: {}", r.ec.message());
+        return r;
+    }
+
+    bp::child c(exe1, bp::args = args1, bp::std_in<in, bp::std_out> out.get(), bp::std_err > err.get(), r.ec);
     if (r.ec)
         return r;
     c.wait(r.ec);
@@ -64,27 +81,33 @@ run_result run(const std::string& exe1, const std::vector<std::string>& args1, c
         return r;
     r.code = c.exit_code();
     r.native = c.native_exit_code();
+    // во избежание проблем на винде, если какой-то из файлов ещЄ открыт (тогда его невозможно будет прочесть) 
+    out.reset();
+    err.reset();
     r.out = read_file_binary(out_path);
     r.err = read_file_binary(err_path);
     return r;
 }
 
+// обычный файл: вход открываем сами, только на чтение
+run_result run(const std::string& exe1, const std::vector<std::string>& args1, const std::string& in_path,
+               const std::string& out_path, const std::string& err_path) {
+    file_ptr in(std::fopen(in_path.c_str(), "rb"));
+    if (!in) {
+        run_result r;
+        r.ec = std::error_code(errno, std::generic_category());
+        std::println(stderr, "cannot open input {}: {}", in_path, r.ec.message());
+        return r;
+    }
+    return run_impl(exe1, args1, in.get(), out_path, err_path);
+}
+
 // чтобы подать на вход каталог
 // stdin передаЄтс€ уже открытым FILE* Ч boost не открывает путь сам
-run_result run_with_stdin(std::FILE* in, const std::string& exe, const std::vector<std::string>& args,
+// уже открытый stdin (каталог)
+run_result run_with_stdin(std::FILE* in, const std::string& exe1, const std::vector<std::string>& args1,
                           const std::string& out_path, const std::string& err_path) {
-    run_result r;
-    bp::child c(exe, bp::args = args, bp::std_in<in, bp::std_out> out_path, bp::std_err > err_path, r.ec);
-    if (r.ec)
-        return r;
-    c.wait(r.ec);
-    if (r.ec)
-        return r;
-    r.code = c.exit_code();
-    r.native = c.native_exit_code();
-    r.out = read_file_binary(out_path);
-    r.err = read_file_binary(err_path);
-    return r;
+    return run_impl(exe1, args1, in, out_path, err_path);
 }
 
 // проверка выходного кода - что возвращаетс€ не сырой статус
@@ -107,7 +130,8 @@ bool check_dir_stdin() {
     std::println("dir stdin: SKIP (UNIX only)");
     return true;
 #else
-    std::FILE* in = std::fopen(E2E_INPUT_DIR, "r");
+    // чтение в бинарном режиме
+    std::FILE* in = std::fopen(E2E_INPUT_DIR, "rb");
     if (!in) {
         std::error_code open_ec(errno, std::generic_category());
         std::println(stderr, "dir stdin: cannot open {}: {}", E2E_INPUT_DIR, open_ec.message());
@@ -167,40 +191,25 @@ bool check_cp1251_literal() {
 
 // проверка того, что exe-стиль работает ожидаемо (т.е. "2\" 3" -> 2" 3) и shell-стиль отсутствует
 bool check_argv() {
+    auto r = run(exe, args, in_file, out_file, err_file);
+    if (r.ec) {
+        std::println(stderr, "argv: run failed: {}", r.ec.message());
+        return false;
+    }
 
-    // статус boostproc-операции - создание процесса, его удачное завершение, открытие файлов дл€ него. всЄ успешно -> 0
-    std::error_code ec;
-    // запуск подпроцесса exe (пришЄл как путь в define от cmake)
-    bp::child c(exe, bp::args = args, bp::std_in<in_file, bp::std_out> out_file, bp::std_err > err_file, ec);
-    // удачно ли создалс€ процесс?
-    if (ec) {
-        std::println(stderr, "spawn failed: {}", ec.message());
-        return false;
-    }
-    // ждЄм завершени€ ребЄнка и записываем его код в ec
-    c.wait(ec);
-    // удачно ли завершилс€ процесс?
-    if (ec) {
-        std::println(stderr, "wait failed: {}", ec.message());
-        return false;
-    }
-    // код завершени€ ребЄнка
-    // проверить, что exit_code() будет давать на POSIX (если не чистый ex_code, то wexitstatus)
-    const int code = c.exit_code();
-    std::println("exit code = {}", code);
-
-    // чтение и разбор выходного файла. если нечитаемый - выход
-    std::ifstream out_stream(out_file);
-    if (!out_stream) {
-        std::println(stderr, "cannot open {}", out_file);
-        return false;
-    }
-    // запись выходного файла в вектор
     std::vector<std::string> lines;
-    for (std::string line; std::getline(out_stream, line);)
-        lines.push_back(line);
+    std::string_view sv = r.out;
+    while (!sv.empty()) {
+        const auto nl = sv.find('\n');
+        if (nl == std::string_view::npos) {
+            lines.emplace_back(sv);
+            break;
+        }
+        lines.emplace_back(sv.substr(0, nl));
+        sv.remove_prefix(nl + 1);
+    }
 
-    bool ok = (code == 0) ? true : false;
+    bool ok = (r.code == 0);
     // argc: перва€ строка "argc = N" - проверка что у строки ожидаемый префикс и N - по кол-ву переданных арг.+1
     // куда уйдЄт распознанное значение
     int got_argc = -1;
@@ -247,17 +256,12 @@ bool check_argv() {
     if (lines.size() > args.size() + 2)
         ok = false;
 
-    // stderr должен быть пуст
-    std::ifstream err_stream(err_file);
-    if (!err_stream) {
-        std::println(stderr, "cannot open {}", err_file);
-        return false;
-    }
-    if (err_stream.peek() != std::ifstream::traits_type::eof()) {
+    // было ли хоть одно несовпадение с эталоном?
+    if (!r.err.empty()) {
         ok = false;
         std::println(stderr, "stderr is not empty");
     }
-    // было ли хоть одно несовпадение с эталоном?
+
     std::println("{}", ok ? "PASS" : "FAIL");
     return ok;
 }
