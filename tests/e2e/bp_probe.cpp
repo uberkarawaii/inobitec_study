@@ -1,5 +1,7 @@
 #include <boost/process/v1.hpp>
+#include <cerrno>
 #include <charconv>
+#include <cstdio>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -54,7 +56,25 @@ struct run_result {
 run_result run(const std::string& exe1, const std::vector<std::string>& args1, const std::string& in_path,
                const std::string& out_path, const std::string& err_path) {
     run_result r;
-    bp::child c(exe1, bp::args = args1, bp::std_in < in_path, bp::std_out > out_path, bp::std_err > err_path, r.ec);
+    bp::child c(exe1, bp::args = args1, bp::std_in<in_path, bp::std_out> out_path, bp::std_err > err_path, r.ec);
+    if (r.ec)
+        return r;
+    c.wait(r.ec);
+    if (r.ec)
+        return r;
+    r.code = c.exit_code();
+    r.native = c.native_exit_code();
+    r.out = read_file_binary(out_path);
+    r.err = read_file_binary(err_path);
+    return r;
+}
+
+// чтобы подать на вход каталог
+// stdin передаЄтс€ уже открытым FILE* Ч boost не открывает путь сам
+run_result run_with_stdin(std::FILE* in, const std::string& exe, const std::vector<std::string>& args,
+                          const std::string& out_path, const std::string& err_path) {
+    run_result r;
+    bp::child c(exe, bp::args = args, bp::std_in<in, bp::std_out> out_path, bp::std_err > err_path, r.ec);
     if (r.ec)
         return r;
     c.wait(r.ec);
@@ -87,9 +107,16 @@ bool check_dir_stdin() {
     std::println("dir stdin: SKIP (UNIX only)");
     return true;
 #else
-    auto r = run(E2E_T3_C, {}, E2E_INPUT_DIR, // input Ч каталог
-                 dir + "/probe_dir.out", dir + "/probe_dir.err");
-    // если у boostproc возникла проблема с тем, чтобы открыть каталог и он не смог подать его на вход процессу
+    std::FILE* in = std::fopen(E2E_INPUT_DIR, "r");
+    if (!in) {
+        std::error_code open_ec(errno, std::generic_category());
+        std::println(stderr, "dir stdin: cannot open {}: {}", E2E_INPUT_DIR, open_ec.message());
+        return false;
+    }
+
+    auto r = run_with_stdin(in, E2E_T3_C, {}, dir + "/probe_dir.out", dir + "/probe_dir.err");
+    std::fclose(in);
+
     if (r.ec) {
         std::println("dir stdin: spawn/redirect failed: {}", r.ec.message());
         return false;
