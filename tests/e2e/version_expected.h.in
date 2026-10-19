@@ -1,0 +1,3 @@
+#pragma once
+
+#define E2E_EXPECTED_VERSION "@PROJECT_VERSION@"

@@ -39,6 +39,18 @@
     "name": "full-release",
     "configurePreset": "release",
     "output": { "outputOnFailure": true }
+  },
+  {
+  "name": "e2e",
+  "configurePreset": "debug",
+  "output": { "outputOnFailure": true },
+  "filter": { "include": { "name": "e2e/" } }
+  },
+  {
+  "name": "e2e-release",
+  "configurePreset": "release",
+  "output": { "outputOnFailure": true },
+  "filter": { "include": { "name": "e2e/" } }
   }
   ]
 } 

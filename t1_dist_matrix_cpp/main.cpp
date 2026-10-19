@@ -78,5 +78,6 @@ int main(int argc, char* argv[]) {
         }
         std::print("\n");
     }
+
     return 0;
 }

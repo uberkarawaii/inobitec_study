@@ -6414,9 +6414,220 @@ The following tests FAILED:
   A
   ```
   там есть вот эта "А" - как бы от старой строки. но "с" на другом месте. вопрос к ии - причина лишних символов? ии: boostproc при открытии файла делает `case write: return ::open(name, O_WRONLY | O_CREAT, 0660);` и там нет O_TRUNC - т.е. старое содержимое не обрезается, просто вписывается новое. потому остались с и А с первого прогона. т.е. это существует, т.к. я открываю файлы напрямую по путям. фиксом ии советует "открывать выходные файлы самим через fopen и передавать FILE*" (другой стратегией было чистить или обрезать out/err перед запуском, но это как будто хуже. потому явно спросила его про стратегию). так, будет едиообразие - открываем in/out/err, единообразие механизма; очистка будет всегда, для нового пути дополнительно ничего не надо прописывать; это то, что будет в итоговом test.exe на bp+gtest - он будет всё открывать, а boostproc - только запускать процесс. то есть, открытие файлов - не зона ответственности boostproc, а ответственность самого теста. 
+- перезапуск на vm. также ALL PASSED и в выводе probe_dir.err `Строка 1 - сбой ввода-вывода` - без лишних символов.
+  этот момент закрыт. 
+- *сводка от ии о том, как ведётся работа с файлами*:
+  - вход открываем сами: fopen(in_path, "rb") в run(), либо fopen(E2E_INPUT_DIR, "rb") для каталога в check_dir_stdin;
+  - out и err открываем сами в run_impl: fopen(..., "wb");
+  - boost получает уже готовые FILE* через bp::std_in < in, bp::std_out > out.get(), bp::std_err > err.get(). Внутри он берёт fileno и делает dup2 в ребёнке — ничего не открывает.
 
+  по итогам зонда все моменты (каталог на вход, неchcp125 символы в ошибке, большой вход, exe-стиль - как будут доезжать аргументы) закрыты. от каталога на вход изначально была ошибка от boostproc, потому добавилось самостоятельное открытие input, что потом было сделано и для output/err. в итоге работа с открытием файлов будет именно ответственностью теста, не boostproc
+- tests/e2e - завожу e2e_runner.cpp/hpp и переношу туда ф-ции из bp_probe.cpp. функции e2e_runner.cpp - открытие in/out/err на чтение или запись, потождение дочернего процесса через boostproc с готовыми FILE*, подождать завершения процесса и снять его native и "нормлизованный" коды; возвращает структуру `run_result` - в ней данные о завершённом процессе; имеет ф-цию `run_with_stdin`- для работы с каталогом на вход; имеет экспортируемую ф-цию `normalize` - для обрезки кареток концевых \n. 
+- добавляю tests/e2e/e2e_case.hpp - чтобы задать данные отдельного теста (с или с++; основной канал вывода; имя/аргумменты/ожидаемый код; печать данных типов Case, ExeKind). тип данных Case в качестве кода выдаёт именно тип expected_code. потому в common/exit_codes.hpp и common/exit_codes.h прописываю константу success = 0
+- tests/e2e/common_cases.cpp - хранит "шаблоны" для тестов на версионирование и тестов при которых программа запускается с аргументами, хотя она их не принимает (t1-t3)
+- tests/e2e/expected_common.hpp - эталон ошибок t1-t3 (по факту, только две строки. вывод ошибки при вызове --foo или --foo extra). ии говорит о том, что chcp1251 байты должны быть в нём в точности, потому данный файл остаётся сгенерированным и не трогается руками.
+- tests/e2e/expected_t1.hpp - данные из tests/expected/t1_* зашитые в .hpp - т.е. все ожидания к t1, кроме ожиданий при подаче лишних аргументов (они в expected_common.hpp). также перенос байт-в-байт, сгенерированный файл, не для редактирования. ожидание t1_plus сознательно пропущено, т.к. оно совпадает с t1_test1 (те же цифры в t1_plus что и в t1_test1 но с плюсом)
+- tests/e2e/t1_cases.hpp - прообраз того, что было в cases.cmake - объекты типа Case (struct) где заложено имя теста, аргументы (если есть), входной файл, ожидаемый ec-code, ожидаемый вывод и основной поток вывода
+- tests/e2e/t1_e2e.cpp - gtest тесты для данных из t1_cases.hpp (suite-класс, TEST_P для его наполнения, INSTANTIATE_TEST_SUITE_P) и формирование имени теста (ф-ция t1_test_name). 
+- e2e/CMakeLists.txt - для сборки всех компонентов правила cmake. в toolchain_version.cmake добавляю версию boostproc; 
+  в testPresets добавляю e2e и e2e-release - пресеты для е2е тестов; добавляю e2e/version_expected.h.in - будет генериться от него version_expected.h в котором будет @PROJECT_VERSION@. и вот с ним будет сравниваться вывод программ при -v/--version (в то время как сейчас вывод напрямую сравнивается с PROJECT_VERSION). от ии, цепочка версионирования и заголовка для тестирования версионирования
+  ```
+  PROJECT_VERSION
+  ├─ common/version.h.in -> version.h -> INOBITEC_STUD_VERSION -> вывод --version
+  └─ e2e/version_expected.h.in -> version_expected.h -> E2E_EXPECTED_VERSION -> эталон
+  ```
+- делаю реконфиг `cmake --fresh --preset debug`, потом `cmake --build build/debug`
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [77/79] Building CXX object tests\e2e\CMakeFiles\e2e_runner.dir\e2e_runner.cpp.obj
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_runner.cpp(39): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_runner.cpp(40): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_runner.cpp(75): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  [79/79] Linking CXX executable tests\e2e\t1_e2e.exe
+  ```
+  компилятор хочет fopen->fopen_s, спрошу ии советует ли он так сделать. по идее да, нужно сделать _safe если без него небезопасно. ии говорит, не совсем так - fopen_s - windows-специфична. потому под виной будет fopen_s, под линуксом - fopen, без обёртки. `cmake --build build/debug`
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [3/3] Linking CXX executable tests\e2e\t1_e2e.exe
+  ```
+  `c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "e2e/t1_e2e"`
+  ```
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 1237: e2e/t1_e2e/All/T1E2E.Matches/(c, t1_empty)
+  1/58 Test #1237: e2e/t1_e2e/All/T1E2E.Matches/(c, t1_empty) ................   Passed    0.12 sec
+      Start 1238: e2e/t1_e2e/All/T1E2E.Matches/(c, t1_abc)
+  2/58 Test #1238: e2e/t1_e2e/All/T1E2E.Matches/(c, t1_abc) ..................   Passed    0.12 sec
+  ...
+  57/58 Test #1293: e2e/t1_e2e/All/T1E2E.Matches/(cpp, arg_unknown) ...........   Passed    0.12 sec
+      Start 1294: e2e/t1_e2e/All/T1E2E.Matches/(cpp, arg_unknown_multi)
+  58/58 Test #1294: e2e/t1_e2e/All/T1E2E.Matches/(cpp, arg_unknown_multi) .....   Passed    0.11 sec
+  100% tests passed, 0 tests failed out of 58
 
+  Total Test time (real) =   8.15 sec
+  ```
+- негативный контроль. порчу: version: хардкод 0.9.9 в common/version.h.in; в expected_t1.hpp kT1Nul = R"E2E(Получен->h пустой ввод вместо целого N)E2E"; t1_cases.hpp {"t1_abc", {}, "t1_abc", exit_code::data->usage, Stream::err, kT1Abc},
+там же {"t1_spaces", {}, "t1_spaces", exit_code::no_in, Stream::err->out, kT1Nul}. после реконфиг и пересборка, 
+`ctest --test-dir build/debug -R "e2e/t1_e2e" --output-on-failure` 
+```
+ 1/58 Test #1237: e2e/t1_e2e/All/T1E2E.Matches/t1_c_empty .................***Failed    0.12 sec
+Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+Note: Google Test filter = All/T1E2E.Matches/t1_c_empty
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from All/T1E2E
+[ RUN      ] All/T1E2E.Matches/t1_c_empty
+C:\Users\User\Desktop\inobitec_stud\tests\e2e\t1_e2e.cpp(53): error: Expected equality of these values:
+  got
+    Which is: "\xCF\xEE\xEB\xF3\xF7\xE5\xED \xEF\xF3\xF1\xF2\xEE\xE9 \xE2\xE2\xEE\xE4 \xE2\xEC\xE5\xF1\xF2\xEE \xF6\xE5\xEB\xEE\xE3\xEE N"
+  want
+    Which is: "\xCF\xEE\xEB\xF3\xF7\xE5h \xEF\xF3\xF1\xF2\xEE\xE9 \xE2\xE2\xEE\xE4 \xE2\xEC\xE5\xF1\xF2\xEE \xF6\xE5\xEB\xEE\xE3\xEE N"
 
+[  FAILED  ] All/T1E2E.Matches/t1_c_empty, where GetParam() = (c, t1_empty) (106 ms)
+[----------] 1 test from All/T1E2E (106 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (106 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] All/T1E2E.Matches/t1_c_empty, where GetParam() = (c, t1_empty)
+
+ 1 FAILED TEST
+
+      Start 1238: e2e/t1_e2e/All/T1E2E.Matches/t1_c_abc
+ 2/58 Test #1238: e2e/t1_e2e/All/T1E2E.Matches/t1_c_abc ...................***Failed    0.11 sec
+Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+Note: Google Test filter = All/T1E2E.Matches/t1_c_abc
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from All/T1E2E
+[ RUN      ] All/T1E2E.Matches/t1_c_abc
+C:\Users\User\Desktop\inobitec_stud\tests\e2e\t1_e2e.cpp(48): error: Expected equality of these values:
+  r.code
+    Which is: 65
+  c.expected_code
+    Which is: 64
+
+[  FAILED  ] All/T1E2E.Matches/t1_c_abc, where GetParam() = (c, t1_abc) (98 ms)
+[----------] 1 test from All/T1E2E (98 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (99 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] All/T1E2E.Matches/t1_c_abc, where GetParam() = (c, t1_abc)
+
+ 1 FAILED TEST
+
+      Start 1239: e2e/t1_e2e/All/T1E2E.Matches/t1_c_spaces
+ 3/58 Test #1239: e2e/t1_e2e/All/T1E2E.Matches/t1_c_spaces ................***Failed    0.11 sec
+Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+Note: Google Test filter = All/T1E2E.Matches/t1_c_spaces
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from All/T1E2E
+[ RUN      ] All/T1E2E.Matches/t1_c_spaces
+C:\Users\User\Desktop\inobitec_stud\tests\e2e\t1_e2e.cpp(53): error: Expected equality of these values:
+  got
+    Which is: ""
+  want
+    Which is: "\xCF\xEE\xEB\xF3\xF7\xE5h \xEF\xF3\xF1\xF2\xEE\xE9 \xE2\xE2\xEE\xE4 \xE2\xEC\xE5\xF1\xF2\xEE \xF6\xE5\xEB\xEE\xE3\xEE N"
+
+C:\Users\User\Desktop\inobitec_stud\tests\e2e\t1_e2e.cpp(56): error: Value of: (c.primary == e2e::Stream::out ? r.err : r.out).empty()
+  Actual: false
+Expected: true
+
+[  FAILED  ] All/T1E2E.Matches/t1_c_spaces, where GetParam() = (c, t1_spaces) (99 ms)
+[----------] 1 test from All/T1E2E (99 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (99 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] All/T1E2E.Matches/t1_c_spaces, where GetParam() = (c, t1_spaces)
+
+ 1 FAILED TEST
+
+      Start 1240: e2e/t1_e2e/All/T1E2E.Matches/t1_c_float
+ 4/58 Test #1240: e2e/t1_e2e/All/T1E2E.Matches/t1_c_float .................   Passed    0.11 sec
+      Start 1241: e2e/t1_e2e/All/T1E2E.Matches/t1_c_high
+ 5/58 Test #1241: e2e/t1_e2e/All/T1E2E.Matches/t1_c_high ..................   Passed    0.11 sec
+ ...
+ так же с с++ стороной 
+ ...
+ 57/58 Test #1293: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown .........   Passed    0.13 sec
+      Start 1294: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown_multi
+58/58 Test #1294: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown_multi ...   Passed    0.13 sec
+
+83% tests passed, 10 tests failed out of 58
+
+Total Test time (real) =   8.11 sec
+
+The following tests FAILED:
+	1237 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_empty (Failed)
+	1238 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_abc (Failed)
+	1239 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_spaces (Failed)
+	1262 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_version (Failed)
+	1263 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_version_extra (Failed)
+	1266 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_empty (Failed)
+	1267 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_abc (Failed)
+	1268 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_spaces (Failed)
+	1291 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_version (Failed)
+	1292 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_version_extra (Failed)
+Errors while running CTest
+ ```
+  и негатив. контроль на засорение обратного канала. t1_dist_matrix_c/main.c перед return 0 - fprintf(stderr, "k");
+  и в t1_dist_matrix_c/main.c в ветке N < MIN_SIZE || N > MAX_SIZE перед return data printf("k"); и симметрично на с++ стороне. после чего пересборка и `ctest --test-dir build/debug -R "e2e/t1_e2e" --output-on-failure` 
+  ```
+  ...
+    5/58 Test #1241: e2e/t1_e2e/All/T1E2E.Matches/t1_c_high ..................***Failed    0.12 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = All/T1E2E.Matches/t1_c_high
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from All/T1E2E
+  [ RUN      ] All/T1E2E.Matches/t1_c_high
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\t1_e2e.cpp(56): error: Value of: (c.primary == e2e::Stream::out ? r.err : r.out).empty()
+    Actual: false
+  Expected: true
+
+  [  FAILED  ] All/T1E2E.Matches/t1_c_high, where GetParam() = (c, t1_high) (102 ms)
+  [----------] 1 test from All/T1E2E (102 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (102 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] All/T1E2E.Matches/t1_c_high, where GetParam() = (c, t1_high)
+
+  1 FAILED TEST
+  ...
+  69% tests passed, 18 tests failed out of 58
+
+  Total Test time (real) =   9.02 sec
+
+  The following tests FAILED:
+    1241 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_high (Failed)
+    1242 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_low (Failed)
+    1250 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_int32_max (Failed)
+    1252 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm (Failed)
+    1253 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_plus (Failed)
+    1254 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_leading_spaces (Failed)
+    1255 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_test2 (Failed)
+    1256 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_space_plus (Failed)
+    1257 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_leading_zero (Failed)
+    1270 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_high (Failed)
+    1271 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_low (Failed)
+    1279 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_int32_max (Failed)
+    1281 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_norm (Failed)
+    1282 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_plus (Failed)
+    1283 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_leading_spaces (Failed)
+    1284 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_test2 (Failed)
+    1285 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_space_plus (Failed)
+    1286 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_leading_zero (Failed)
+  Errors while running CTest
+ ```
+ падает всё выше/ниже нормы и успешные тесты. т.к. там обратный канал засоряется. откатываю намеренные ошибки, пересобираю и `ctest --test-dir build/debug -R "e2e/t1_e2e" -> 100% tests passed, 0 tests failed out of 58 Total Test time (real) =   7.51 sec`
+- убираю старую систему тестирования для t1 из cases.cmake? удаляю для них же эталоны из /expect/t1_*. и 4 файла зонда перемещаю в sandbox. `cmake --build build/debug --target format` и `ctest --preset full -> 100% tests passed, 0 tests failed out of 1120 Total Test time (real) =  95.56 sec`
 
 ## 8. Диалоги с DeepSeek
 

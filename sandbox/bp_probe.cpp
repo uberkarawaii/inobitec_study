@@ -81,7 +81,7 @@ run_result run_impl(const std::string& exe1, const std::vector<std::string>& arg
         return r;
     r.code = c.exit_code();
     r.native = c.native_exit_code();
-    // во избежание проблем на винде, если какой-то из файлов ещё открыт (тогда его невозможно будет прочесть) 
+    // во избежание проблем на винде, если какой-то из файлов ещё открыт (тогда его невозможно будет прочесть)
     out.reset();
     err.reset();
     r.out = read_file_binary(out_path);

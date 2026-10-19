@@ -12,6 +12,7 @@ set(TOOLCHAIN_GIT_MIN "2.0")
 set(TOOLCHAIN_GIT_TESTED "2.54;2.53")
 set(TOOLCHAIN_VCPKG_TOOL_TESTED "2026-07-27")
 set(LIB_GTEST_TESTED "1.18.0")
+set(LIB_BOOST_TESTED "1.92.0")
 
 # ф-ция cреза всего после major_minor: "19.51.36247.0" -> "19.51"; "4.3.1-msvc1" -> "4.3"; "1.13.2" -> "1.13"
 function(to_major_minor out in)
