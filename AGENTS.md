@@ -7030,6 +7030,99 @@ Total Test time (real) =   9.37 sec
   PS C:\Users\User\Desktop\inobitec_stud> ctest -N | Select-String "t2_(c|cpp)_.*_(code|stderr|stdout)$"
   PS C:\Users\User\Desktop\inobitec_stud> # пусто - значит тесты со старыми именами ушли
   ```
+- vm - негатив. тесты и прогон и исправлениями (порчу те же вещи, что и на винде)
+  ```
+  ...
+  85% tests passed, 9 tests failed out of 62
+
+  Total Test time (real) =   0.78 sec
+
+  The following tests FAILED:
+    963 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_norm (Failed)
+    964 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_plus (Failed)
+    965 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_leading_spaces (Failed)
+    966 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_space_plus (Failed)
+    967 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_leading_zero (Failed)
+    968 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_name_with_spaces (Failed)
+    969 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_one_vertex (Failed)
+    994 - e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_norm (Failed)
+    995 - e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_plus (Failed)
+  
+  # после исправления
+  ...
+  62/62 Test #1008: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown_multi .....   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 62
+
+  Total Test time (real) =   0.65 sec
+  ```
+  и говорю ии проверить логи с вм-ки. он посмотрел, блокеров не видит. иду к переносу t3 gtest+bp
+- как и ранее, сначала тест. матрица для инстансов - t3_cases.hpp. говорю ии сгенеироровать тест. матрицу для t3. в ней 
+  одна особенность от предыдущих - тест на io fail - только линуксовый. по аналогии делаю t3_e2e.cpp. потом реконфиг, сборка, `ctest --preset e2e -R "e2e/t3_e2e" --output-on-failure`
+  ```
+  ...
+  79/82 Test #1075: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_version ..............   Passed    0.12 sec
+        Start 1076: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_version_extra
+  80/82 Test #1076: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_version_extra ........   Passed    0.12 sec
+        Start 1077: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_arg_unknown
+  81/82 Test #1077: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_arg_unknown ..........   Passed    0.12 sec
+        Start 1078: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_arg_unknown_multi
+  82/82 Test #1078: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_arg_unknown_multi ....   Passed    0.25 sec
+
+  100% tests passed, 0 tests failed out of 82
+
+  Total Test time (real) =  12.27 sec
+  ```
+- негатив. контроль. t3_cases.hpp порчу t3_test1 код на data; там же test_2 ожидание меняю с kT3Test2 на kT3Test1; в
+  t3_c перед return 0 пишу печать в "обратный" канал - fprintf(stderr, "k"). пересборка, `ctest --preset e2e -R "e2e/t3_e2e" --output-on-failure`
+  ```
+  ...
+  15/82 Test #1011: e2e/t3_e2e/All/T3E2E.Matches/t3_c_test1 ..................***Failed    0.25 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(67): error: Expected equality of these values:
+  r.code
+    Which is: 0
+  c.expected_code
+    Which is: 65 # падение из-за кода
+  ...
+  16/82 Test #1012: e2e/t3_e2e/All/T3E2E.Matches/t3_c_test2 ..................***Failed    0.12 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(71): error: Expected equality of these values:
+    got
+      Which is: "\xCA\xEE\xEB\xE8\xF7\xE5\xF1\xF2\xE2\xEE \xF2\xEE\xF7\xE5\xEA: 3\n\xCA\xEE\xEE\xF0\xE4\xE8\xED\xE0\xF2\xFB \xEE\xE3\xF0\xE0\xED\xE8\xF7. \xEF\xE0\xF0\xE0\xEB\xE5\xEB\xEB\xE5\xEF\xE8\xEF\xE5\xE4\xE0 x: [ 0.000; 1.000 ] y: [ 0.000; 1.000 ] z: [ 0.000; 0.000 ]\n\xCA\xEE\xEE\xF0\xE4\xE8\xED\xE0\xF2\xFB \xF6\xE5\xED\xF2\xF0\xEE\xE8\xE4\xE0 x: 0.333, y: 0.333, z: 0.000\n\xD1\xF0\xE5\xE4\xED\xE5\xE5 \xF0\xE0\xF1\xF1\xF2\xEE\xFF\xED\xE8\xE5 \xEE\xF2 \xF2\xEE\xF7\xE5\xEA \xE4\xEE \xF6\xE5\xED\xF2\xF0\xEE\xE8\xE4\xE0: 0.654"
+    want
+      Which is: "\xCA\xEE\xEB\xE8\xF7\xE5\xF1\xF2\xE2\xEE \xF2\xEE\xF7\xE5\xEA: 1\n\xCA\xEE\xEE\xF0\xE4\xE8\xED\xE0\xF2\xFB \xEE\xE3\xF0\xE0\xED\xE8\xF7. \xEF\xE0\xF0\xE0\xEB\xE5\xEB\xEB\xE5\xEF\xE8\xEF\xE5\xE4\xE0 x: [ 1.500; 1.500 ] y: [ 2.500; 2.500 ] z: [ 3.500; 3.500 ]\n\xCA\xEE\xEE\xF0\xE4\xE8\xED\xE0\xF2\xFB \xF6\xE5\xED\xF2\xF0\xEE\xE8\xE4\xE0 x: 1.500, y: 2.500, z: 3.500\n\xD1\xF0\xE5\xE4\xED\xE5\xE5 \xF0\xE0\xF1\xF1\xF2\xEE\xFF\xED\xE8\xE5 \xEE\xF2 \xF2\xEE\xF7\xE5\xEA \xE4\xEE \xF6\xE5\xED\xF2\xF0\xEE\xE8\xE4\xE0: 0.000"
+      ...
+      # падение от неверного сообщения
+  17/82 Test #1013: e2e/t3_e2e/All/T3E2E.Matches/t3_c_test3 ..................***Failed    0.12 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(74): error: Value of: other.empty()
+    Actual: false
+  Expected: true
+  reverse channel (stderr) is not empty: 1 byte(s) # падение от непустого канала
+  ...
+  84% tests passed, 13 tests failed out of 82
+
+  Total Test time (real) =  11.86 sec
+
+  The following tests FAILED:
+    1011 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_test1 (Failed)
+    1012 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_test2 (Failed)
+    1013 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_test3 (Failed)
+    1014 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_scientific (Failed)
+    1020 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_subnormal_coord (Failed)
+    1021 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_leading_spaces (Failed)
+    1022 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_exp_plus (Failed)
+    1023 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_exp_upper (Failed)
+    1024 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_exp_negative (Failed)
+    1028 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_dot_trailing_coord (Failed)
+    1029 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_dot_leading_coord (Failed)
+    1052 - e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_test1 (Failed)
+    1053 - e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_test2 (Failed)
+  ```
+  откатываю намеренные ошибки, `ctest --preset e2e -R "e2e/t3_e2e" --output-on-failure -> 100% tests passed, 0 tests failed out of 82 Total Test time (real) =  10.44 sec`. 
+- удаляю старые элементы обвязки (из cases.cmake, /expect, относящиеся к t3)
+- прогоны на vm. cmake --fresh --preset debug, сборка,  `ctest --preset e2e -R "e2e/t3_e2e" --output-on-failure`
 
 *Что заметила при работе с deepseek*
 - что ии заметил по архитектуре в обвязке:

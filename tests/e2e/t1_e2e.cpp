@@ -21,7 +21,7 @@ TEST_P(T1E2E, Matches) {
     e2e::expect_case_matches("t1", kind, c, E2E_EXE_C, E2E_EXE_CPP, E2E_INPUT_DIR, E2E_RESULTS_DIR);
 }
 
-// сделать много инстансов класса T1E2E, наполнены они будут данными из t1_cases.hpp
+// сделать инстансы класса T1E2E, наполнены они будут данными из t1_cases.hpp
 INSTANTIATE_TEST_SUITE_P(All, T1E2E,
                          ::testing::Combine(::testing::Values(e2e::ExeKind::c, e2e::ExeKind::cpp),
                                             ::testing::ValuesIn(e2e::t1_cases)),

@@ -32,11 +32,10 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/version_expected.h"
   @ONLY)
 
-# t1: C и C++ в одном suite (ExeKind х Case)
-# t1_e2e.cpp на gtest, берёт Case-данные из t1_cases.hpp
+# t1-t4 c/c++ e2e тесты
 add_e2e_test(t1_e2e t1_e2e.cpp t1_c t1_cpp)
-# t2 c/c++ e2e тесты
 add_e2e_test(t2_e2e t2_e2e.cpp t2_c t2_cpp)
+add_e2e_test(t3_e2e t3_e2e.cpp t3_c t3_cpp)
 
 # тест open_file, при ситуации несуществующего input/output
 add_executable(e2e_runner_test e2e_runner_test.cpp)
@@ -47,4 +46,3 @@ target_compile_definitions(e2e_runner_test PRIVATE
 configure_target(e2e_runner_test OFF)
 deploy_vcpkg_dlls(e2e_runner_test)
 gtest_discover_tests(e2e_runner_test TEST_PREFIX "e2e/runner/")
-

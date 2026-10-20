@@ -22,93 +22,6 @@ set(HELP_EXTRA --help extra)
 set(HELP_SHORT_EXTRA -h extra)
 set(VERSION_EXTRA --version extra)
 
-# === T3 C TESTS ===
-# тест на io-fail - только под UNIX
-if(UNIX)
-  add_case(t3_c_io t3_c "${EMPTY_ARG}" "${FOLDER_INPUT}" "${IO_FAIL}" EQ t3_t4_io_fail "${ERR}")
-endif()
-# входные данные с ошибками
-add_case(t3_c_empty t3_c "${EMPTY_ARG}" t3_empty_case "${NO_INPUT}" EQ t3_empty_case "${ERR}")
-add_case(t3_c_not_digit_case t3_c "${EMPTY_ARG}" t3_not_digit_case "${DATA}" EQ t3_not_digit_case "${ERR}")
-add_case(t3_c_too_few_args_case t3_c "${EMPTY_ARG}" t3_too_few_args_case "${DATA}" EQ t3_too_few_args_case "${ERR}")
-add_case(t3_c_too_much_args_case t3_c "${EMPTY_ARG}" t3_too_much_args_case "${DATA}" EQ t3_too_much_args_case "${ERR}")
-add_case(t3_c_extra_nan t3_c "${EMPTY_ARG}" t3_extra_nan "${DATA}" EQ t3_extra_nan "${ERR}")
-add_case(t3_c_x_y_z_4k t3_c "${EMPTY_ARG}" t3_x_y_z_4k "${DATA}" EQ t3_x_y_z_4k "${ERR}")
-add_case(t3_c_x_y_z_k4 t3_c "${EMPTY_ARG}" t3_x_y_z_k4 "${DATA}" EQ t3_x_y_z_k4 "${ERR}")
-add_case(t3_c_inf_coord t3_c "${EMPTY_ARG}" t3_inf_coord "${DATA}" EQ t3_inf_coord "${ERR}")
-add_case(t3_c_x_ky_z t3_c "${EMPTY_ARG}" t3_x_ky_z "${DATA}" EQ t3_x_ky_z "${ERR}")
-add_case(t3_c_x_yk_z t3_c "${EMPTY_ARG}" t3_x_yk_z "${DATA}" EQ t3_x_yk_z "${ERR}")
-add_case(t3_c_double_plus t3_c "${EMPTY_ARG}" t3_double_plus "${DATA}" EQ t3_double_plus "${ERR}")
-add_case(t3_c_plus_abc t3_c "${EMPTY_ARG}" t3_plus_abc "${DATA}" EQ t3_plus_abc "${ERR}")
-add_case(t3_c_plus_minus_coord t3_c "${EMPTY_ARG}" t3_t4_plus_minus_coord "${DATA}" EQ t3_t4_plus_minus_coord "${ERR}")
-add_case(t3_c_plus_minus_extra t3_c "${EMPTY_ARG}" t3_t4_plus_minus_extra "${DATA}" EQ t3_t4_plus_minus_extra "${ERR}")
-# нормальные входные данные
-add_case(t3_c_test1 t3_c "${EMPTY_ARG}" t3_test1 "${SUCCESS}" EQ t3_test1 "${OUT}")
-add_case(t3_c_test2 t3_c "${EMPTY_ARG}" t3_test2 "${SUCCESS}" EQ t3_test2 "${OUT}") 
-add_case(t3_c_test3 t3_c "${EMPTY_ARG}" t3_test3 "${SUCCESS}" EQ t3_test3 "${OUT}")
-add_case(t3_c_scientific t3_c "${EMPTY_ARG}" t3_scientific "${SUCCESS}" EQ t3_scientific "${OUT}")
-# (hex / overflow / подформа записи)
-add_case(t3_c_hex_coord t3_c "${EMPTY_ARG}" t3_hex_coord "${DATA}" EQ t3_hex_coord "${ERR}")
-add_case(t3_c_hex_coord_upper t3_c "${EMPTY_ARG}" t3_hex_coord_upper "${DATA}" EQ t3_hex_coord_upper "${ERR}")
-add_case(t3_c_hex_extra_coord t3_c "${EMPTY_ARG}" t3_hex_extra_coord "${DATA}" EQ t3_hex_extra_coord "${ERR}")
-add_case(t3_c_overflow_coord t3_c "${EMPTY_ARG}" t3_overflow_coord "${DATA}" EQ t3_overflow_coord "${ERR}")
-add_case(t3_c_underflow_coord t3_c "${EMPTY_ARG}" t3_underflow_coord "${DATA}" EQ t3_underflow_coord "${ERR}")
-add_case(t3_c_subnormal_coord t3_c "${EMPTY_ARG}" t3_subnormal_coord "${SUCCESS}" EQ t3_subnormal_coord "${OUT}")
-# вывод совпадает с t3_test1: та же точка (1.5, 2.5, 3.5), отличается только ведущий пробел во входе
-add_case(t3_c_leading_spaces t3_c "${EMPTY_ARG}" t3_leading_spaces "${SUCCESS}" EQ t3_test1 "${OUT}")
-add_case(t3_c_exp_plus t3_c "${EMPTY_ARG}" t3_exp_plus "${SUCCESS}" EQ t3_exp_plus "${OUT}")
-add_case(t3_c_exp_upper t3_c "${EMPTY_ARG}" t3_exp_upper "${SUCCESS}" EQ t3_exp_upper "${OUT}")
-add_case(t3_c_exp_negative t3_c "${EMPTY_ARG}" t3_exp_negative "${SUCCESS}" EQ t3_exp_negative "${OUT}")
-add_case(t3_c_infinity_coord t3_c "${EMPTY_ARG}" t3_infinity_coord "${DATA}" EQ t3_infinity_coord "${ERR}")
-add_case(t3_c_nan_payload_coord t3_c "${EMPTY_ARG}" t3_nan_payload_coord "${DATA}" EQ t3_nan_payload_coord "${ERR}")
-add_case(t3_c_comma_coord t3_c "${EMPTY_ARG}" t3_comma_coord "${DATA}" EQ t3_comma_coord "${ERR}")
-add_case(t3_c_dot_trailing_coord t3_c "${EMPTY_ARG}" t3_dot_trailing_coord "${SUCCESS}" EQ t3_dot_trailing_coord "${OUT}")
-add_case(t3_c_dot_leading_coord t3_c "${EMPTY_ARG}" t3_dot_leading_coord "${SUCCESS}" EQ t3_dot_leading_coord "${OUT}")
-
-
-# === T3 CPP TESTS ===
-# тест на io-fail - только под UNIX
-if(UNIX)
-  add_case(t3_cpp_io t3_cpp "${EMPTY_ARG}" "${FOLDER_INPUT}" "${IO_FAIL}" EQ t3_t4_io_fail "${ERR}")
-endif()
-# входные данные с ошибками
-add_case(t3_cpp_empty t3_cpp "${EMPTY_ARG}" t3_empty_case "${NO_INPUT}" EQ t3_empty_case "${ERR}")
-add_case(t3_cpp_not_digit_case t3_cpp "${EMPTY_ARG}" t3_not_digit_case "${DATA}" EQ t3_not_digit_case "${ERR}")
-add_case(t3_cpp_too_few_args_case t3_cpp "${EMPTY_ARG}" t3_too_few_args_case "${DATA}" EQ t3_too_few_args_case "${ERR}")
-add_case(t3_cpp_too_much_args_case t3_cpp "${EMPTY_ARG}" t3_too_much_args_case "${DATA}" EQ t3_too_much_args_case "${ERR}")
-add_case(t3_cpp_extra_nan t3_cpp "${EMPTY_ARG}" t3_extra_nan "${DATA}" EQ t3_extra_nan "${ERR}")
-add_case(t3_cpp_x_y_z_4k t3_cpp "${EMPTY_ARG}" t3_x_y_z_4k "${DATA}" EQ t3_x_y_z_4k "${ERR}")
-add_case(t3_cpp_x_y_z_k4 t3_cpp "${EMPTY_ARG}" t3_x_y_z_k4 "${DATA}" EQ t3_x_y_z_k4 "${ERR}")
-add_case(t3_cpp_inf_coord t3_cpp "${EMPTY_ARG}" t3_inf_coord "${DATA}" EQ t3_inf_coord "${ERR}")
-add_case(t3_cpp_x_ky_z t3_cpp "${EMPTY_ARG}" t3_x_ky_z "${DATA}" EQ t3_x_ky_z "${ERR}")
-add_case(t3_cpp_x_yk_z t3_cpp "${EMPTY_ARG}" t3_x_yk_z "${DATA}" EQ t3_x_yk_z "${ERR}")
-add_case(t3_cpp_double_plus t3_cpp "${EMPTY_ARG}" t3_double_plus "${DATA}" EQ t3_double_plus "${ERR}")
-add_case(t3_cpp_plus_abc t3_cpp "${EMPTY_ARG}" t3_plus_abc "${DATA}" EQ t3_plus_abc "${ERR}")
-add_case(t3_cpp_plus_minus_coord t3_cpp "${EMPTY_ARG}" t3_t4_plus_minus_coord "${DATA}" EQ t3_t4_plus_minus_coord "${ERR}")
-add_case(t3_cpp_plus_minus_extra t3_cpp "${EMPTY_ARG}" t3_t4_plus_minus_extra "${DATA}" EQ t3_t4_plus_minus_extra "${ERR}")
-# нормальные входные данные
-add_case(t3_cpp_test1 t3_cpp "${EMPTY_ARG}" t3_test1 "${SUCCESS}" EQ t3_test1 "${OUT}")
-add_case(t3_cpp_test2 t3_cpp "${EMPTY_ARG}" t3_test2 "${SUCCESS}" EQ t3_test2 "${OUT}") 
-add_case(t3_cpp_test3 t3_cpp "${EMPTY_ARG}" t3_test3 "${SUCCESS}" EQ t3_test3 "${OUT}")
-add_case(t3_cpp_scientific t3_cpp "${EMPTY_ARG}" t3_scientific "${SUCCESS}" EQ t3_scientific "${OUT}")
-# hex / overflow / подформа записи
-add_case(t3_cpp_hex_coord t3_cpp "${EMPTY_ARG}" t3_hex_coord "${DATA}" EQ t3_hex_coord "${ERR}")
-add_case(t3_cpp_hex_coord_upper t3_cpp "${EMPTY_ARG}" t3_hex_coord_upper "${DATA}" EQ t3_hex_coord_upper "${ERR}")
-add_case(t3_cpp_hex_extra_coord t3_cpp "${EMPTY_ARG}" t3_hex_extra_coord "${DATA}" EQ t3_hex_extra_coord "${ERR}")
-add_case(t3_cpp_overflow_coord t3_cpp "${EMPTY_ARG}" t3_overflow_coord "${DATA}" EQ t3_overflow_coord "${ERR}")
-add_case(t3_cpp_underflow_coord t3_cpp "${EMPTY_ARG}" t3_underflow_coord "${DATA}" EQ t3_underflow_coord "${ERR}")
-add_case(t3_cpp_subnormal_coord t3_cpp "${EMPTY_ARG}" t3_subnormal_coord "${SUCCESS}" EQ t3_subnormal_coord "${OUT}")
-# вывод совпадает с t3_test1: та же точка (1.5, 2.5, 3.5), отличается только ведущий пробел во входе
-add_case(t3_cpp_leading_spaces t3_cpp "${EMPTY_ARG}" t3_leading_spaces "${SUCCESS}" EQ t3_test1 "${OUT}")
-add_case(t3_cpp_exp_plus t3_cpp "${EMPTY_ARG}" t3_exp_plus "${SUCCESS}" EQ t3_exp_plus "${OUT}")
-add_case(t3_cpp_exp_upper t3_cpp "${EMPTY_ARG}" t3_exp_upper "${SUCCESS}" EQ t3_exp_upper "${OUT}")
-add_case(t3_cpp_exp_negative t3_cpp "${EMPTY_ARG}" t3_exp_negative "${SUCCESS}" EQ t3_exp_negative "${OUT}")
-add_case(t3_cpp_infinity_coord t3_cpp "${EMPTY_ARG}" t3_infinity_coord "${DATA}" EQ t3_infinity_coord "${ERR}")
-add_case(t3_cpp_nan_payload_coord t3_cpp "${EMPTY_ARG}" t3_nan_payload_coord "${DATA}" EQ t3_nan_payload_coord "${ERR}")
-add_case(t3_cpp_comma_coord t3_cpp "${EMPTY_ARG}" t3_comma_coord "${DATA}" EQ t3_comma_coord "${ERR}")
-add_case(t3_cpp_dot_trailing_coord t3_cpp "${EMPTY_ARG}" t3_dot_trailing_coord "${SUCCESS}" EQ t3_dot_trailing_coord "${OUT}")
-add_case(t3_cpp_dot_leading_coord t3_cpp "${EMPTY_ARG}" t3_dot_leading_coord "${SUCCESS}" EQ t3_dot_leading_coord "${OUT}")
-
 # === РАДИУСЫ ===
 set(RAD_TOO_MUCH 2 3)
 set(RAD_SYMB 4ch)
@@ -292,44 +205,21 @@ add_case(t4_cpp_dot_trailing_coord t4_cpp "${RAD8}" t4_dot_trailing_coord "${SUC
 add_case(t4_cpp_dot_leading_coord t4_cpp "${RAD5}" t4_dot_leading_coord "${SUCCESS}" EQ t4_dot_leading_coord "${OUT}")
 
 # === тесты на версионирование (--version) ===
-add_case(t3_c_version    t3_c    "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
-add_case(t3_cpp_version  t3_cpp  "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
 add_case(t4_c_version    t4_c    "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
 add_case(t4_cpp_version  t4_cpp  "${VERSION_ARG}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
 
 # === тесты на справку (--help / -h) ===
-add_case(t3_c_help        t3_c   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
-add_case(t3_c_help_short  t3_c   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
-add_case(t3_cpp_help        t3_cpp   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
-add_case(t3_cpp_help_short  t3_cpp   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
-
 add_case(t4_c_help        t4_c   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 add_case(t4_c_help_short  t4_c   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 add_case(t4_cpp_help        t4_cpp   "${HELP_ARG}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 add_case(t4_cpp_help_short  t4_cpp   "${HELP_SHORT_ARG}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 
-# === тесты на неизвестные аргументы (t1-t3 не принимают аргументов) ===
-# один аргумент
-add_case(t3_c_arg_unknown   t3_c   "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
-add_case(t3_cpp_arg_unknown t3_cpp "${UNKNOWN_ARG}" t1_nul "${USAGE}" EQ t_arg_unknown "${ERR}")
-
-# несколько аргументов
-add_case(t3_c_arg_unknown_multi   t3_c   "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
-add_case(t3_cpp_arg_unknown_multi t3_cpp "${UNKNOWN_ARGS}" t1_nul "${USAGE}" EQ t_arg_unknown_multi "${ERR}")
-
 # тесты с лишними аргументами после правильного аргумента. должны проходить по принципу help wins
-add_case(t3_c_help_extra         t3_c   "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
-add_case(t3_c_help_short_extra   t3_c   "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
-add_case(t3_cpp_help_extra       t3_cpp "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
-add_case(t3_cpp_help_short_extra t3_cpp "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t3_help "${OUT}")
-
 add_case(t4_c_help_extra         t4_c   "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 add_case(t4_c_help_short_extra   t4_c   "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 add_case(t4_cpp_help_extra       t4_cpp "${HELP_EXTRA}"       t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 add_case(t4_cpp_help_short_extra t4_cpp "${HELP_SHORT_EXTRA}" t1_nul "${SUCCESS}" EQ t4_help "${OUT}")
 
 #  при вызове --version
-add_case(t3_c_version_extra   t3_c   "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
-add_case(t3_cpp_version_extra t3_cpp "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
 add_case(t4_c_version_extra   t4_c   "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
 add_case(t4_cpp_version_extra t4_cpp "${VERSION_EXTRA}" t1_nul "${SUCCESS}" EQ "${VERSION_EXPECT}" "${OUT}")
