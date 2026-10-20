@@ -180,6 +180,5 @@ int main(int argc, char* argv[]) {
         }
 
     free(points);
-
     return 0;
 }

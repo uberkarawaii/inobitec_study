@@ -7122,7 +7122,114 @@ Total Test time (real) =   9.37 sec
   ```
   откатываю намеренные ошибки, `ctest --preset e2e -R "e2e/t3_e2e" --output-on-failure -> 100% tests passed, 0 tests failed out of 82 Total Test time (real) =  10.44 sec`. 
 - удаляю старые элементы обвязки (из cases.cmake, /expect, относящиеся к t3)
-- прогоны на vm. cmake --fresh --preset debug, сборка,  `ctest --preset e2e -R "e2e/t3_e2e" --output-on-failure`
+- прогоны на vm. cmake --fresh --preset debug, сборка,  
+  `ctest --preset e2e -R "e2e/t3_e2e" --output-on-failure 100% tests passed, 0 tests failed out of 84 Total Test time (real) =   0.98 sec`.  
+  далее намеренно роняю то же, что и на windows:
+  ```
+  ...
+  85% tests passed, 13 tests failed out of 84
+
+  Total Test time (real) =   0.94 sec
+
+  The following tests FAILED:
+    772 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_test1 (Failed)
+    773 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_test2 (Failed)
+    774 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_test3 (Failed)
+    775 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_scientific (Failed)
+    781 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_subnormal_coord (Failed)
+    782 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_leading_spaces (Failed)
+    783 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_exp_plus (Failed)
+    784 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_exp_upper (Failed)
+    785 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_exp_negative (Failed)
+    789 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_dot_trailing_coord (Failed)
+    790 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_dot_leading_coord (Failed)
+    814 - e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_test1 (Failed)
+    815 - e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_test2 (Failed)
+  ```
+  откатываю, прогоняю чистое: `100% tests passed, 0 tests failed out of 84 Total Test time (real) =   0.95 sec`. ии смотрит логи, чисто. 
+- перенос t4. ии говорию сгенерировать t4_cases.hpp - будет linux-only тест с папкой и также прибавится передача радиуса, по аналогии с t1-t3 делаю t4_e2e.cpp. добавляю сборку t4_e2e через CMakeLists.txt
+- формат, реконфиг, пересборка. `ctest --preset e2e -R "e2e/t4_e2e" --output-on-failure`
+  ```
+    1/122 Test #833: e2e/t4_e2e/All/T4E2E.Matches/t4_c_radius_empty ..................***Failed    0.16 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(71): error: Expected equality of these values:
+    got
+      Which is: "\xCE\xE6\xE8\xE4\xE0\xEB\xF1\xFF \xF0\xE0\xE4\xE8\xF3\xF1; \xEF\xEE\xEB\xF3\xF7\xE5\xED\xE0 \xF1\xF2\xF0\xEE\xEA\xE0 \xE1\xE5\xE7 \xE7\xED\xE0\xF7\xE5\xED\xE8\xFF\n\xC4\xEB\xFF \xF1\xEF\xF0\xE0\xE2\xEA\xE8 \xE2\xFB\xE7\xEE\xE2\xE8\xF2\xE5 \xEF\xF0\xEE\xE3\xF0\xE0\xEC\xEC\xF3 \xF1 \xEF\xE0\xF0\xE0\xEC\xE5\xF2\xF0\xEE\xEC --help \xE8\xEB\xE8 -h"
+    want
+      Which is: "\xCE\xE6\xE8\xE4\xE0\xEB\xF1\xFF \xF0\xE0\xE4\xE8\xF3\xF1; \xE5\xE3\xEE \xE7\xED\xE0\xF7\xE5\xED\xE8\xE5 \xED\xE5 \xE1\xFB\xEB\xEE \xE2\xE2\xE5\xE4\xE5\xED\xEE\n\xC4\xEB\xFF \xF1\xEF\xF0\xE0\xE2\xEA\xE8 \xE2\xFB\xE7\xEE\xE2\xE8\xF2\xE5 \xEF\xF0\xEE\xE3\xF0\xE0\xEC\xEC\xF3 \xF1 \xEF\xE0\xF0\xE0\xEC\xE5\xF2\xF0\xEE\xEC --help \xE8\xEB\xE8 -h"
+  ...
+  The following tests FAILED:
+    833 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_radius_empty (Failed)
+    894 - e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_radius_empty (Failed)
+  ```
+  пердполагаю, что падает т.к. выводится "Ожидался радиус; получена строка без значения\n" вместо "Ожидался радиус; его значение не было введено\n", потому что аргумент "" доехал именно как "" (т.к. {"t4_radius_empty", {""}, "t4_bad_radius", exit_code::usage, Stream::err, kT4RadiusEmpty}). а надо {"t4_radius_empty", {} ...}. пробую свою версию. билд, прогон:
+  ```
+  ...
+          Start 953: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version
+  121/122 Test #953: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version .....................   Passed    0.12 sec
+          Start 954: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  122/122 Test #954: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.14 sec
+
+  100% tests passed, 0 tests failed out of 122
+
+  Total Test time (real) =  17.30 sec
+  ```
+  теперь работает верно. ещё наводит на мысль, что нет теста с "Ожидался радиус; получена строка без значения\n". показыавю ии результат и последний вопрос.  
+
+  ии напомнил, что тест на такой случай есть (там много пробелов) - "«Ожидался радиус; получена строка без значения» покрыто: это t4_radius_spaces с аргументом {"   "} и константой kT4RadiusSpaces — оно проходит в обоих прогонах. ФАКТ, ВЫСОКИЙ". и, как он сказал, как я это и предполагала - в cases.cmake этот арг. доезжал по-другому, а тут проявилась разница м-у вход/ожидание
+- негатив. контроль. в t4_c перед return 0 - fprintf(stderr, "k"); t4_cases.hpp t4_test2 - меняю код на usage, t4_plus меняю ожидание с kT4Test2 на kT4Scientific. пересборка, `ctest --preset e2e -R "e2e/t4_e2e" --output-on-failure`
+  ```
+  ...
+          Start 865: e2e/t4_e2e/All/T4E2E.Matches/t4_c_test1
+  33/122 Test #865: e2e/t4_e2e/All/T4E2E.Matches/t4_c_test1 .........................***Failed    0.12 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(74): error: Value of: other.empty()
+    Actual: false
+  Expected: true
+  reverse channel (stderr) is not empty: 1 byte(s)
+  ...
+          Start 866: e2e/t4_e2e/All/T4E2E.Matches/t4_c_test2
+  34/122 Test #866: e2e/t4_e2e/All/T4E2E.Matches/t4_c_test2 .........................***Failed    0.14 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(67): error: Expected equality of these values:
+    r.code
+      Which is: 0
+    c.expected_code
+      Which is: 65
+  ...
+   35/122 Test #867: e2e/t4_e2e/All/T4E2E.Matches/t4_c_plus ..........................***Failed    0.14 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(71): error: Expected equality of these values:
+    got
+      Which is: "4.000 5.000 5.000"
+    want
+      Which is: "30.000 1.000 0.100"
+  ...
+  86% tests passed, 17 tests failed out of 122
+
+  Total Test time (real) =  17.61 sec
+
+  The following tests FAILED:
+    865 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_test1 (Failed)
+    866 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_test2 (Failed)
+    867 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_plus (Failed)
+    868 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_rad_leading_space (Failed)
+    869 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_rad_space_end (Failed)
+    870 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_test3 (Failed)
+    871 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_scientific (Failed)
+    872 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_rad_space_plus (Failed)
+    878 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_subnormal_coord (Failed)
+    879 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_leading_spaces (Failed)
+    880 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_exp_plus (Failed)
+    881 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_exp_upper (Failed)
+    882 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_exp_negative (Failed)
+    886 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_dot_trailing_coord (Failed)
+    887 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_dot_leading_coord (Failed)
+    927 - e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_test2 (Failed)
+    928 - e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_plus (Failed)
+  ```
+  откатываю, пересобираю, `ctest --preset e2e -R "e2e/t4_e2e" --output-on-failure -> 100% tests passed, 0 tests failed out of 122 Total Test time (real) =  17.23 sec`. Говорю ии просмотреть логи
+
 
 *Что заметила при работе с deepseek*
 - что ии заметил по архитектуре в обвязке:

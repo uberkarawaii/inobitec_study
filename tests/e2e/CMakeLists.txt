@@ -36,6 +36,7 @@ configure_file(
 add_e2e_test(t1_e2e t1_e2e.cpp t1_c t1_cpp)
 add_e2e_test(t2_e2e t2_e2e.cpp t2_c t2_cpp)
 add_e2e_test(t3_e2e t3_e2e.cpp t3_c t3_cpp)
+add_e2e_test(t4_e2e t4_e2e.cpp t4_c t4_cpp)
 
 # тест open_file, при ситуации несуществующего input/output
 add_executable(e2e_runner_test e2e_runner_test.cpp)
