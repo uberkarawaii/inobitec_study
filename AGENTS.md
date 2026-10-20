@@ -6791,7 +6791,35 @@ Total Test time (real) =   9.37 sec
 
   прогоняю то же самое на vm:
   ```
+  Test project /home/karavai/test/inobitec_study/build/debug
+    Start 1133: e2e/runner/E2ERunner.MissingInput
+  1/3 Test #1133: e2e/runner/E2ERunner.MissingInput .......   Passed    0.00 sec
+      Start 1134: e2e/runner/E2ERunner.MissingOutputDir
+  2/3 Test #1134: e2e/runner/E2ERunner.MissingOutputDir ...   Passed    0.00 sec
+      Start 1135: e2e/runner/E2ERunner.MissingErrorDir
+  3/3 Test #1135: e2e/runner/E2ERunner.MissingErrorDir ....   Passed    0.00 sec
 
+  100% tests passed, 0 tests failed out of 3
+
+  Total Test time (real) =   0.04 sec
+  ```
+- `ctest --preset full` на винде: 
+  ```
+  1123/1123 Test #1123: e2e/runner/E2ERunner.MissingErrorDir .....................   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 1123
+
+  Total Test time (real) = 100.65 sec
+  ``` 
+  на линуксе: 
+  ```
+  ...
+            Start 1135: e2e/runner/E2ERunner.MissingErrorDir
+  1135/1135 Test #1135: e2e/runner/E2ERunner.MissingErrorDir .....................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 1135
+
+  Total Test time (real) =  12.88 sec
   ```
 
 *Что заметила при работе с deepseek*
