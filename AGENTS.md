@@ -6821,6 +6821,215 @@ Total Test time (real) =   9.37 sec
 
   Total Test time (real) =  12.88 sec
   ```
+- перехожу к переносу t2-t4 на boostproc+gtest. сначала генерация header-ожиданий из tests/expect для t2-t4, в т.ч. с общими данными, где это возможно. summary ии по итогам генерации:
+  4 заголовка из tests/expect (CP1251, без BOM, LF, без CR):
+  - expected_points.hpp — 19 общих констант для t3/t4 (покрывают 35 файлов);
+  - expected_t2.hpp — 21;
+  - expected_t3.hpp — 15;
+  - expected_t4.hpp — 34.
+- далее, внесение правок с рассчётом на вход-каталог. tests/e2e/e2e_case.hpp - добавляю флаг bool input_is_dir = false; 
+  по умолчанию - не каталог. далее, в tests/e2e/e2e_runner.hpp/.cpp file_closer/file_ptr переношу в заголовок и делаю обёртку open_input над приватным open_file - чтобы в случае каталога на вход сам тест открыл каталог и передал раннеру, чтобы не было проблем с boostproc, когда он пытается открыть каталог. в стандартном случае - run() открывает вход по пути внутри себя. 
+- tests/e2e/e2e_test.hpp - вынос трёх логических моментов, чтобы они потом не дублировались в tN_e2e.cpp
+  - тестовые имена std::string test_name(...) - чтобы t2_norm -> t2_c_norm/t2_cpp_norm и т.п.
+  - std::string param_name(prefix, info) - для читаемости имён gtest-ов
+  - expect_case_matches - тело проверки: запуск exe, ASSERT_FALSE(r.ec), проверка совпадения кода и вывода осн. канала
+    пустоты обратного канала
+  все ф-ции инлайнятся, т.к. у ии аргумент за это решение: "лишний TU и связывание e2e_runner с gtest; для трёх функций выгоды не вижу". и также то, что уже есть аналогичный случай - tests/unit/printers.hpp. там реализации инлайнятся.
+- tests/e2e/CMakeLists.txt — функция add_e2e_test, для сборки е2е теста. выносится, т.к. t1-t4 будут собраться по одиним
+  принципам. и t1 сразу переводится на add_e2e_test
+- tests/e2e/t1_e2e.cpp переводится на tests/e2e/e2e_test.hpp (в котором и содержатся общие t1-t4 моменты). т.е. 
+  - из t1_e2e.cpp уходит t1_test_name
+  - t1_param_name переводится на param_name
+  - тело TEST_P переводится на expect_case_matches
+  - instantiate... не меняется, т.к. это именно создание экземпляров класса по матрице. никакая связанная с этим ф-ция
+    или т.п. не менялось
+- проверка
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [3/6] Building CXX object tests\e2e\CMakeFiles\e2e_runner.dir\e2e_runner.cpp.obj
+  FAILED: [code=2] tests/e2e/CMakeFiles/e2e_runner.dir/e2e_runner.cpp.obj
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_runner.cpp(109): error C2664: 'FILE *e2e::`anonymous-namespace'::open_file(const char *,const char *)': cannot convert argument 1 from 'const std::string' to 'const char *'
+  ```
+  т.е. проблема в `file_ptr open_input(const std::string& path) { return open_file(path, "rb"); }` тогда как `open_file(const char* path, const char* mode)` т.е. надо `return open_file(path.c_str(), "rb")`. ещё раз
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [1/4] Building CXX object tests\e2e\CMakeFiles\e2e_runner.dir\e2e_runner.cpp.obj
+  FAILED: [code=2] tests/e2e/CMakeFiles/e2e_runner.dir/e2e_runner.cpp.obj
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_runner.cpp(109): error C2440: 'return': cannot convert from 'FILE *' to 'std::unique_ptr<FILE,e2e::file_closer>'
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_runner.cpp(109): note: Constructor for class 'std::unique_ptr<FILE,e2e::file_closer>' is declared 'explicit'
+  ninja: build stopped: subcommand failed.
+  ```
+  не тот тип возвращается. переделыаваю в `file_ptr res(open_file(path.c_str(), "rb")); return res;` чтобы тип объекта был file_ptr. снова сборка
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [4/4] Linking CXX executable tests\e2e\t1_e2e.exe
+  ```
+  теперь тесты. 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset e2e -R "e2e/t1_e2e" --output-on-failure
+    ...
+  57/58 Test #1119: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown .........   Passed    0.11 sec
+      Start 1120: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown_multi
+  58/58 Test #1120: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown_multi ...   Passed    0.23 sec
+
+  100% tests passed, 0 tests failed out of 58
+
+  Total Test time (real) =   8.23 sec
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset e2e -R "e2e/runner/" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+    Start 1121: e2e/runner/E2ERunner.MissingInput
+  1/3 Test #1121: e2e/runner/E2ERunner.MissingInput .......   Passed    0.13 sec
+      ...
+
+  100% tests passed, 0 tests failed out of 3
+
+  Total Test time (real) =   0.22 sec
+  ```
+
+  ```
+  cmake --preset debug
+  cmake --build build/debug
+  ctest --preset e2e -R "e2e/t1_e2e" --output-on-failure   # ожидаем 58/58, имена как в baseline
+  ctest --preset e2e -R "e2e/runner/" --output-on-failure  # 3/3
+  cmake --build build/debug --target format-check          # format is correct
+  ```
+- негатив. контроль : добавляю fprintf(stderr, "k"); в успешную ветку t1_c, перед return 0. собираю, прогоняю -R
+  t1_c_norm:
+  ```
+    Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 1078: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  1/1 Test #1078: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...***Failed    0.11 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = All/T1E2E.Matches/t1_c_norm
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from All/T1E2E
+  [ RUN      ] All/T1E2E.Matches/t1_c_norm
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(74): error: Value of: other.empty()
+    Actual: false
+  Expected: true
+  reverse channel (stderr) is not empty: 1 byte(s)
+
+  [  FAILED  ] All/T1E2E.Matches/t1_c_norm, where GetParam() = (c, t1_norm) (98 ms)
+  [----------] 1 test from All/T1E2E (98 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (98 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] All/T1E2E.Matches/t1_c_norm, where GetParam() = (c, t1_norm)
+
+  1 FAILED TEST
+
+
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =   0.19 sec
+
+  The following tests FAILED:
+    1078 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm (Failed)
+  ```
+  убираю намеренную ошибку, персобираю: 
+  ```
+  ctest --test-dir build/debug -R t1_c_norm --output-on-failure 
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+    Start 1078: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  1/1 Test #1078: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...   Passed    0.13 sec
+
+  100% tests passed, 0 tests failed out of 1
+
+  Total Test time (real) =   0.22 sec
+  ```
+  и `ctest --preset e2e -R "e2e/t1_e2e" -> 100% tests passed, 0 tests failed out of 58 Total Test time (real) =   8.01 sec`
+- далее тесты t2. для начала, тестовая матрица с кейсами t2_cases.hpp. говорю ии её сгенерировать, просматириваю кейсы. 
+  аналогично тому, как было в cases.cmake
+- tests/e2e/t2_e2e.cpp - вызов ф-ции для имени из хелпера, сьют, TEST_P, инстансы. пишу по аналогии с t1, говорю ии
+  проверить меня. после в cmakelists.txt Добавляю add_e2e_test(t2_e2e...) и прогоняю реконфиг, билд, проверку формата, и `ctest --preset e2e -R "e2e/t2_e2e" --output-on-failure`
+  ```
+  ...
+        Start 1181: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown
+  61/62 Test #1181: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown ...........   Passed    0.15 sec
+        Start 1182: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown_multi
+  62/62 Test #1182: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown_multi .....   Passed    0.13 sec
+
+  100% tests passed, 0 tests failed out of 62
+
+  Total Test time (real) =   9.16 sec
+  ```
+- негатив. контроль: в t2_cases.hpp меняю t2_cases.hpp t2_norm с exit_code::success на data; там же - ожидание t2_plus меняю с kT2Norm на kT2OneVertex; t2_c перед return 0 ставлю fprintf(stderr, "k"). формат, билд, `ctest --preset e2e -R "e2e/t2_e2e" --output-on-failure`
+  ```
+  ...
+        Start 1137: e2e/t2_e2e/All/T2E2E.Matches/t2_c_norm
+  17/62 Test #1137: e2e/t2_e2e/All/T2E2E.Matches/t2_c_norm ....................***Failed    0.11 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(67): error: Expected equality of these values:
+    r.code
+      Which is: 0
+    c.expected_code
+      Which is: 65
+  ...
+        Start 1138: e2e/t2_e2e/All/T2E2E.Matches/t2_c_plus
+  18/62 Test #1138: e2e/t2_e2e/All/T2E2E.Matches/t2_c_plus ....................***Failed    0.12 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(71): error: Expected equality of these values:
+    got
+      Which is: "\xD4\xE8\xE3\xF3\xF0\xE0 \xAB\xE7\xE2\xE5\xE7\xE4\xE0\xBB: 6 \xE2\xE5\xF0\xF8\xE8\xED."
+    want
+      Which is: "\xD4\xE8\xE3\xF3\xF0\xE0 \xAB\xF3\xE3\xEE\xEB\xBB: 1 \xE2\xE5\xF0\xF8\xE8\xED\xE0."
+    ...  
+    23/62 Test #1143: e2e/t2_e2e/All/T2E2E.Matches/t2_c_one_vertex ..............***Failed    0.23 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\e2e\e2e_test.hpp(74): error: Value of: other.empty()
+    Actual: false
+  Expected: true
+  reverse channel (stderr) is not empty: 1 byte(s)
+  ...
+  85% tests passed, 9 tests failed out of 62
+
+  Total Test time (real) =   7.68 sec
+
+  The following tests FAILED:
+    1137 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_norm (Failed)
+    1138 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_plus (Failed)
+    1139 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_leading_spaces (Failed)
+    1140 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_space_plus (Failed)
+    1141 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_leading_zero (Failed)
+    1142 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_name_with_spaces (Failed)
+    1143 - e2e/t2_e2e/All/T2E2E.Matches/t2_c_one_vertex (Failed)
+    1168 - e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_norm (Failed)
+    1169 - e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_plus (Failed)
+  ```
+  откатываю ошибки, пересборка, тест
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset e2e -R "e2e/t2_e2e" --output-on-failure
+  ...
+        Start 1181: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown
+  61/62 Test #1181: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown ...........   Passed    0.23 sec
+        Start 1182: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown_multi
+  62/62 Test #1182: e2e/t2_e2e/All/T2E2E.Matches/t2_cpp_arg_unknown_multi .....   Passed    0.12 sec
+
+  100% tests passed, 0 tests failed out of 62
+
+  Total Test time (real) =   8.50 sec
+  ```
+- удаляю старую обвязку - эталоны из tests/expected/t2_* и из cases.cmake. делаю реконфиг, сборку и тесты:
+  ```
+  ctest --preset e2e -R "e2e/t2_e2e" --output-on-failure  
+  ...
+  100% tests passed, 0 tests failed out of 62
+  Total Test time (real) =   8.29 sec
+
+  ctest --preset full --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 999
+  Total Test time (real) =  90.91 sec
+
+  PS C:\Users\User\Desktop\inobitec_stud> ctest -N | Select-String "t2_(c|cpp)_.*_(code|stderr|stdout)$"
+  PS C:\Users\User\Desktop\inobitec_stud> # пусто - значит тесты со старыми именами ушли
+  ```
 
 *Что заметила при работе с deepseek*
 - что ии заметил по архитектуре в обвязке:
@@ -6851,6 +7060,9 @@ Total Test time (real) =   9.37 sec
 
 *Что не получилось*
 - TODO: после переноса t2-t4 написать документацию - readme, changelog (в изв. ограничениях обязательно упомянуть, что v1 может перейти в v2, и что v1 выбран ввиду описанного в тексте курса)
+- TODO: от ии "boost::process v1 на Windows реально вызывает CreateProcessA (executor.hpp:189 + boost/winapi/process.hpp:447) — ограничение «только ASCII-пути» остаётся в силе, формулировку в README надо уточнить, а не удалять"
+- TODO: от ии "проверку обратного канала в helper’е стоит сделать чуть информативнее, чем сейчас: EXPECT_TRUE(other.empty()) << "reverse channel is not empty: " << other.size() << " byte(s)" — тогда при Actual: false сразу видно, что засорился не тот канал и насколько. Основной канал и код уже дают значения в сообщении."
+
 
 ## 8. Диалоги с DeepSeek
 

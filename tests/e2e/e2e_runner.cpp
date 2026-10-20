@@ -12,19 +12,11 @@
 #include <vector>
 
 namespace e2e {
+
 namespace {
 
 // сокращение namespace
 namespace bp = boost::process::v1;
-
-struct file_closer {
-    void operator()(std::FILE* f) const noexcept {
-        if (f)
-            std::fclose(f);
-    }
-};
-
-using file_ptr = std::unique_ptr<std::FILE, file_closer>;
 
 // открытие файла - под виндой с fopen_s т.к. fopen провоцирует warning, небезопасный
 // под линуксом fopen_s не существует
@@ -112,4 +104,11 @@ run_result run_with_stdin(std::FILE* in, const std::string& exe1, const std::vec
                           const std::string& out_path, const std::string& err_path) {
     return run_impl(exe1, args1, in, out_path, err_path);
 }
+
+// nullptr + errno при ошибке; нужен для подачи каталога в stdin
+file_ptr open_input(const std::string& path) {
+    file_ptr res(open_file(path.c_str(), "rb"));
+    return res;
+}
+
 } // namespace e2e

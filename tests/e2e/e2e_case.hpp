@@ -21,6 +21,8 @@ struct Case {
     int expected_code;
     Stream primary;
     std::string_view expected;
+    // stdin Ч каталог, а не файл (io-fail); поле input не используетс€
+    bool input_is_dir = false;
 };
 
 // ƒл€ gtest: печатаем только ASCII-метки, без сырых CP1251-байт.

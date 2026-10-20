@@ -100,5 +100,6 @@ int main(int argc, char* argv[]) {
     printf("Фигура «%s»: %" PRId32 " %s.\n", clean_s, N, words[vertex_form_index(N)]);
     free(s);
     free(s_num);
+
     return 0;
 }

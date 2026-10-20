@@ -1,11 +1,25 @@
 #pragma once
 
 #include <cstdio> // std::FILE
+#include <memory>
 #include <string>
 #include <system_error> // std::error_code
 #include <vector>
 
 namespace e2e {
+
+struct file_closer {
+    void operator()(std::FILE* f) const noexcept {
+        if (f)
+            std::fclose(f);
+    }
+};
+
+using file_ptr = std::unique_ptr<std::FILE, file_closer>;
+
+// nullptr + errno при ошибке; нужен для подачи каталога в stdin
+file_ptr open_input(const std::string& path);
+
 // данные, которые нужно снять при запуске ребёнка
 struct run_result {
     std::error_code ec; // ошибка запуска/ожидания - статус от boostproc
