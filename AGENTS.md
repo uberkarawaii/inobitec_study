@@ -6627,7 +6627,202 @@ Errors while running CTest
   Errors while running CTest
  ```
  падает всё выше/ниже нормы и успешные тесты. т.к. там обратный канал засоряется. откатываю намеренные ошибки, пересобираю и `ctest --test-dir build/debug -R "e2e/t1_e2e" -> 100% tests passed, 0 tests failed out of 58 Total Test time (real) =   7.51 sec`
-- убираю старую систему тестирования для t1 из cases.cmake? удаляю для них же эталоны из /expect/t1_*. и 4 файла зонда перемещаю в sandbox. `cmake --build build/debug --target format` и `ctest --preset full -> 100% tests passed, 0 tests failed out of 1120 Total Test time (real) =  95.56 sec`
+- убираю старую систему тестирования для t1 из cases.cmake; удаляю для них же эталоны из /expect/t1_*. и 4 файла зонда перемещаю в sandbox. `cmake --build build/debug --target format` и `ctest --preset full -> 100% tests passed, 0 tests failed out of 1120 Total Test time (real) =  95.56 sec`
+- делаю прогон на vm. Так же реконфиг, сборка и full-тесты 
+```
+Test project /home/karavai/test/inobitec_study/build/debug
+          Start    1: format-check
+1/1132 Test    #1: format-check .............................................   Passed    0.54 sec
+          Start    2: t2_c_eof_name_code
+2/1132 Test    #2: t2_c_eof_name_code .......................................   Passed    0.01 sec
+...
+          Start 1131: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown
+1131/1132 Test #1131: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown ..........   Passed    0.01 sec
+          Start 1132: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown_multi
+1132/1132 Test #1132: e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_arg_unknown_multi ....   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 1132
+
+Total Test time (real) =   9.37 sec
+```
+
+# 2026-10-20
+*Что сделано*
+- релизный прогон, в т.ч. на vm:
+  ```
+  cmake --fresh --preset release
+  ...
+  -- Found Threads: TRUE
+  -- Boost 1.92.0 is one of tested 1.92.0
+  -- Configuring done (24.6s)
+  -- Generating done (0.2s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/release
+
+  cmake --build build/release
+  [88/88] Linking CXX executable tests\e2e\t1_e2e.exe
+
+  ctest --preset full-release --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 1120
+
+  Total Test time (real) =  27.01 sec
+  ```
+  vm:
+  ```
+  cmake --fresh --preset 
+  ...
+  -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+  -- Found Threads: TRUE
+  -- GTest 1.18.0 is one of tested 1.18.0
+  -- Boost 1.92.0 is one of tested 1.92.0
+  -- Configuring done (2.7s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/release
+
+  cmake --build build/release
+  ...
+  [19/20] Building CXX object tests/e2e/CMakeFiles/t1_e2e.dir/t1_e2e.cpp.o
+  [20/20] Linking CXX executable tests/e2e/t1_e2e
+
+  ctest --preset full-release --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 1132
+
+  Total Test time (real) =   3.90 sec
+  ```
+- негатив. контроль на vm. сначала порчу каналы, как и до этого на винде (при N < 3 || N > 20 и перед финал.выводом пишу что-то в обр. канал), `ctest --test-dir build/debug -R "e2e/t1_e2e" --output-on-failure`
+  ```
+  ...
+  69% tests passed, 18 tests failed out of 58
+
+  Total Test time (real) =   0.60 sec
+
+  The following tests FAILED:
+    1079 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_high (Failed)
+    1080 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_low (Failed)
+    1088 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_int32_max (Failed)
+    1090 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm (Failed)
+    1091 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_plus (Failed)
+    1092 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_leading_spaces (Failed)
+    1093 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_test2 (Failed)
+    1094 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_space_plus (Failed)
+    1095 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_leading_zero (Failed)
+    1108 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_high (Failed)
+    1109 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_low (Failed)
+    1117 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_int32_max (Failed)
+    1119 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_norm (Failed)
+    1120 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_plus (Failed)
+    1121 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_leading_spaces (Failed)
+    1122 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_test2 (Failed)
+    1123 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_space_plus (Failed)
+    1124 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_leading_zero (Failed)
+  Errors while running CTest
+  ```
+  аналогично, упали те, где значение переходило норму и все тесты с ex-code=0. откатываю печать в неверный канал, 
+  порчу версию/канал/текст/код, как было и на винде (version: хардкод 0.9.9 в common/version.h.in; в expected_t1.hpp kT1Nul = R"E2E(Получен->h пустой ввод вместо целого N)E2E"; t1_cases.hpp {"t1_abc", {}, "t1_abc", exit_code::data->usage, Stream::err, kT1Abc}, там же {"t1_spaces", {}, "t1_spaces", exit_code::no_in, Stream::err->out, kT1Nul}). после реконфиг и пересборка, `ctest --test-dir build/debug -R "e2e/t1_e2e" --output-on-failure` 
+  ```
+          Start 1075: e2e/t1_e2e/All/T1E2E.Matches/t1_c_empty
+  1/58 Test #1075: e2e/t1_e2e/All/T1E2E.Matches/t1_c_empty .................***Failed    0.01 sec
+  Running main() from /home/karavai/dev/vcpkg/buildtrees/gtest/src/v1.18.0-e6987f02b9.clean/googletest/src/gtest_main.cc
+  Note: Google Test filter = All/T1E2E.Matches/t1_c_empty
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from All/T1E2E
+  [ RUN      ] All/T1E2E.Matches/t1_c_empty
+  /home/karavai/test/inobitec_study/tests/e2e/t1_e2e.cpp:53: Failure
+  Expected equality of these values:
+    got
+      Which is: "\xCF\xEE\xEB\xF3\xF7\xE5\xED \xEF\xF3\xF1\xF2\xEE\xE9 \xE2\xE2\xEE\xE4 \xE2\xEC\xE5\xF1\xF2\xEE \xF6\xE5\xEB\xEE\xE3\xEE N"
+    want
+      Which is: "\xCF\xEE\xEB\xF3\xF7\xE5h \xEF\xF3\xF1\xF2\xEE\xE9 \xE2\xE2\xEE\xE4 \xE2\xEC\xE5\xF1\xF2\xEE \xF6\xE5\xEB\xEE\xE3\xEE N"
+
+  [  FAILED  ] All/T1E2E.Matches/t1_c_empty, where GetParam() = (c, t1_empty) (5 ms)
+  [----------] 1 test from All/T1E2E (5 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (6 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] All/T1E2E.Matches/t1_c_empty, where GetParam() = (c, t1_empty)
+
+  1 FAILED TEST
+  ...
+  83% tests passed, 10 tests failed out of 58
+
+  Total Test time (real) =   0.62 sec
+
+  The following tests FAILED:
+    1075 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_empty (Failed)
+    1076 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_abc (Failed)
+    1077 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_spaces (Failed)
+    1100 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_version (Failed)
+    1101 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_version_extra (Failed)
+    1104 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_empty (Failed)
+    1105 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_abc (Failed)
+    1106 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_spaces (Failed)
+    1129 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_version (Failed)
+    1130 - e2e/t1_e2e/All/T1E2E.Matches/t1_cpp_version_extra (Failed)
+  Errors while running CTest
+  ```
+  упали те же тесты, как и под виндой. откатываю испорченное намеренно, `ctest --preset full -> 100% tests passed, 0 tests failed out of 1132 Total Test time (real) =   8.65 sec`. 
+- делаю свежие клоны на linux, windows, прогоняю для них всю цепочку. говорю ии посмотреть логи / саму папку. несостыковок в логах он не увидел
+- во время финальных правок ии заметил, что в run_impl:
+  ```
+  file_ptr out(open_file(out_path.c_str(), "wb"));
+  file_ptr err(open_file(err_path.c_str(), "wb"));
+  if (!out || !err) {...}
+  ```
+  т.е., успешный open_file от err может затереть неудачный от out. во избежание этого вношу проверку после каждной операции с open_file
+- на финальной проверке ии в "несделано" упомянул, что нет теста для open_file для ситуации "нет input/output/err-файлов". тк. это потенциально возможная ситуация, я думаю что это надо покрыть тестом. ии советует на это отдельную gtest цель, т.к. это не t1-тест, а тест обвязки. что и делаю - `tests/e2e/e2e_runner_test.cpp` и  `e2e/CMakeLists.txt` для его сборки. пересобираю, запускаю
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "e2e/runner/"
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 1121: e2e/runner/E2ERunner.MissingInput
+  1/3 Test #1121: e2e/runner/E2ERunner.MissingInput .......   Passed    0.12 sec
+      Start 1122: e2e/runner/E2ERunner.MissingOutputDir
+  2/3 Test #1122: e2e/runner/E2ERunner.MissingOutputDir ...   Passed    0.01 sec
+      Start 1123: e2e/runner/E2ERunner.MissingErrorDir
+  3/3 Test #1123: e2e/runner/E2ERunner.MissingErrorDir ....   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 3
+
+  Total Test time (real) =   0.51 sec
+  ```
+
+  прогоняю то же самое на vm:
+  ```
+
+  ```
+
+*Что заметила при работе с deepseek*
+- что ии заметил по архитектуре в обвязке:
+  ```
+  Сейчас:
+  struct run_result { std::error_code ec; int code; int native; std::string out, err; };
+  auto r = e2e::run(...);
+  ASSERT_FALSE(r.ec);
+  EXPECT_EQ(r.code, ...);
+
+  Альтернатива:
+  std::expected<run_result, std::error_code> run(...);
+  auto r = e2e::run(...);
+  ASSERT_TRUE(r);
+  EXPECT_EQ(r->code, ...);
+  ```
+  по этому поводу deepseek говорит следующее:
+  - Плюс текущего: всегда возвращаются code/native/out/err, даже при инфраструктурной ошибке; проще для тестового harness.
+  - Плюс expected: явное разделение «успех/ошибка», идиоматичнее; но при ошибке теряются частичные данные (для текущих тестов они не нужны).
+  - Раннер — тестовая инфраструктура, не продукт; поэтому формально expected не обязателен, но наставник может захотеть единый стиль.
+
+  потому в данный момент оставлю `run_result.ec` т.к. это обвязка, не продукт, API более простой, и "partial data полезны" - т.е. в любом случае получаем комплексный объект run_result, а при std::expected в случае падения будет просто код, без подробностей. на данный момент run_result не испольузется в t1-тестах при падении, но это хорошо "диагностически"
+
+- нашёлся такой момент про t1-t2: у них нет io-fail кейсов, только у t3-t4. ии говорит что "так было и раньше".
+  возможно что причина как и до этого случалось - я что-то отложила/не сделала (типа проверки contains которая тянулась с fc на батниках, или не-перенаправления reverse-канала, что тоже вроде тянулось со слоя .bat "просто потому что я когда-то так сделала"). мне кажется, что это та же категория, скажу об этом ии. он считает, что тут не пробел, и что это тянется от условия задачи (74 упоминается только в t3, но не до этого) и это соответствие постановке задачи. 
+
+  ещё раз пробую продавить мнение, посмотреть какие у ии будут аргументы за его менение: "в t3 явно сказано про io fail как отдельную ветку, а в t4 такого не упомянуто. тогда может в t4 не нужно делать io fail ветку?". он естественно говорит, что в t4 такая ветка нужна, и что "У t1/t2 такой ветки нет: t1 fgets-сбой отдаёт 66, t2 EOF/пустоту — 66.". он уверен в том, что это не просто "так получилось", потому на данный момент оставляю как есть - t1-t2 без io fail, t3-t4 - с ним
+
+*Что не получилось*
+- TODO: после переноса t2-t4 написать документацию - readme, changelog (в изв. ограничениях обязательно упомянуть, что v1 может перейти в v2, и что v1 выбран ввиду описанного в тексте курса)
 
 ## 8. Диалоги с DeepSeek
 

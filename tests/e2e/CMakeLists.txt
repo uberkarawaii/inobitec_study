@@ -32,3 +32,14 @@ configure_target(t1_e2e OFF)
 deploy_vcpkg_dlls(t1_e2e)
 add_dependencies(t1_e2e t1_c t1_cpp)
 gtest_discover_tests(t1_e2e TEST_PREFIX "e2e/t1_e2e/" NO_PRETTY_VALUES)
+
+# тест open_file, при ситуации несуществующего input/output
+add_executable(e2e_runner_test e2e_runner_test.cpp)
+target_link_libraries(e2e_runner_test PRIVATE e2e_runner GTest::gtest_main)
+target_compile_definitions(e2e_runner_test PRIVATE
+  E2E_INPUT_DIR="${CMAKE_SOURCE_DIR}/tests/input_data"
+  E2E_RESULTS_DIR="${CMAKE_CURRENT_BINARY_DIR}/results")
+configure_target(e2e_runner_test OFF)
+deploy_vcpkg_dlls(e2e_runner_test)
+gtest_discover_tests(e2e_runner_test TEST_PREFIX "e2e/runner/")
+

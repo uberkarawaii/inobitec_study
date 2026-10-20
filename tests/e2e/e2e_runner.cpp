@@ -52,11 +52,17 @@ std::string read_file_binary(const std::string& path) {
 run_result run_impl(const std::string& exe1, const std::vector<std::string>& args1, std::FILE* in,
                     const std::string& out_path, const std::string& err_path) {
     run_result r;
+    // проверка после каждого, чтобы err не затёр, например, успешным fopen неудачный fopen out-а
     file_ptr out(open_file(out_path.c_str(), "wb"));
-    file_ptr err(open_file(err_path.c_str(), "wb"));
-    if (!out || !err) {
+    if (!out) {
         r.ec = std::error_code(errno, std::generic_category());
-        std::println(stderr, "cannot open output files: {}", r.ec.message());
+        std::println(stderr, "cannot open out file: {}", r.ec.message());
+        return r;
+    }
+    file_ptr err(open_file(err_path.c_str(), "wb"));
+    if (!err) {
+        r.ec = std::error_code(errno, std::generic_category());
+        std::println(stderr, "cannot open error file: {}", r.ec.message());
         return r;
     }
 
