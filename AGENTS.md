@@ -7228,8 +7228,89 @@ Total Test time (real) =   9.37 sec
     927 - e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_test2 (Failed)
     928 - e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_plus (Failed)
   ```
-  откатываю, пересобираю, `ctest --preset e2e -R "e2e/t4_e2e" --output-on-failure -> 100% tests passed, 0 tests failed out of 122 Total Test time (real) =  17.23 sec`. Говорю ии просмотреть логи
+  откатываю, пересобираю, `ctest --preset e2e -R "e2e/t4_e2e" --output-on-failure -> 100% tests passed, 0 tests failed out of 122 Total Test time (real) =  17.23 sec`. Говорю ии просмотреть логи, конфликтов он не нашёл
+- прогоны на вм-ке. прогон `ctest --preset e2e -R "e2e/t4_e2e" --output-on-failure 100% tests passed, 0 tests failed out of 124 Total Test time (real) =   1.43 sec`; далее негатив. контроль, порчу всё симметрично с тем, как это было на винде. пересборка и так же тесты:
+  ```
+  86% tests passed, 17 tests failed out of 124
 
+  Total Test time (real) =   1.47 sec
+
+  The following tests FAILED:
+    874 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_test1 (Failed)
+    875 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_test2 (Failed)
+    876 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_plus (Failed)
+    877 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_rad_leading_space (Failed)
+    878 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_rad_space_end (Failed)
+    879 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_test3 (Failed)
+    880 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_scientific (Failed)
+    881 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_rad_space_plus (Failed)
+    887 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_subnormal_coord (Failed)
+    888 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_leading_spaces (Failed)
+    889 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_exp_plus (Failed)
+    890 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_exp_upper (Failed)
+    891 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_exp_negative (Failed)
+    895 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_dot_trailing_coord (Failed)
+    896 - e2e/t4_e2e/All/T4E2E.Matches/t4_c_dot_leading_coord (Failed)
+    937 - e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_test2 (Failed)
+    938 - e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_plus (Failed)
+  ```
+  упали те же тесты. теперь откатываю ошибки, пересборка и `ctest --preset e2e -R "e2e/t4_e2e" --output-on-failure -> 100% tests passed, 0 tests failed out of 124 Total Test time (real) =   1.44 sec`. говорю ии просмотреть логи вм-тестов. конфликтов он не нашёл
+- удаляю старую обвязку - run_case.cpp, check.cpp, cases.cmake, папку expect - все ожидания в соотв. .hpp. 
+  из tests/CMakeLists.txt: include(cases.cmake), function(add_case ...), file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results"), add_executable(run_case run_case.cpp) и configure_target(run_case OFF) - так же для check. делаю реконфиг, билд и `ctest --preset full`
+  ```
+  ...
+  588/591 Test #588: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.14 sec
+        Start 589: e2e/runner/E2ERunner.MissingInput
+  589/591 Test #589: e2e/runner/E2ERunner.MissingInput ...............................   Passed    0.05 sec
+          Start 590: e2e/runner/E2ERunner.MissingOutputDir
+  590/591 Test #590: e2e/runner/E2ERunner.MissingOutputDir ...........................   Passed    0.11 sec
+          Start 591: e2e/runner/E2ERunner.MissingErrorDir
+  591/591 Test #591: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 591
+
+  Total Test time (real) =  93.74 sec
+  ```
+  то же делаю и для релиза: `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  25.96 sec`. 
+  паралл. прогоны:
+  ```
+  ctest --preset full -j8
+          Start  12: parse_point_cpp/OkCases/ParsePointOk.Parses/10
+  583/591 Test   #9: parse_point_cpp/OkCases/ParsePointOk.Parses/7 ...................   Passed    0.68 sec
+          Start  24: parse_point_cpp/ErrCases/ParsePointErr.Rejects/11
+  584/591 Test   #7: parse_point_cpp/OkCases/ParsePointOk.Parses/5 ...................   Passed    0.64 sec
+  585/591 Test  #17: parse_point_cpp/ErrCases/ParsePointErr.Rejects/4 ................   Passed    0.66 sec
+  586/591 Test  #26: parse_point_cpp/ErrCases/ParsePointErr.Rejects/13 ...............   Passed    0.63 sec
+  587/591 Test  #21: parse_point_cpp/ErrCases/ParsePointErr.Rejects/8 ................   Passed    0.62 sec
+  588/591 Test   #6: parse_point_cpp/OkCases/ParsePointOk.Parses/4 ...................   Passed    0.63 sec
+  589/591 Test  #10: parse_point_cpp/OkCases/ParsePointOk.Parses/8 ...................   Passed    0.55 sec
+  590/591 Test  #12: parse_point_cpp/OkCases/ParsePointOk.Parses/10 ..................   Passed    0.45 sec
+  591/591 Test  #24: parse_point_cpp/ErrCases/ParsePointErr.Rejects/11 ...............   Passed    0.46 sec
+
+  100% tests passed, 0 tests failed out of 591
+
+  Total Test time (real) =  50.61 sec
+
+  ctest --preset full-release -j8
+  ...
+  582/591 Test  #13: parse_point_cpp/ErrCases/ParsePointErr.Rejects/0 ................   Passed    0.13 sec
+        Start   5: parse_point_cpp/OkCases/ParsePointOk.Parses/3
+  583/591 Test  #20: parse_point_cpp/ErrCases/ParsePointErr.Rejects/7 ................   Passed    0.02 sec
+          Start  17: parse_point_cpp/ErrCases/ParsePointErr.Rejects/4
+  584/591 Test   #6: parse_point_cpp/OkCases/ParsePointOk.Parses/4 ...................   Passed    0.03 sec
+  585/591 Test  #27: parse_point_cpp/ErrCases/ParsePointErr.Rejects/14 ...............   Passed    0.13 sec
+  586/591 Test   #5: parse_point_cpp/OkCases/ParsePointOk.Parses/3 ...................   Passed    0.03 sec
+  587/591 Test  #75: parse_int32_cpp/ErrCases/ParseInt32Err.Rejects/2 ................   Passed    0.12 sec
+  588/591 Test  #17: parse_point_cpp/ErrCases/ParsePointErr.Rejects/4 ................   Passed    0.01 sec
+  589/591 Test  #18: parse_point_cpp/ErrCases/ParsePointErr.Rejects/5 ................   Passed    0.11 sec
+  590/591 Test  #29: parse_point_cpp/ErrCases/ParsePointErr.Rejects/16 ...............   Passed    0.11 sec
+  591/591 Test  #24: parse_point_cpp/ErrCases/ParsePointErr.Rejects/11 ...............   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 591
+
+  Total Test time (real) =   7.20 sec
+  ```
+- теперь прогоны на вм
 
 *Что заметила при работе с deepseek*
 - что ии заметил по архитектуре в обвязке:
