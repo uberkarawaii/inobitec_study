@@ -7310,7 +7310,68 @@ Total Test time (real) =   9.37 sec
 
   Total Test time (real) =   7.20 sec
   ```
-- теперь прогоны на вм
+- теперь прогоны тестов на вм, сразу параллельные:
+  ```
+  ctest --preset full -j8
+  ...
+  592/595 Test #289: e2e/t1_e2e/All/T1E2E.Matches/t1_c_help_short_extra ..............   Passed    0.02 sec
+  593/595 Test #274: e2e/t1_e2e/All/T1E2E.Matches/t1_c_plus_only .....................   Passed    0.02 sec
+  594/595 Test #287: e2e/t1_e2e/All/T1E2E.Matches/t1_c_help_short ....................   Passed    0.02 sec
+  595/595 Test #288: e2e/t1_e2e/All/T1E2E.Matches/t1_c_help_extra ....................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 595
+
+  Total Test time (real) =   3.02 sec
+
+  ctest --preset full-release -j8
+  ...
+  591/595 Test #591: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version .....................   Passed    0.01 sec
+  592/595 Test #592: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.01 sec
+  593/595 Test #593: e2e/runner/E2ERunner.MissingInput ...............................   Passed    0.00 sec
+  594/595 Test #594: e2e/runner/E2ERunner.MissingOutputDir ...........................   Passed    0.00 sec
+  595/595 Test #595: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 595
+
+  Total Test time (real) =   1.02 sec
+  ```
+- прогон тестов чистых клонов. на винде
+  ```
+  ctest --preset full -j8
+  ...
+  589/591 Test #586: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_help_short_extra ............   Passed    0.52 sec
+  590/591 Test #587: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version .....................   Passed    0.49 sec
+  591/591 Test #588: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.42 sec
+
+  100% tests passed, 0 tests failed out of 591
+
+  Total Test time (real) =  42.91 sec
+
+  ctest --preset full-release -j8
+  ...
+  589/591 Test #583: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_help ........................   Passed    0.12 sec
+  590/591 Test #584: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_help_short ..................   Passed    0.12 sec
+  591/591 Test #591: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 591
+
+  Total Test time (real) =   5.59 sec
+  ```
+  на вм-ке
+  ```
+  ctest --preset full -j8
+  ...
+  100% tests passed, 0 tests failed out of 595
+
+  Total Test time (real) =   3.08 sec
+
+  ctest --preset full-release -j8
+  ...
+  100% tests passed, 0 tests failed out of 595
+
+  Total Test time (real) =   1.08 sec
+  ```
+- нужно задокументировать изменения. вношу изменения в readme
 
 *Что заметила при работе с deepseek*
 - что ии заметил по архитектуре в обвязке:
@@ -7342,8 +7403,13 @@ Total Test time (real) =   9.37 sec
 *Что не получилось*
 - TODO: после переноса t2-t4 написать документацию - readme, changelog (в изв. ограничениях обязательно упомянуть, что v1 может перейти в v2, и что v1 выбран ввиду описанного в тексте курса)
 - TODO: от ии "boost::process v1 на Windows реально вызывает CreateProcessA (executor.hpp:189 + boost/winapi/process.hpp:447) — ограничение «только ASCII-пути» остаётся в силе, формулировку в README надо уточнить, а не удалять"
-- TODO: от ии "проверку обратного канала в helper’е стоит сделать чуть информативнее, чем сейчас: EXPECT_TRUE(other.empty()) << "reverse channel is not empty: " << other.size() << " byte(s)" — тогда при Actual: false сразу видно, что засорился не тот канал и насколько. Основной канал и код уже дают значения в сообщении."
 
+# 2026-10-21
+*Что сделано*
+- раздел [Структура](README.md#структура) в README.md дописан в соотв. с изменениями; в раздел [Версии инструментов](README.md#версии-инструментов) дописана строка про boostproc
+- [CHANGELOG.md](CHANGELOG.md) Unreleased внесены моменты, добавленные/удалённые при внедрении слоя 20
+- изменения накопились и логически слой 20 завершён, так что поднимаю версию. в [CHANGELOG.md](CHANGELOG.md) то, что было под unreleased, переименовываю в новую версию [0.2.0] - 2026-10-21. и в CMakeLists.txt также меняю версию проекта на 0.2.0. прогоняю cmake --preset debug + build + `ctest --preset full -> 100% tests passed, 0 tests failed out of 591 Total Test time (real) =  83.53 sec` и то же для release, `ctest --preset full-release -> 100% tests passed, 0 tests failed out of 591 Total Test time (real) =  27.71 sec`; deepseek напомнил что нужно поднять версию также в vcpkg.json, поднимаю до 0.2.0 и там
+- ещё раз прогоняю реконфиг, билд, тесты на винде (дебаг `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  90.69 sec` и релиз `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  27.15 sec`) и линуксе, отдаю ии логи тестов.
 
 ## 8. Диалоги с DeepSeek
 

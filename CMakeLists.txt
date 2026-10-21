@@ -71,7 +71,7 @@ set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Deploy vcpkg runtime DLLs via CMake inst
 # имя проекта сохранится в CMAKE_PROJECT_NAME
 # определяются яызки проекта: с с++; определится компилятор; 
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
-project(inobitec_stud VERSION 0.1.0 LANGUAGES C CXX)
+project(inobitec_stud VERSION 0.2.0 LANGUAGES C CXX)
 
 # === ПРОВЕРКА ВЕРСИЙ КОМПОНЕНТОВ ===
 # файл с ф-цией проверки и константами версий компонентов
