@@ -7409,7 +7409,7 @@ Total Test time (real) =   9.37 sec
 - раздел [Структура](README.md#структура) в README.md дописан в соотв. с изменениями; в раздел [Версии инструментов](README.md#версии-инструментов) дописана строка про boostproc
 - [CHANGELOG.md](CHANGELOG.md) Unreleased внесены моменты, добавленные/удалённые при внедрении слоя 20
 - изменения накопились и логически слой 20 завершён, так что поднимаю версию. в [CHANGELOG.md](CHANGELOG.md) то, что было под unreleased, переименовываю в новую версию [0.2.0] - 2026-10-21. и в CMakeLists.txt также меняю версию проекта на 0.2.0. прогоняю cmake --preset debug + build + `ctest --preset full -> 100% tests passed, 0 tests failed out of 591 Total Test time (real) =  83.53 sec` и то же для release, `ctest --preset full-release -> 100% tests passed, 0 tests failed out of 591 Total Test time (real) =  27.71 sec`; deepseek напомнил что нужно поднять версию также в vcpkg.json, поднимаю до 0.2.0 и там
-- ещё раз прогоняю реконфиг, билд, тесты на винде (дебаг `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  90.69 sec` и релиз `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  27.15 sec`) и линуксе, отдаю ии логи тестов.
+- ещё раз прогоняю реконфиг, билд, тесты на винде (дебаг `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  90.69 sec` и релиз `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  27.15 sec`) и линуксе (`100% tests passed, 0 tests failed out of 595 Total Test time (real) =   7.57 sec` release `100% tests passed, 0 tests failed out of 595 Total Test time (real) =   2.06 sec`), отдаю ии логи тестов.
 
 ## 8. Диалоги с DeepSeek
 
