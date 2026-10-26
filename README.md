@@ -105,6 +105,30 @@
       задачи. tN_e2e.cpp содержит ф-цию формирования имени теста - вызов inline-ф-ции param_name из e2e_test.hpp; создание `suite T*E2E` и вызов стандартной gtest ф-ции для заполнения suite TEST_P (внутри также вызов инлайна expect_case_matches из e2e_test.hpp); INSTANTIATE_TEST_SUITE_P - создание экземпляра `T*E2E` для каждого кейса из тестовой матрицы
     - **/tests/e2e/version_expected.h.in** - генерация заголовка по @PROJECT_VERSION@ для теста на версионирование (что выводят t1-t4 при --version и сходится ли это с реальным @PROJECT_VERSION@)
 
+### Установка окружения
+
+1. VS Build Tools 2026:
+```
+vs_BuildTools.exe --add Microsoft.VisualStudio.Workload.MSBuildTools
+vs_BuildTools.exe --add Microsoft.VisualStudio.Component.TestTools.BuildTools   # нужен только для coverage-слоя
+```
+
+2. Git (в PATH).
+3. CMake и Ninja: входят в Build Tools; отдельно ставить не обязательно.
+   Проверить: cmake --version, ninja --version.
+4. vcpkg: см. раздел [vcpkg-часть](#vcpkg-часть); задать VCPKG_DEV_ROOT.
+   Для x64 Native Tools - VCPKG_DEV_ROOT (VCPKG_ROOT перекрывается).
+5. Опционально:
+   - clang-format (format-check);
+   - cdb / Debugging Tools for Windows (отладка);
+   - FAR (файловый менеджер).
+
+Проверка:
+```
+where cl
+Microsoft.CodeCoverage.Console --version
+git --version
+```
 
 ### Версии инструментов
 | инструмент | минималка/источник по документации | проверено на |
@@ -118,8 +142,10 @@
 | vcpkg (baseline портов) | закреплена в SHA, vcpkg.json builtin-baseline |
 | vcpkg-tool | минималки нет | 2026-07-27 (release tag из scripts/vcpkg-tool-metadata.txt) |
 | git | любая 2.x и выше | 2.54 / 2.53 |
+| Microsoft.CodeCoverage.Console | 18.0 | 18.7 |
 Минималка компиляторов задана самой жёсткой используемой фичей: std::print/println (GCC 14, MSVC 19.37). 
-Точка истины минималок и версий, на которых было протестировано, - `cmake/toolchain_versions.cmake`
+Точка истины минималок и версий, на которых было протестировано, - `cmake/toolchain_versions.cmake`. 
+*coverage в build tools - опциональный компонент, содержащийся в Microsoft.VisualStudio.Component.TestTools.BuildTools*
 
 При версии инструмента, строго ниже минимума, будет `FATAL_ERROR` - конфиг остановится; при версии >= минимума, но не входящей в список проверенных версий, будет `WARNING` - такая версия легитимна, но практически на ней не проверяли; при версии из списка проверенных *_TESTED, будет выведено `STATUS` - информация об этом. 
 
@@ -147,7 +173,9 @@
 
 #### пресеты
 теперь конфигурация идёт не через `cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=...`, 
-а через лист пресетов CMakePresets.json. посмотреть доступные пресеты:
+а через лист пресетов CMakePresets.json. при ручном конфиге: -DCMAKE_BUILD_TYPE=Coverage (или Debug/Release - регистр важен)
+
+посмотреть доступные пресеты:
 ```
 cmake --list-presets
 ```

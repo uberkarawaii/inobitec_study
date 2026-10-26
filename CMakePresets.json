@@ -15,6 +15,13 @@
       "binaryDir": "${sourceDir}/build/release",
       "toolchainFile": "$env{VCPKG_DEV_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "coverage",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/coverage",
+      "toolchainFile": "$env{VCPKG_DEV_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Coverage" }
     }
   ],
   "testPresets": [

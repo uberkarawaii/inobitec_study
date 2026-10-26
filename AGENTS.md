@@ -7411,6 +7411,593 @@ Total Test time (real) =   9.37 sec
 - изменения накопились и логически слой 20 завершён, так что поднимаю версию. в [CHANGELOG.md](CHANGELOG.md) то, что было под unreleased, переименовываю в новую версию [0.2.0] - 2026-10-21. и в CMakeLists.txt также меняю версию проекта на 0.2.0. прогоняю cmake --preset debug + build + `ctest --preset full -> 100% tests passed, 0 tests failed out of 591 Total Test time (real) =  83.53 sec` и то же для release, `ctest --preset full-release -> 100% tests passed, 0 tests failed out of 591 Total Test time (real) =  27.71 sec`; deepseek напомнил что нужно поднять версию также в vcpkg.json, поднимаю до 0.2.0 и там
 - ещё раз прогоняю реконфиг, билд, тесты на винде (дебаг `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  90.69 sec` и релиз `100% tests passed, 0 tests failed out of 591 Total Test time (real) =  27.15 sec`) и линуксе (`100% tests passed, 0 tests failed out of 595 Total Test time (real) =   7.57 sec` release `100% tests passed, 0 tests failed out of 595 Total Test time (real) =   2.06 sec`), отдаю ии логи тестов.
 
+# 2026-10-22
+*Что сделано*
+- начала беседу с ии по Coverage-этапу. понятия и смысл в общих чертах
+  - блок - участок кода, где ветвление может быть только по краям, внутри же оно линейно. вызов ф-ции не оканчивает блок в отличие от goto/return.
+  - строка - прямо строка кода из файла с кодом. 
+
+  это два разных пути разбиения кода, они могут пересекаться в разных пропорциях - в одной строке может быть N блоков, в одном блоке - N строк. со слов ии, но обычно происходит так: в блоке несколько строк; строка содержит несклько блоков. **мельчайшей единицей** будет машинная **инструкция**, у которой есть два параметра - "внутри какого блока" и "внутри какой строки". две разные метрики. от ии: *инструкция — это бинарный уровень. Один оператор исходника может дать несколько инструкций, а одна инструкция — приписана к строке. Соответствие «оператор ↔ инструкция» не 1:1, поэтому и появляется вся эта путаница со строками.*
+
+  от ии: *Отчёт покрытия — это проекция попаданий по блокам на ярлык «строка»"*. т.е., счётчики по блокам свернутся в пересчёте на строку. невозможно будет узнать, в каком порядке были выполнены блоки; какой из них остался нулевым 
+  (т.к. для строки это будет просто "покрыта неполностью", без деталей). мы знаем только статус для строки и какие инструкции в неё попали (из pdb отчёта). 
+
+  пример разбиения на строки и блоки от ии. код и разбиение на строки
+  ```
+  if (n < 3 || n > 20)           // строка 1
+    return data;                 // строка 2
+  // ... след. строка  // строка 3
+  ```
+  разбиение на блоки - по смыслу их 4шт: (и наглядно от ии)
+  - [n<3? услов.переход в return/негатив.ветку] В1
+  - [n<3? услов.переход в return/негатив.ветку] В2
+  - [return] В3
+  - [негатив. ветка] В4
+  ```
+   B1: [вычислить n<3; условный переход]
+             /  true            \ false
+            v                    v
+        B3: [return data]     B2: [вычислить n>20; условный переход]
+             ^                   /  true      \ false
+             \__________________/              v
+                                            B4: [продолжение после if]
+  ```
+  Сценарии: 1) например даём n=1. выполнятся ветки В1 и В3 2) n=25 - В1, В2 и В3 3) n=18 - В1, В2, В4. при /Оd структура девера близка к нарисованной. а при оптимизации /О2 дерево может выглядеть и не так.
+  (*и тут видно что из-за || short-circuit evaluation если первый операнд TRUE, то второй даже не проверится*)
+
+  отчёт в виде line- и block- метрик позволяет увидеть покрытие кода тестовыми значениями - как много веток проверяется?
+  при этом, составлять тесты с опорой чисто на покрытие приведёт к недостатку "смыслового покрытия". то есть, например, у меня где-то есть условие N < 3 || N > 20. я возьму 2, 3, 20, 21 - по краям значения. и покрытие кода будет ok. но при этом не покрыта ситуация min/max типа int - какое поведение будет при этих значениях? они вообще платформенно равны? т.е. есть то, что покрытием кода не ловится. **coverage для полноты тестов необходим, но не достаточен.** *Поэтому покрытие — поисковик пробелов, а не оценка качества; смысл появляется только вместе с ассертами на наблюдаемое поведение (код возврата, stdout, stderr).*
+  
+  и стремиться к 100% покрытию не нужно - может быть реально недостижимая ветка (например в платформ.-зависимом блоке, или проверка указателя на nullptr - чего по-хорошему и не должно происходить) - тогда нужно её комментировать, что она не покрыта осмысленно. от ии: "Реакция бывает трёх видов: добавить тест, удалить код, задокументировать «недостижимо, потому что …». Третий вариант — самый частый соблазн соврать."
+
+- Microsoft.CodeCoverage.Console может работать как в статике (instrument/uninstrument - вшивать хуки/счётчики в копию исп. файла), так и в динамике (collect - запускает файл и инструментирует его в памяти). вот эта работа с "вшиванием" (не важно на статике/динамике) называется **инструментированием**
+
+  то треку курса предполагается collect, который работает в динамике. он запускает процесс, приостанавливает его, вшивает в прологи блоков jump-ы до счётчика, где делается +1, после чего jump в прежнее место (делается так, чтобы не нарушить перемещения по относит. адресации и пр. моменты)
+
+- под покрытие будет отдельная сборка, а значит и отдельная папка /build/coverage. почему отдельная сборка а не гонять на том же release:
+  - на release /Ob2, хотя для coverage нужен /Ob1 (Ob1 говорит инлайнить только то, что явно объявлено для инлайна. Ob2 инлайнит то, что компилятор посчитает нужным после анализа кода. а инлайн ломает инструментацию, т.к. как хорошо выразился ии "это разрушает взаимно-однозначное соответствие «строка <-> блок»")
+  - release на слое 26 будет нужен для замеров. то есть, его уже будут подо что-то использовать и лучше не смешивать
+  - от ии, из текста курса, явное требование курса: «отдельная сборка для измерения покрытия»
+
+  и на debug естественно нельзя, т.к. там ASan, который тоже лезет в память, размечает, пр. и нельзя его смешивать с coverage, который тоже полезет в память
+
+- мини практика от ии, расписать руками - что я думаю покрыто, а что нет "Возьми common/string_utils.c (parse_int32) и t1_dist_matrix_c/main.c. Выпиши: какие ветки существуют, каким конкретным кейсом из t1_cases.hpp/юнит-тестов покрывается каждая, и какие, по твоему мнению, не покрыты. Это фальсифицируемое предсказание — потом сверишь с отчётом. Ценность в расхождении: если ожидала «покрыто», а отчёт говорит «нет» — ты не понимала, какой тест что исполняет."
+
+  сделаю урезанную версию: посмотрю, какие ветки string_utils.c parse_int32 покрываются unit-тестами
+  ```
+  int parse_int32(const char* s, int32_t* out) {
+    
+    const char *start = s, *end = s + (int)strlen(s);
+    while (isspace((unsigned char)*start) && *start != '\0')
+        ++start;
+    while (end > start && isspace((unsigned char)*(end - 1)))
+        --end;
+    
+    if (start == end)
+        return NUMBER_EMPTY;
+
+    if (*start == '+') {
+        ++start;
+        if (!isdigit((unsigned char)*start))
+            return NUMBER_NOT_NUMBER;
+    }
+
+    errno = 0;
+    char* end_recogn = NULL;
+    long v = strtol(start, &end_recogn, 10);
+
+    if (errno == ERANGE || v < INT32_MIN || v > INT32_MAX)
+        return NUMBER_OUT_OF_RANGE;
+
+    if (end_recogn != end)
+        return NUMBER_NOT_NUMBER;
+
+    *out = (int32_t)v;
+    return 0;
+  }
+  ```
+  первая строка с назначением начала и конца происходит всегда, её упоминать не буду.
+  - OkCase{"5", 5}: в оба начальных while не заходим - падаем на первом условии isspace; если начало == кц - проверяем условие, но в тело не заходим; так же с первый символ == "+"; две строки до strtol и сам strtol происходит; errno стандартный, так что думаю на этом условии переходим в неявный else; зашли в проверку end_recogn != end и получили end_recogn == end потому вышли в неявный else; *out = (int32_t)v и return происходят. 
+  - OkCase{"+7", 7}: в оба начальных while не заходим - падаем на первом условии isspace; если начало == кц - проверяем условие, но в тело не заходим; в проверку символ == "+" заходим и делаем одну операцию внутри, затем по внутр. if !isdigit((unsigned char)*start) проверяем, но это не так - выходим из if{if{}}; две строки до strtol и сам strtol происходит; errno стандартный, так что думаю на этом условии переходим в неявный else; зашли в проверку end_recogn != end и получили end_recogn == end потому вышли в неявный else; *out = (int32_t)v и return происходят. 
+  - OkCase{"-3", -3} - как и с OkCase{"5", 5} - т.к. минус будет пропущен на strtol
+  - OkCase{"0", 0} - как и с OkCase{"5", 5}
+  - OkCase{"007", 7} - как и с OkCase{"5", 5} и т.к. осн. 10, не 8, то будет вычислено `0*10^2 + 0*10^1 + 7*10^0 = 7` - что сделает strtol
+  - OkCase{"2147483647", 2147483647} - как и с OkCase{"5", 5}
+  - OkCase{"-2147483648", -2147483647 - 1} - это INT32_MIN и он должен влезать в int_32 переменную  
+  - OkCase{" 42 ", 42} - в оба начальных while заходим и делаем по одной итерации в каждом; если начало == кц - проверяем условие, но в тело не заходим; так же с первый символ == "+"; две строки до strtol и сам strtol происходит; errno стандартный, так что думаю на этом условии переходим в неявный else; зашли в проверку end_recogn != end и получили end_recogn == end потому вышли в неявный else; *out = (int32_t)v и return происходят. 
+  - OkCase{" +7 ", 7}) - в оба начальных while заходим и делаем по одной итерации в каждом; если начало == кц - проверяем условие, но в тело не заходим; в проверку символ == "+" заходим и делаем одну операцию внутри, затем по внутр. if !isdigit((unsigned char)*start) проверяем, но это не так - выходим из if{if{}}; две строки до strtol и сам strtol происходит; errno стандартный, так что думаю на этом условии переходим в неявный else; зашли в проверку end_recogn != end и получили end_recogn == end потому вышли в неявный else; *out = (int32_t)v и return происходят. 
+  - ErrCase{"", NUMBER_EMPTY} - в оба начальных while не заходим - падаем на первом условии isspace; проверяем start == end и переходим внутрь тк условие срабатывает. 
+  - ErrCase{"   ", NUMBER_EMPTY} - в первый while заходим и делаем три итерации, останавлиаваемся; во второй while не заходим; проверяем start == end и переходим внутрь тк условие срабатывает. 
+  - ErrCase{"\t\n", NUMBER_EMPTY} - так же как и с ErrCase{"   ", NUMBER_EMPTY}
+
+  из того что заметил ии, когда я показала ему своё описание на этом моменте - ветка `*start != '\0'` никогда не достигается. потому это кандидат на удаление. и ещё одну вещь он заметил про `(errno == ERANGE || v < INT32_MIN || v > INT32_MAX)` - "strtol возвращает long, а его диапазон на Windows — [-2147483648; 2147483647], то есть ровно диапазон int32_t". то есть вот это `v < INT32_MIN || v > INT32_MAX)` физически не произойдёт, т.к. strtol вернёт ровно int32_t, а если будет переполнение - ровно INT32_MIN или INT32_MAX и при этом errno = ERANGE. то есть if пройдёт на первом же условии и до `v < INT32_MIN || v > INT32_MAX)` при переполнении, на которое и рассчитано это условие, выполнение не дойдёт. но на линуксе long 64 бита и переполнение ловится именно с помощью `v < INT32_MIN || v > INT32_MAX)`. потому эта часть помечается и не удаляется
+
+*Что заметила при работе с deepseek*
+- он сделал мне замечание в терминологии, сохраню его здесь: "И ещё одно различие, которое ты пока смешиваешь: исполнить ≠ проверить. Прогон по пути B1->B3 без ассерта покрывает ребро, но ничего не проверяет. Coverage меряет первое; тесты должны обеспечивать второе. "
+- ии советует, тут я пока не понимаю детали реализации. помечу этот момент. "Учитываем по исходнику, а не по модулю. common компилируется в 6 вариантов (C/C++ static/shared) и ещё в юнит-тестовые exe. Если считать по модулям, получится двойной счёт или «0%», потому что смотрела не ту копию. Правильно: объединение по файлу исходника — «строка покрыта, если исполнена хотя бы в одном модуле»" "Юнит-тесты важны для знаменателя. Они исполняют common (например, parse_int32 на out_of_range, +abc), чего e2e может не делать. Поэтому их вклад в покрытие common надо учитывать, а их собственные исходники — исключать."
+
+*Что не получилось*
+- фиксирую как факт, выяснится при реальном прогоне - "Microsoft.CodeCoverage.Console.exe есть в Build Tools 2026", а вот "Но что collect реально отработает end-to-end на твоём проекте — не проверено" 
+
+# 2026-10-23
+*Что сделано*
+- coverage будет покрывать common/geometry.c/.cpp, common/string_utils.c/.cpp, common/cli.c/.cpp, t1..t4/*/main.c/.cpp. 
+  ии с таким решением согласен. начину делать покрытие с t1_dist_matrix_c
+- т.к. сборка под coverage будет отдельная, добавляю в пресетах ещё один пресет для coverage
+- перечитываю корневой CMakeLists, чтобы сделать сборку под coverage, и там флаг DBG и он всегда ON для того, что является не-обвязкой. когда перечиатала и спросила ии, поняла что debug сборка тут не при чём, просто так помечаются продкутовые компоненты. я странно назвала эту переменную, ии также заметил, что имя DBG - сбивает. потому переименовываю DBG в PRODUCT_TARGET
+- изначально хотела задать флаги для coverage-сборки через ф-цию configure_target. но ии советует так не делать, т.к. эта ф-ция нацелена на то, чтобы расставлять флаги для целей индивидуально. а coverage-сборка будет вся с одними флагами. потому ии говорит о том, чтобы задать флаги через CMAKE_*_FLAGS_COVERAGE и CMake подхватит их на coverage-сборке. добавляю данные флаги
+- в корневом CMakeLists после project() делаю проверку Microsoft.CodeCoverage.Console. если сборка Coverage, то под windows то он должен существовать. для ветки линукса при coverage сборке пока будет FATAL ERROR, т.к. для него покрытие буду делать после того, как всё будет выполнено для windows. 
+- при проверке существования Microsoft.CodeCoverage.Console в cmakelists по совету ии добавила `OR NOT EXISTS "${MICROSOFT_COVERAGE}"`, т.к. с его слов "Кэш find_program — ситуация реальная, но редкая: обновление/ремонт VS меняет версионный путь (18.7 → 18.8), старый каталог исчезает; CMakeCache.txt помнит старый путь, if(NOT MICROSOFT_COVERAGE) его не ловит". проверка дешёвая, и она защитит, если такая ситуация возникнет
+- какую минималку ставить для Microsoft.CodeCoverage.Console. т.к. я работаю именно с VS Build Tools 2026 (в VS2026 Coverage тоже есть) - то буду смотреть именно в контексте моего тулсета, а не "какая мин.версия coverage в которой появились нужные мне возможности". т.е., для самих инструментов пороги (от ии: По MS Learn: Microsoft.CodeCoverage.Console — с VS 2022 17.3; статическое инструментирование native — с 17.2; C++ coverage в Community/Professional — только с VS 2026 (в VS 2022 — Enterprise)). т.е. нужна редакция VS 2026 в которой уже есть coverage. в release notes vs2026 18.0.0 (https://learn.microsoft.com/en-us/visualstudio/releases/2026/release-notes#november-update-1800) в разделе "Code coverage": "Code coverage is now available in Visual Studio Community and Professional editions for the first time - ensuring your code is well-tested has never been easier!" - т.е. coverage появляется для vs2026 именно там. но я ориентируюсь на vs build tools 2026 а не на ide. 
+
+  релизные заметки (https://learn.microsoft.com/en-us/visualstudio/releases/2026/release-history) в таблице соответствия 
+  
+  | Channel | Version | Release Date | Fixed-version Bootstrappers | Build Number |
+  |---|---|---|---|---|
+  | ... | ... | ... | ... | ... |
+  | Stable | 18.0.0 | November 11, 2025 | Enterprise Professional Build Tools | 11205.157 |
+
+  для build tools 18.0.0 номер сборки - 11205.157. после поисков компонентов данной версии, или по сборке, или как-либо
+  поиск не дал результатов. для ide найти что-то можно, а для самого build tools - пусто. спросила у ии, может это я плохо ищу. от ии: "Практически — да, для конкретного старого релиза Build Tools другого надёжного пути нет. Отдельной страницы «Build Tools 18.0 — список компонентов» Microsoft не публикует. Learn release history говорит только «релиз 18.0.0 существует и у него есть bootstrapper Build Tools», но не перечисляет пакеты."
+
+  скачиваю build tools 18.0.0 (https://download.visualstudio.microsoft.com/download/pr/d3b4e0f6-4bc0-4ec0-ba9c-20b355d61cc4/c3e4b70501bd09103bd52cf66d331dd29c80700fa63a2f8a872e365ff5a4282e/vs_BuildTools.exe), для извлечения метаданных выполняю `PS C:\Users\User\Downloads> .\vs_BuildTools_1.exe --layout "C:\VS_Metadata_Temp" --add Microsoft.VisualStudio.Workload.MSBuildTools --lang en-US`, захожу в C:\VS_Metadata_Temp\Catalog.json там поиск по Microsoft.CodeCoverage.Console, нахожу 
+  ```
+  ...
+  {"id":"Microsoft.CodeCoverage.Console.Targeted","version":"18.0.6.2552306","type":"Vsix","productArch":"arm64","payloads":[{"fileName":"Microsoft.CodeCoverage.Console.ARM64.vsix","sha256":"1fb383203287a3e48a7cfaeb02fcdfb5a5db719f423e99c258d4e29689b6dd89","size":2925996,"url":"https://download.visualstudio.microsoft.com/download/pr/46d5af50-9731-4bf1-9d21-8e2c3c16f575/1fb383203287a3e48a7cfaeb02fcdfb5a5db719f423e99c258d4e29689b6dd89/Microsoft.CodeCoverage.Console.ARM64.vsix","signer":{"$ref":"1"}}],"providerKey":"Microsoft.CodeCoverage.Console.Targeted,arm64","installSizes":{"targetDrive":7204175}},{"id":"Microsoft.CodeCoverage.Console.Targeted","version":"18.0.6.2552306","type":"Vsix","productArch":"x64","payloads":[{"fileName":"Microsoft.CodeCoverage.Console.X64.vsix","sha256":"d2c22abe1c3dd302a8149f19cc518ffc7d76d314e72f29fefbc70f31a0735742","size":3054606,"url":"https://download.visualstudio.microsoft.com/download/pr/46d5af50-9731-4bf1-9d21-8e2c3c16f575/d2c22abe1c3dd302a8149f19cc518ffc7d76d314e72f29fefbc70f31a0735742/Microsoft.CodeCoverage.Console.X64.vsix","signer":{"$ref":"1"}}],"providerKey":"Microsoft.CodeCoverage.Console.Targeted,x64","installSizes":{"targetDrive":7200183}},{"id":"Microsoft.CodeCoverage.Console.Targeted","version":"18.0.6.2552306","type":"Vsix","productArch":"x86","payloads":[{"fileName":"Microsoft.CodeCoverage.Console.X86.vsix","sha256":"10d63ed99c86a13b3302ea1aedc9f9148f51286123573fe68f892523f4853ce7","size":2921520,"url"
+  ...
+  ```
+  т.е. связанные с Microsoft.CodeCoverage.Console компоненты имеются. спрошу ии - что за компоненты? и подтверждает ли это, что на 18.0.0 vs build tools есть CodeCoverage?
+
+  ии почитал что я сделала и Catalog.json, нашёл цепочку зависимостей для Coverage. то, что он установил: "это не значит, что --add Microsoft.VisualStudio.Workload.MSBuildTools его ставит. Coverage в Build Tools — опциональный компонент" у меня же было верно обратное - я не устанавливала специально. 
+
+  теперь по метаданным подтверждено, что для build tools 18 0 0 есть такой компонент, и MIN 18.0 обоснован.
+  
+- в readme заношу информацию о том, что есть опциональный компонент для проверки покрытия и его надо доустанавлвать отдельно. 
+- readme добавляю раздел "Установка окружения". изначально надо было сделать приписку, что Microsoft.CodeCoverage.Console просто так не появится, но я не вижу раздела, куда это можно занести - значит нужен новый. и потом при проверке (изначально я написала неполно и спросила ии - возможно в этом разделе стоит сказать про все компоненты?) ии предложил текст раздела. так что раздел "Установка окружения" - написан почти весь ии.
+- создаю cmake/coverage.settings.xml - ии сказал, что это нужно для фильтрации отчёта и исключения тестовой обвязки tests/, gtest/boost/vcpkg. и чтобы инструментировались внуки (CollectFromChildProcesses=True). детали cmake/coverage.settings.xml :
+  - tests/unit/*.exe включаются - в них статически включён код common
+  - e2e-тесты не включаются - в них нет кода продукта, как например есть в юнит-тестах. а процессы задач они запускают отдельным процессом
+  - EnableStaticNativeInstrumentation=False - изначально динамически инструментируем, а "если отчёт будет дырявым, вернёмся к /PROFILE + статике"
+- создаю cmake/coverage.cmake для coverage-сборки. файл в скриптовом режиме CMake, выполняет:
+  - что есть пути к Microsoft.CodeCoverage.Console, build dir, report dir, etc.
+  - создаёт каталоги отчётов
+  - удаляет старые отчёты
+  - конвертирует .coverage в формат cobertura
+  - печатает путь до отчёта
+  - collect над ctest - запуск ctest как потомка и инструментация его потомков. при этом, тесты обвязки и форматирования ( -E "format-check|e2e/runner/") исключаются
+  - проверка кода возврата (что ctest, collect вернули 0) и что файл .coverage с отчётом был создан
+- добавляю coverage.settings.xml, coverage.cmake в раздел utf8 в .editorconfig 
+- в gitignore добавляю `*.coverage/*.cobertura.xml `- на случай если collect запустят без -o
+
+*Что не получилось*
+- ии сказал проверить "Проверь /MD. В CMAKE_*_FLAGS_COVERAGE его нет; CMake по умолчанию должен дать /MD для не-Debug конфигурации. Это надо подтвердить не рассуждением, а ninja -t commands в build/coverage (или cmake --build build/coverage --target t1_c --verbose). Если /MD нет — добавить."
+- подумать, что с этим сделать "CACHE ... FORCE для флагов выполняется при любой конфигурации и перезаписывает значение, если пользователь попытается его задать. Для учебного проекта терпимо, но зафиксируй это как решение или добавь guard."
+
+*Что заметила при работе с deepseek*
+- предложил для set для coverage-флагов убрать FORCE и добавить  mark_as_advanced, который в UI будет скрывать если явно не сказать "показать advanced" - проект в консоли, так что это бесполезно. при вопросе об этом он согласилася, что mark_as_advanced не надо
+
+# 2026-10-26
+- по совету ии убираю из set(... CMAKE_*_FLAGS_COVERAGE ) FORCE - т.к. здесь это не опрадвано - ползователь в теории может захотеть сменить набор флагов, что должно быть доступно по `-DCMAKE_*_FLAGS_COVERAGE=...`. если же FORCE, то такая перезапись не сработает, т.к. поверх перезапишется дефолт с помощью FORCE. а без FORCE сначала запишется дефолт, потом если придут флаги из `-DCMAKE_*_FLAGS_COVERAGE=...`, то дефолт перезапишется пользовательскими значениями.
+- запускаю `cmake --preset coverage`
+  ```
+  All requested installations completed successfully in: 3.2 s
+  -- Running vcpkg install - done
+  ...
+  -- Microsoft.CodeCoverage.Console was found: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/Extensions/Microsoft/CodeCoverage.Console/Microsoft.CodeCoverage.Console.exe
+  ...
+  -- Boost 1.92.0 is one of tested 1.92.0
+  -- Configuring done (30.5s)
+  -- Generating done (0.2s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/coverage
+  ```
+  инструмент найден, версия подходящая.
+- далее `ninja -C build/coverage -t commands t1_c`. ии советовал особо посмотреть на наличие флагов /O2 /Ob1 /Zi 
+  /DNDEBUG /MD и /DEBUG - из них я обнаружила в командах только /MD. значит эти остальные флаги надо прописать вручную? как будто довольно много флагов отсутствует, это странно. дам ии свою мысль, лог и вопрос, что с этим делать и в чём причина
+
+  это из-за того, что FORCE нет и пустые переменные `CMAKE_*_FLAGS_COVERAGE` CMake посчитал "заполненными" и туда ничего не записалось. ии советует условный FORCE - если переменные не заданы (пустые также считаются незаданными), то они будут записаны. оборачиваю `set(CMAKE_*_FLAGS_COVERAGE...)` в `if (NOT CMAKE_*_FLAGS_COVERAGE)`
+
+- заново выполняю `cmake --preset coverage` и `ninja -C build/coverage -t commands t1_c`. смотрю команды от ninja
+  -C ..., теперь там есть /O2 /Ob1 /Zi /DNDEBUG -std:c17 -MD на сборке и /DEBUG на линке
+- делаю билд цели t1_c: `cmake --build build/coverage --target t1_c -> [6/6] Linking C executable t1_dist_matrix_c\main.exe` и смотрю содержимое `build/coverage/t1_dist_matrix_c/main.pdb` - что он есть, что он не пустой, что там есть строки common/*.c и t1_dist_matrix_c/main.c с hits - то, что он сам запускает. он не пустой, в нём есть строки с указаннами папками в путях. даю ии логи и pdb на проверку. он посмотрел, сказал "PDB пригоден для coverage"
+
+  единственный потенциально подозрительный момент, от ии " PDB помечен Is incrementally linked: true. Для coverage это не блокер, но если отчёт окажется дырявым — кандидат на /INCREMENTAL:NO в coverage-конфиге."
+- выполняю последовательность шагов, от ии, перед запуском collect
+  ```
+  # 0. Подготовка
+  New-Item -ItemType Directory -Force build/coverage/probe | Out-Null
+
+  # собрать цель e2e (t1_c/t1_cpp + gtest) и один unit-тест
+  cmake --build build/coverage --target t1_e2e 
+  ```
+  на этом шаге при сборке
+  ```
+  [2/3] Linking CXX executable tests\unit\parse_int32_c.exe
+  ...
+  CMake Error at D:/Program Files (x86)... (message):
+  Error running test executable.
+
+    Path: 'C:/Users/User/Desktop/inobitec_stud/build/coverage/tests/unit/parse_int32_c.exe'
+    Working directory: 'C:/Users/User/Desktop/inobitec_stud/build/coverage/tests/unit'
+    Timeout: '5'
+    Result: Access violation
+    Output:
+
+  Call Stack (most recent call first):
+  D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/GoogleTestAddTests.cmake:421 (gtest_discover_tests_impl)
+  
+  # аналогично с 
+  [3/3] Linking CXX executable tests\e2e\t1_e2e.exe
+  ```
+  то есть линкер лезет в запрещённый участок памяти. и аварийно завершается. погуглила, одна из причин может быть инкрементальная линковка, которая у меня и стоит. первый кандидат на "поменять", что и пробую. пока делаю `set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "/DEBUG /INCREMENTAL:NO"...)`. если потом этот путь сработает и ии скажет переделать на string(REPLACE ...) чтобы не было "последнее определение побеждает" и возможноти неоднозначности из-за этого, то переделаю. реконфиг, сборка, и при линке
+  ```
+    [3/6] Linking CXX executable tests\unit\parse_int32_c.exe
+  FAILED: [code=1] tests/unit/parse_int32_c.exe tests/unit/parse_int32_c[1]_tests.cmake C:/Users/User/Desktop/inobitec_stud/build/coverage/tests/unit/parse_int32_c[1]_tests.cmake 
+  ...
+  CMake Error at D:/Program Files (x86)/.../GoogleTestAddTests.cmake:381 (message):
+    Error running test executable.
+
+      Path: 'C:/Users/User/Desktop/inobitec_stud/build/coverage/tests/unit/parse_int32_c.exe'
+      Working directory: 'C:/Users/User/Desktop/inobitec_stud/build/coverage/tests/unit'
+      Timeout: '5'
+      Result: Access violation
+      Output:
+        
+
+  Call Stack (most recent call first):
+    D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/GoogleTestAddTests.cmake:421 (gtest_discover_tests_impl)
+  ``` 
+  проблема не ушла, спрошу у ии что может быть причиной. он указал на то, что я не дочитала - что проблема не на самом линке, а "Error running test executable". и причина в том, что parse_int32_c.exe зависит от релизной crt, а  gtest.dll и gtest_main.dll - от debug. и линковка была именно с debug библиотеками (vcpkg_installed\x64-windows\debug\lib\manual-link\gtest_main.lib  vcpkg_installed\x64-windows\debug\lib\gtest.lib)
+  и копировались debug-dll. получается конфликт в бинарниках. ии предлагает при coverage-build маппиться именно с релизными версиями внешних библиотек. прописываю условие для этого до add_subdir tests в главном CMakeLists.txt; /INCREMENTAL NO убираю, т.к. инкрменетальность тут была ни при чём
+- выполняю `cmake --fresh --preset coverage`, 
+  `cmake --build build/coverage --clean-first --target t1_e2e parse_int32_c:`
+  ```
+  [1/1] Cleaning all built files...
+  Cleaning... 19 files.
+  [21/21] Linking CXX executable tests\e2e\t1_e2e.exe
+  ``` 
+  и по совету ии проверяю с какими версиями ctr идёт линковка у parse_int32_c и у gtest
+  ```
+  c:\Users\User\Desktop\inobitec_stud>dumpbin /dependents build\coverage\tests\unit\parse_int32_c.exe
+  Dump of file build\coverage\tests\unit\parse_int32_c.exe
+
+  File Type: EXECUTABLE IMAGE
+
+  Image has the following dependencies:
+
+    gtest_main.dll
+    gtest.dll
+    MSVCP140.dll
+    VCRUNTIME140.dll
+    VCRUNTIME140_1.dll  
+    ...
+
+  c:\Users\User\Desktop\inobitec_stud>dumpbin /dependents build\coverage\tests\unit\gtest.dll
+  Dump of file build\coverage\tests\unit\gtest.dll
+
+  File Type: DLL
+
+  Image has the following dependencies:
+
+    KERNEL32.dll
+    MSVCP140.dll
+    VCRUNTIME140.dll
+    VCRUNTIME140_1.dll
+    ...
+  ```
+  у MSVCP140 и VCRUNTIME140 нет суффикса -D - значит они не дебажные
+
+- запускаю `ctest --test-dir build/coverage -N -R parse_int32_c` - список зарегестрированных тестов. 
+  ```
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+  Could not find executable parse_int32_cpp_NOT_BUILT
+  Looked in the following places:
+  parse_int32_cpp_NOT_BUILT
+  parse_int32_cpp_NOT_BUILT.exe
+  Release/parse_int32_cpp_NOT_BUILT
+  Release/parse_int32_cpp_NOT_BUILT.exe
+  Debug/parse_int32_cpp_NOT_BUILT
+  Debug/parse_int32_cpp_NOT_BUILT.exe
+  MinSizeRel/parse_int32_cpp_NOT_BUILT
+  MinSizeRel/parse_int32_cpp_NOT_BUILT.exe
+  RelWithDebInfo/parse_int32_cpp_NOT_BUILT
+  RelWithDebInfo/parse_int32_cpp_NOT_BUILT.exe
+  Deployment/parse_int32_cpp_NOT_BUILT
+  Deployment/parse_int32_cpp_NOT_BUILT.exe
+  Development/parse_int32_cpp_NOT_BUILT
+  Development/parse_int32_cpp_NOT_BUILT.exe
+    Test  #4: parse_int32_cpp_NOT_BUILT
+    ...
+    Test #28: parse_int32_c/ErrCases/ParseInt32Err.Rejects/14
+
+  Total Tests: 25
+  ```
+  пока не ясно, NOT_BUILT в начале - норма или ошибка? но часть тестов точно прошла. ии говорит, что это не проблема, тк. regex "parse_int32_c" также матчится с "parse_int32_cpp" а с++ сторона ещё не собрана. лечение: собрать с++ сторону тоже, или `ctest --test-dir build/coverage -N -R "^parse_int32_c/"`. этого не будет на реальных прогонах,
+  как я сейчас предполагаю. там обе стороны должны собираться. и это просто косметика, так что пока откладываю
+- дальше ии говорит сделать запуск collect на малом объёме - до того, как все эти части будут включены в coverage-цель. каждая такая проба позволит проверить по одному механизму. какие механизмы проверяем (от ии):
+  - прямой запуск main.exe — работает ли PDB/line-mapping;
+  - один unit-тест — учитывается ли common, исполняемый из тестового exe;
+  - один e2e-тест — видит ли коллектор цепочку ctest → gtest → boost::process → main.exe;
+  - заведомо отсутствующий тест — возвращает ли collect код ctest.
+
+  запускаю 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/unit.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "^parse_int32_c/OkCases/ParseInt32Ok.Parses/0"
+  SessionId: 5b862f43-ea55-4671-8b6f-5586a715ba67
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+      Start 5: parse_int32_c/OkCases/ParseInt32Ok.Parses/0
+  1/1 Test #5: parse_int32_c/OkCases/ParseInt32Ok.Parses/0 ...   Passed    0.30 sec
+
+  100% tests passed, 0 tests failed out of 1
+
+  Total Test time (real) =   0.32 sec
+  Результаты по объемам протестированного кода: build/coverage/probe/unit.coverage
+  ```
+  один конкретный тест прошёл. unit.coverage не пустой, но это бинарь.конвертирую из бинаря в xml 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" merge --nologo -o "build\coverage\probe\unit.cobertura.xml" -f cobertura ""build\coverage\probe\unit.coverage"
+  Включает файл "c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\unit.coverage".
+  Объединение в файл "c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\unit.cobertura.xml".
+  ```
+  cobertura.xml читаем, так что конвертация сработала. line-mapping есть (видно по строкам типа `<line number="69" hits="0" branch="False" />`), видно что есть вызов кода из common\string_utils.c юнит-тестом; обвязка которую не надо тестировать отсутствует (нет ничего из tests например). вызывается из common str utils.c только parse_int32, что и ожидалось. для данного метода
+  ```
+  ...
+  <method line-rate="0.77777777777777779" branch-rate="1" complexity="1" name="parse_int32" signature="">
+              <lines>
+                <line number="83" hits="1" branch="False" />
+                <line number="85" hits="1" branch="False" />
+                <line number="86" hits="1" branch="False" />
+                <line number="87" hits="0" branch="False" />
+                <line number="88" hits="1" branch="False" />
+                <line number="89" hits="1" branch="False" />
+                <line number="91" hits="1" branch="False" />
+                <line number="92" hits="0" branch="False" />
+                <line number="96" hits="1" branch="False" />
+                <line number="98" hits="0" branch="False" />
+                <line number="102" hits="1" branch="False" />
+                <line number="104" hits="1" branch="False" />
+                <line number="108" hits="1" branch="False" />
+                <line number="112" hits="1" branch="False" />
+                <line number="113" hits="0" branch="False" />
+                <line number="115" hits="1" branch="False" />
+                <line number="116" hits="1" branch="False" />
+                <line number="117" hits="1" branch="False" />
+              </lines>
+            </method>
+            ...
+  ```
+  получается 0.77...79 из 1 по покрытию. по тому что ии посмотрел по моим записям с "ручной попыткой покрытия" parse_int32 - "Для parse_int32 не покрыты строки 87, 92, 98, 113. Это ровно то, что ожидается для входа "5": цикл пропуска ведущ пробелов; проверка на пустоту; проверка на пустой плюс; несовпадение конца строки после очистки пробелов с концом после распознавания - "То есть отчёт совпадает с твоим ручным разбором parse_int32". 
+- выполняю формирование .coverage отчёта по t1_c, после чего конвертация отчёта в cobertura
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/unit.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c"
+  ...
+  
+  100% tests passed, 0 tests failed out of 58
+
+  Total Test time (real) =   4.44 sec
+  Результаты по объемам протестированного кода: build/coverage/probe/unit.coverage
+  ```
+- запускаю collect над t1_c по цепочке: collect -> ctest -> t1_e2e.exe -> main.exe
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/e2e_t1_c_norm.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_norm"
+  SessionId: a76d1c04-9cfa-4617-a2fa-6ec3404c06e1
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+      Start 59: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  1/1 Test #59: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 1
+
+  Total Test time (real) =   0.13 sec
+  Результаты по объемам протестированного кода: build/coverage/probe/e2e_t1_c_norm.coverage
+  ```
+
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" merge --nologo -o "build\coverage\probe\e2e_t1_c_test1.cobertura.xml" -f cobertura "build\coverage\probe\e2e_t1_c_test1.coverage"
+  Отказано в доступе.
+  ```
+  ии посмотрел в чём причина и Microsoft.CodeCoverage.Console.exe стал 0-байтным. версия, что из-за прерыванного обновления. закрываю все консоли с build tools, Visual Studio Installer выбираю "восстановить" для build tools.
+  перезагружаю комп, сначала делаю 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/e2e_t1_c_norm.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_norm"
+  ```
+  потом
+  ```
+  PS C:\Users\User> Get-Item "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe"
+    Каталог: D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console
+  Mode                 LastWriteTime         Length Name
+  ----                 -------------         ------ ----
+  -a----        26.10.2026     17:35              0 Microsoft.CodeCoverage.Console.exe
+  ```
+  есть подозрение что мой процесс, который я запускаю, как-то зануляет Microsoft.CodeCoverage.Console.exe. опять восстпновление, перезапуск и теперь снала делаю
+  ```
+  PS C:\Users\User> Get-Item "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe"
+    Каталог: D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console
+  Mode                 LastWriteTime         Length Name
+  ----                 -------------         ------ ----
+  -a----        26.10.2026     17:40          23112 Microsoft.CodeCoverage.Console.exe
+  ```
+  спрошу ии, это вообще реально чтобы мой процесс занулил Microsoft.CodeCoverage.Console.exe?
+  ии говорит что дело может быть в collect - "Твой collect может быть косвенным триггером (например, запускает self-update/extension updater), но не тем кодом, который пишет в этот путь." 
+  запускаю
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo ^
+  Продолжить?   --settings "cmake/coverage.settings.xml" ^
+  Продолжить?   -o "build/coverage/probe/e2e_t1_c_norm.coverage" ^
+  Продолжить?   -f coverage ^
+  Продолжить?   -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_norm"
+  SessionId: 549afd3c-f214-4377-a2b3-0f0cdbae7dea
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+      Start 59: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  1/1 Test #59: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...   Passed    0.36 sec
+
+  100% tests passed, 0 tests failed out of 1
+
+  Total Test time (real) =   0.60 sec
+  Результаты по объемам протестированного кода: build/coverage/probe/e2e_t1_c_norm.coverage
+
+  # при этом размер ненулевой
+  Mode                 LastWriteTime         Length Name
+  ----                 -------------         ------ ----
+  -a----        26.10.2026     17:40          23112 Microsoft.CodeCoverage.Console.exe
+  ```
+  делаю конвертацию в .xml
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" merge --nologo ^
+  -o "build\coverage\probe\e2e_t1_c_norm.cobertura.xml" ^
+  -f cobertura "build\coverage\probe\e2e_t1_c_norm.coverage"
+  Включает файл "c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\e2e_t1_c_norm.coverage".
+  Объединение в файл "c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\e2e_t1_c_norm.cobertura.xml".
+  ```
+  размер так же 23122 - не занулилось. всё-таки как будто я как-то так запускала команду, что это вызывало последствия. в один из разов перед тем как coverage.exe занулился, я ввела команду в build tools как "c:\Users\User\Desktop\inobitec_stud>"D:\Pro..." то есть с началос самой cmd потому что я сначала написала в агентс, а потом скопировала оттуда в build tools. и было что c:\Users\User\Desktop\inobitec_stud не явл.исп.файлом, и потом я перезапустила. опять, может быть абсурд. но сейчас повторяется то же самое и файл не зануляется.
+
+  ии со мной несогласен - "То, что сейчас файл не обнулился, не доказывает, что виноват был твой процесс, но ослабляет эту версию: обычный collect не является детерминированным триггером...То, что сейчас файл не обнулился, не доказывает, что виноват был твой процесс, но ослабляет эту версию: обычный collect не является детерминированным триггером.". он считает что это внешний процесс. возможно он прав, но я почему-то ему не верю. слишком явно что после моего ввода с вот таким в начале "c:\Users\User\Desktop\inobitec_stud>"D:\Pro..." было зануление. два раза подряд. попробую теперь сделать это намеренно
+  ```
+  c:\Users\User\Desktop\inobitec_stud>c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/e2e_t1_c_norm.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_norm"
+  "c:\Users\User\Desktop\inobitec_stud" не является внутренней или внешней
+  командой, исполняемой программой или пакетным файлом.
+
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/e2e_t1_c_norm.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_norm"
+  # окошко "невозможно запустить приложение..."
+  Отказано в доступе.
+
+  # и естественно 
+  ...
+    Mode                 LastWriteTime         Length Name
+  ----                 -------------         ------ ----
+  -a----        26.10.2026     18:14              0 Microsoft.CodeCoverage.Console.exe
+  ```
+  получается, я его и перезаписываю. вопрос - что именно причина. либо "c:\Users\User\Desktop\inobitec_stud>"D:\Pro...", либо ещё есть момент с тем, что я на вот этих "пред-зануляющих командах" ввожу без обратной кавычки. но я и до этого несколько раз делала вообще без обратных кавычек. всё равно попробую восстановить комопнент и запустить без "c:\Users\User\Desktop\inobitec_stud>"D:\Pro...", но и без кавычек.
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/e2e_t1_c_norm.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_norm"
+  SessionId: 558cc836-6301-486f-a31e-109e315dd817
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+      Start 59: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  1/1 Test #59: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 1
+
+  Total Test time (real) =   0.13 sec
+  Результаты по объемам протестированного кода: build/coverage/probe/e2e_t1_c_norm.coverage
+  ```
+  то есть, дело не в кавычках, которые как я поняла просто продолжают ввод. и чтобы до верного пробую ещё раз занулить файл через ту команду
+  ```
+  Mode                 LastWriteTime         Length Name
+  ----                 -------------         ------ ----
+  -a----        26.10.2026     18:21          23112 Microsoft.CodeCoverage.Console.exe
+
+  # уже в native tools
+  c:\Users\User\Desktop\inobitec_stud>c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/e2e_t1_c_norm.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_norm"
+  "c:\Users\User\Desktop\inobitec_stud" не является внутренней или внешней
+  командой, исполняемой программой или пакетным файлом.
+
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/e2e_t1_c_norm.coverage" -f coverage -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_norm"
+  Отказано в доступе.
+
+  # PS:
+  Mode                 LastWriteTime         Length Name
+  ----                 -------------         ------ ----
+  -a----        26.10.2026     18:35              0 Microsoft.CodeCoverage.Console.exe
+  ```
+  18.35 это сейчас, и это происходит каждый раз от ввода с "c:\Users\User\Desktop\inobitec_stud>"D:\Program F...". восстанавливаю компонент, перезагружаюсь (теперь Length=23112). говорю ии прочитать мои заметки (7852-7900lines) - после того что произошло, согласен / не согласен и почему? согласен. т.к. там был символ перенаправления (вот эту причину я уже не заметила) > а перенаправлялась как бы пустота. потому что там папка до этого, оно пытается исполниться, не может. и перенаправляется пустота. и записывается в Microsoft.CodeCoverage.Console.exe всё было просто
+  
+- ии просмотрел отчёт, CollectFromChildProcesses работает - то есть collect видит main.exe как ребёнка ctest. по ф-циям покрытие 27% тк. из всех из модуля на самом деле используются только (- polygon_vertex и point_distance — 100%;
+  - parse_int32 — 77.8%; остальные методы либо не понадобились либо не произошли - не было вызова того же help потому что тест на norm-case)
+
+  на одиночном тесте t1_c_norm покрытие line-rate main.c = 62%; line-rate string_utils.c = 17%; parse_int32=78%
+
+- делаю замер покрытия для всего t1_c
+  ```
+  "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo ^
+  --settings "cmake/coverage.settings.xml" ^
+  -o "build/coverage/probe/e2e_t1_c.coverage" ^
+  -f coverage ^
+  -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_c_"
+
+  ...
+  100% tests passed, 0 tests failed out of 29
+
+  Total Test time (real) =   2.14 sec
+  Результаты по объемам протестированного кода: build/coverage/probe/e2e_t1_c.coverage
+
+  "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" merge --nologo ^
+  -o "build\coverage\probe\e2e_t1_c.cobertura.xml" ^
+  -f cobertura "build\coverage\probe\e2e_t1_c.coverage"
+  Включает файл "c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\e2e_t1_c.coverage".
+  Объединение в файл "c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\e2e_t1_c.cobertura.xml".
+  ```
+  теперь покрытие line-rate main.c = 100%; line-rate string_utils.c = 22% (отсюда всё так же используется только parse_int32); parse_int32=100%; cli.c = 100%. geometry.c: 9.5% по файлу но там используются только  polygon_vertex и point_distance - сами они по 100%. общий line-rate=41%. всё это с оговоркой что это именно line-rate - не branch, тк по веткам в cobertura не отражается, они всегда False
+- тест на код возврата при несуществующем тесте.
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir "build/coverage" -R "__no_such_test__" --no-tests=error
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+  No tests were found!!!
+  Errors while running CTest
+  Output from these tests are in: C:/Users/User/Desktop/inobitec_stud/build/coverage/Testing/Temporary/LastTest.log
+  Use "--rerun-failed --output-on-failure" to re-run the failed cases verbosely.
+
+  c:\Users\User\Desktop\inobitec_stud>echo ctest exit: %ERRORLEVEL%
+  ctest exit: 8
+
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo ^  -o "build/coverage/probe/no_tests.coverage" ^  -f coverage ^  -- ctest --test-dir "build/coverage" --no-tests=error -R "__no_such_test__"
+  SessionId: 477c3716-6f8d-4e07-a679-864a6e007e16
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+  No tests were found!!!
+  Errors while running CTest
+  Output from these tests are in: C:/Users/User/Desktop/inobitec_stud/build/coverage/Testing/Temporary/LastTest.log
+  Use "--rerun-failed --output-on-failure" to re-run the failed cases verbosely.
+  Результаты по объемам протестированного кода: build/coverage/probe/no_tests.coverage
+
+  c:\Users\User\Desktop\inobitec_stud>echo collect exit: %ERRORLEVEL%
+  collect exit: 8
+  ``` 
+  изначально опции `` не было и exit-code был 0. то есть это не считалось ошибкой. ии советует в в сам coverage.cmake для полного прогона добаить --no-tests=error - чтобы если тестов вообще не было, не получился и зелёный coverage-отчёт. чтобы не было тихого падения. следую совету, добавляю 
+- далее билд t1_cpp cmake --build build/debug --target t1_cpp и покрытие для него
+  ```
+  "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" collect --nologo ^
+  --settings "cmake/coverage.settings.xml" ^
+  -o "build/coverage/probe/e2e_t1_cpp.coverage" ^
+  -f coverage ^
+  -- ctest --test-dir "build/coverage" --output-on-failure -R "t1_cpp_"
+  ...
+  
+  100% tests passed, 0 tests failed out of 29
+
+  Total Test time (real) =   2.33 sec
+  Результаты по объемам протестированного кода: build/coverage/probe/e2e_t1_cpp.coverage
+
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" merge --nologo ^  -o "build\coverage\probe\e2e_t1_cpp.cobertura.xml" ^  -f cobertura "build\coverage\probe\e2e_t1_cpp.coverage"
+  Включает файл "c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\e2e_t1_cpp.coverage".
+  Объединение в файл "c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\e2e_t1_cpp.cobertura.xml".
+  ```
+  line-rate получившиеся для t1_cpp:
+  - geometry.cpp 12%
+  - main.cpp 100%
+  - cli.cpp 100%
+  - string_utils.cpp 26%
+  - общий line-rate 43%
+  но "string_utils.cpp встречается двумя <class>-записями". и нужно будет аггрегировать по имени иначе получится, что итоговый процент покрытия надо считать руками. ии советует "Сначала сделать полный прогон, посмотреть реальные дубликаты и структуру Cobertura, потом писать summary."
+
+*Что не получилось*
+- TODO от ии из "Microsoft.CodeCoverage.Console.exe" после данной сессии, её завершаю на моменте прогона покрытия для t1 с/с++
+  - Полный --target coverage не запускался.
+  - Агрегация/дедупликация по filename не реализована.
+  - DEPENDS all, --no-tests=error и исключения format-check|e2e/runner/ внутри полной цели не проверены.
+  - Реальная branch/block-метрика: Cobertura здесь даёт только line, branch-rate номинальный.
+  - Влияние IncludeTestAssembly=True отдельно не проверено.
+  - t2–t4 и полный suite не прогонялись.
+  - После изменений CMake не прогонялись обычные ctest --preset full / full-release.
+
+  и из "Где «понятно» не подтверждено" возможно нужно будет дополнительно проверить
+  - «Понятно» про branch-rate: реальные branch-данные не смотрели; branch-rate=1 в Cobertura номинальный.
+  - «Понятно» про агрегацию: она не реализована, поэтому проверить нечего.
+  - «Понятно» про полный coverage target: он не запускался.
+  - «Понятно» про DEPENDS all и исключения format-check|e2e/runner/: проверено только чтением, не прогоном.
+  - «Понятно» про IncludeTestAssembly: эффект на native не проверен.
+  - «Понятно» про block-метрику: .coverage/-f xml ещё не разбирались.
+  
+
+*Что заметила при работе с deepseek*
+- он очень настаивал что это фоновый процесс или обновление, когда был момент с "C:\Users\User...>..." и зануление Microsoft.CodeCoverage.Console.exe
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.

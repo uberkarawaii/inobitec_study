@@ -68,10 +68,22 @@ message(STATUS "vcpkg baseline : ${VCPKG_BASELINE} (reachable in $ENV{VCPKG_DEV_
 # выключение механизма vcpkg applocal, т.к. он вызывает конфликты (мн-во пересозданий себя в %TEMP%) при -j билде
 set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Deploy vcpkg runtime DLLs via CMake instead of vcpkg applocal" FORCE)
 
+# === PROJECT === 
 # имя проекта сохранится в CMAKE_PROJECT_NAME
 # определяются яызки проекта: с с++; определится компилятор; 
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
 project(inobitec_stud VERSION 0.2.0 LANGUAGES C CXX)
+
+# === ТИП СБОРКИ ===
+# определение debug / release / coverage; делается через -DCMAKE_BUILD_TYPE=...
+# Debug будет поставлен, если ничего не передали через флаг
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type (Debug/Release/Coverage)" FORCE)
+endif()
+# переменная CMAKE_BUILD_TYPE уйдёт в кэш 
+# кэш: для CMake, хранить инф. м-у выполнениями, и пользователь не повторяет ввод каждый раз
+# FORCE вызовет перезапись параметра
+
 
 # === ПРОВЕРКА ВЕРСИЙ КОМПОНЕНТОВ ===
 # файл с ф-цией проверки и константами версий компонентов
@@ -130,7 +142,6 @@ file(READ "$ENV{VCPKG_DEV_ROOT}/scripts/vcpkg-tool-metadata.txt" _vcpkg_meta)
 string(REGEX MATCH "VCPKG_TOOL_RELEASE_TAG=([0-9-]+)" _vm "${_vcpkg_meta}")
 check_component(vcpkg-tool "${CMAKE_MATCH_1}" "${TOOLCHAIN_VCPKG_TOOL_TESTED}" "0")
 
-
 # какой инстанс vcpkg реально подключён - защита от тихой подмены инструмента
 # CMAKE_TOOLCHAIN_FILE путь к скрипт vcpkg.cmake
 # Z_VCPKG_ROOT_DIR корень vcpkg, вычисляется им самим. т.е. из какого инстанса идёт инструмент
@@ -141,6 +152,43 @@ if(VCPKG_TARGET_TRIPLET)
     message(STATUS "vcpkg instance : ${Z_VCPKG_ROOT_DIR}")
   endif()
   message(STATUS "vcpkg triplet  : ${VCPKG_TARGET_TRIPLET}")
+endif()
+
+# Microsoft.CodeCoverage.Console при coverage-сборке 
+if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  if(WIN32)
+    if(NOT MSVC) 
+      message(FATAL_ERROR "coverage build requires MSVC") 
+    endif()
+
+    find_program(MICROSOFT_COVERAGE NAMES Microsoft.CodeCoverage.Console)
+    if(NOT MICROSOFT_COVERAGE OR NOT EXISTS "${MICROSOFT_COVERAGE}")
+    message(FATAL_ERROR "Coverage build was selected but Microsoft.CodeCoverage.Console was not found. "
+    "Build from the x64 Native Tools Command Prompt, or add the tool directory to PATH. "
+    "If the tool is not installed, add the Build Tools component "
+    "'Microsoft.VisualStudio.Component.TestTools.BuildTools'.")
+    endif()
+
+    message(STATUS "Microsoft.CodeCoverage.Console was found: ${MICROSOFT_COVERAGE}")
+
+    # существование проверено, теперь проверка версии
+    execute_process(
+      COMMAND "${MICROSOFT_COVERAGE}" --version
+      OUTPUT_VARIABLE _coverage_raw
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE _coverage_rc)
+    if(_coverage_rc STREQUAL "0")
+      to_major_minor(_coverage_ver "${_coverage_raw}")
+      check_component(CodeCoverage "${_coverage_ver}"
+        "${TOOLCHAIN_CODECOVERAGE_TESTED}" "${TOOLCHAIN_CODECOVERAGE_MIN}")
+    else()
+      message(WARNING "could not determine Microsoft.CodeCoverage.Console version "
+        "(result: ${_coverage_rc}); version check skipped")
+    endif()
+
+  else()
+    message(FATAL_ERROR "There is no coverage build for non-Windows OS")
+  endif()
 endif()
 
 # === СТАНДАРТЫ ===
@@ -155,16 +203,24 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
                                
-# === ТИП СБОРКИ ===
-# определение debug / release; делается через -DCMAKE_BUILD_TYPE=...
-# Debug будет поставлен, если ничего не передали через флаг
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type (Debug/Release)" FORCE)
+# особые флаги для coverage-сборки. /Ob1 - инлайн только того, что явно inline, не всего, что захочет компилятор
+# условный FORCE чтобы при пустых CMAKE_*_FLAGS_COVERAGE записть приосходила
+if(NOT CMAKE_C_FLAGS_COVERAGE)
+  set(CMAKE_C_FLAGS_COVERAGE "/O2 /Ob1 /Zi /DNDEBUG"
+      CACHE STRING "Flags used by the C compiler during Coverage builds." FORCE)
 endif()
-# переменная CMAKE_BUILD_TYPE уйдёт в кэш 
-# кэш: для CMake, хранить инф. м-у выполнениями, и пользователь не повторяет ввод каждый раз
-# FORCE вызовет перезапись параметра
-
+if(NOT CMAKE_CXX_FLAGS_COVERAGE)
+  set(CMAKE_CXX_FLAGS_COVERAGE "/O2 /Ob1 /Zi /DNDEBUG"
+      CACHE STRING "Flags used by the C++ compiler during Coverage builds." FORCE)
+endif()
+if(NOT CMAKE_EXE_LINKER_FLAGS_COVERAGE)
+  set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "/DEBUG"
+      CACHE STRING "Linker flags for Coverage builds." FORCE)
+endif()
+if(NOT CMAKE_SHARED_LINKER_FLAGS_COVERAGE)
+  set(CMAKE_SHARED_LINKER_FLAGS_COVERAGE "/DEBUG"
+      CACHE STRING "Shared linker flags for Coverage builds." FORCE)
+endif()
 
 # === ИСПРАВЛЕНИЕ DEFAULT-ФЛАГОВ ===
 # CMAke дефолтно положит /RTC1 в debug-ветку. /RTC1 ловит ошибки в runtime, для этого лезет в стек и размечает его
@@ -178,7 +234,7 @@ endif()
 
 
 # === ПОСТРОИТЬ КОМАНДЫ КОМПИЛЯЦИИ И ЛИНКА ===
-function(configure_target trgt DBG)
+function(configure_target trgt PRODUCT_TARGET)
 if(MSVC)
   # минимальная поддерживаемая ОС - win7 (и все дальнейшие)
   target_compile_definitions(${trgt} PRIVATE _WIN32_WINNT=0x0601)
@@ -188,8 +244,8 @@ if(MSVC)
   target_compile_options(${trgt} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/EHsc> /W4 /permissive-)
 
   # сюда будет заходить только для программ из задач, не для программ для тестирования (run_case, check) - им эти флаги не нужны
-  if(DBG)
-    # CMake проставит след. флаги автоматиечки: /Od /O2; /MDd /MD; /DNDEBUG
+  if(PRODUCT_TARGET)
+    # CMake проставит след. флаги автоматиечки: /Od (на release /O2 /Ob2); /MDd /MD; /DNDEBUG
     target_compile_options(${trgt} PRIVATE $<$<CONFIG:Debug>:/Zi /fsanitize=address> $<$<CONFIG:Release>:/Zi>)
     target_link_options(${trgt} PRIVATE $<$<CONFIG:Debug>:/DEBUG> $<$<CONFIG:Release>:/DEBUG /OPT:REF /OPT:ICF>)
   endif()
@@ -197,7 +253,7 @@ if(MSVC)
 else()
   target_compile_options(${trgt} PRIVATE -Wall -Wextra)
   # и в ветке продуктов, и в ветке тестовых программ оптимизация на релизе будет именно -O2, а не cmake-default -O3
-  if (DBG) 
+  if (PRODUCT_TARGET) 
     # -O0 на дебаге будет подтянут CMake автоматически, а на релизе -DNDEBUG
     target_compile_options(${trgt} PRIVATE $<$<CONFIG:Debug>: -g -fsanitize=address> $<$<CONFIG:Release>: -g -O2>)
     target_link_options(${trgt} PRIVATE $<$<CONFIG:Debug>: -fsanitize=address>)
@@ -238,7 +294,7 @@ function(add_task dir trgt src lib)
     add_dependencies(${trgt} ${trgt}_dll)
   endif()
 
-  # команда для cl+link. флаг DEBUG = ON - т.е. пойдём по ветке if (DBG) с флагами для программ-задач
+  # команда для cl+link. флаг PRODUCT_TARGET = ON - т.е. пойдём по ветке if (PRODUCT_TARGET) с флагами для программ-задач
   configure_target(${trgt} ON)
  
 endfunction()
@@ -314,5 +370,27 @@ enable_testing()
 # если есть clang+format - проверка строгая, не-падение - только при чистом формате
 # иначе - warning и тесты
 add_test(NAME format-check COMMAND ${CMAKE_COMMAND} -DMODE=check ${FORMAT_COMMON}) 
+
+# при coverage-build должны быть именно релиз.версии внешних библиотек, для совместимости с бинарниками задач
+if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  set(CMAKE_MAP_IMPORTED_CONFIG_COVERAGE "Release")
+endif()
+
 # тесты на знчения и коды
 add_subdirectory(tests) 
+
+# особая цель при сборки с покрытием
+if(WIN32 AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  add_custom_target(coverage
+    COMMAND ${CMAKE_COMMAND}
+      "-DCOVERAGE_EXE=${MICROSOFT_COVERAGE}"
+      "-DCTEST_EXE=${CMAKE_CTEST_COMMAND}"
+      "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+      "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+      "-DSETTINGS_FILE=${CMAKE_SOURCE_DIR}/cmake/coverage.settings.xml"
+      "-DREPORT_DIR=${CMAKE_BINARY_DIR}/reports"
+      -P "${CMAKE_SOURCE_DIR}/cmake/coverage.cmake"
+    DEPENDS all
+    COMMENT "Collecting code coverage"
+    VERBATIM)
+endif()

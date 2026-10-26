@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage"
+        uri="datacollector://Microsoft/CodeCoverage/2.0"
+        assemblyQualifiedName="Microsoft.VisualStudio.Coverage.DynamicCoverageDataCollector, Microsoft.VisualStudio.TraceCollector, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+        <Configuration>
+          <Format>coverage</Format>
+          <IncludeTestAssembly>True</IncludeTestAssembly>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*[\\/]t[1-4]_[^\\/]*[\\/]main\.exe$</ModulePath>
+                <ModulePath>.*[\\/]common_(c|cpp)_shared\.dll$</ModulePath>
+                <ModulePath>.*[\\/]tests[\\/]unit[\\/][^\\/]*\.exe$</ModulePath>
+              </Include>
+              <Exclude>
+                <ModulePath>.*[\\/]gtest.*</ModulePath>
+                <ModulePath>.*[\\/]boost.*</ModulePath>
+                <ModulePath>.*[\\/]vcpkg_installed[\\/].*</ModulePath>
+              </Exclude>
+            </ModulePaths>
+            <Sources>
+              <Include>
+                <Source>.*[\\/]common[\\/](geometry|string_utils|cli)\.(c|cpp)$</Source>
+                <Source>.*[\\/]t[1-4]_[^\\/]*[\\/]main\.(c|cpp)$</Source>
+              </Include>
+              <Exclude>
+                <Source>.*[\\/]build[\\/].*</Source>
+              </Exclude>
+            </Sources>
+            <CollectFromChildProcesses>True</CollectFromChildProcesses>
+            <EnableDynamicNativeInstrumentation>True</EnableDynamicNativeInstrumentation>
+            <EnableStaticNativeInstrumentation>False</EnableStaticNativeInstrumentation>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
