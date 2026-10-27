@@ -3,6 +3,17 @@
 нумерация — [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- сборка под coverage с флагами, не противоречащими Microsoft.CodeCoverage.Console (/O2 /Ob1 /Zi, линкер /DEBUG)
+- сделана проверка инструмента - наличия и версии Microsoft.CodeCoverage.Console при конфигурации (min 18.0, tested 18.7). min/tested версии лежат константами в cmake/toolchain_versions.cmake
+- build-цель coverage - запустит скриптовый coverage.cmake, который соберёт всё (DEPENDS all), и запустит тесты того, что не исключено (а исключены только format-check/e2e/runner). 
+- configure-пресет coverage (CMAKE_BUILD_TYPE=Coverage) в CMakePresets.json как пресет для coverage-билда
+- cmake/coverage.cmake - CMake-скрипт для формирования отчётов. обеспечивает удаление старых отчётов в начале свежего coverage-билда. если тесты красные, обеспечивает то, что сначала отчёты сформируются, и только потом будет падение
+- два формата отчёта (Cobertura и native XML) формируемые в coverage.cmake. cobertura переносим, но имеет только line-rate; .xml имеет block-rate для модулей с уникальными именами и показывает частичное покрытие (covered="partial") (не как cobertura, где только yes/no)
+- cmake/coverage.settings.xml - для фильтрации отчёта и инструментации потомков collect
+- добавлен новый e2e-кейс t3_z_span (+ tests/input_data/t3_z_span) - закрывает ветки min/max по y/z в C-версии t3
+- в .gitignore добавлен *.coverage и *.cobertura.xml
+- в .editorconfig к utf-8 группе прибавлен *.xml
 
 ## [0.2.0] - 2026-10-21
 ### Changed

@@ -50,6 +50,7 @@ inline std::vector<Case> make_t3_cases() {
         {"t3_comma_coord", {}, "t3_comma_coord", exit_code::data, Stream::err, kPointCommaCoord},
         {"t3_dot_trailing_coord", {}, "t3_dot_trailing_coord", exit_code::success, Stream::out, kT3DotTrailingCoord},
         {"t3_dot_leading_coord", {}, "t3_dot_leading_coord", exit_code::success, Stream::out, kT3DotLeadingCoord},
+        {"t3_z_span", {}, "t3_z_span", exit_code::success, Stream::out, kT3ZSpan},
 
         // справка
         {"t3_help", {"--help"}, kEmptyInput, exit_code::success, Stream::out, kT3Help},

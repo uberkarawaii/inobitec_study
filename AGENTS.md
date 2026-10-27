@@ -7577,6 +7577,7 @@ Total Test time (real) =   9.37 sec
 - предложил для set для coverage-флагов убрать FORCE и добавить  mark_as_advanced, который в UI будет скрывать если явно не сказать "показать advanced" - проект в консоли, так что это бесполезно. при вопросе об этом он согласилася, что mark_as_advanced не надо
 
 # 2026-10-26
+*Что сделано*
 - по совету ии убираю из set(... CMAKE_*_FLAGS_COVERAGE ) FORCE - т.к. здесь это не опрадвано - ползователь в теории может захотеть сменить набор флагов, что должно быть доступно по `-DCMAKE_*_FLAGS_COVERAGE=...`. если же FORCE, то такая перезапись не сработает, т.к. поверх перезапишется дефолт с помощью FORCE. а без FORCE сначала запишется дефолт, потом если придут флаги из `-DCMAKE_*_FLAGS_COVERAGE=...`, то дефолт перезапишется пользовательскими значениями.
 - запускаю `cmake --preset coverage`
   ```
@@ -7994,9 +7995,249 @@ Total Test time (real) =   9.37 sec
   - «Понятно» про IncludeTestAssembly: эффект на native не проверен.
   - «Понятно» про block-метрику: .coverage/-f xml ещё не разбирались.
   
-
 *Что заметила при работе с deepseek*
 - он очень настаивал что это фоновый процесс или обновление, когда был момент с "C:\Users\User...>..." и зануление Microsoft.CodeCoverage.Console.exe
+
+# 2026-10-27
+*Что сделано*
+- новая сессия с deepseek. он оговоравривает такой момент: "что делать если тест под covearage-build упал?" т.к. сейчас если код ctest ненулевой, то `if(NOT _collect_rc EQUAL 0) message(FATAL_ERROR "...")` и там потом merge, то есть до merge не дойдёт. .coverage будет, но в .xml он не переведётся. ии подводит к тому, что при падении отчёт должен быть, а потом уже падение. я согласна, т.к. тут у нас прогон нацелен на понимание покрытия в первую очередь, а не на корректность тестов. молча падение пропускать нельзя, но и не анализировать код из-за фактора, который по факту этому не препятстсвует, тоже не стоит
+- в целом дальше стратегия такая, что сначала полные прогоны для покрытия, а потом выявление потребности в исправлениях и дополнениях. чтобы не строить догадки на пустом месте
+- сейчас из cobertura.xml имеем только line-rate, branch-rate же номинальный и всегда False. но хочется разбор и по веткам тоже. ии советует выполнить след. дейсвтия для анализа - "Нативный формат xml у того же инструмента может содержать блочные/рёберные записи... есть ли блочные/рёберные данные? если только блоки — branch недоступен, но block-разбор возможен"
+
+  он изначально смешивает понятия branch/block, но как я поняла по ветвям можно выявить блоки. поэтому он и говорит, что было бы хорошо, если эта метрика есть. 
+
+  выполняю
+  ```
+  c:\Users\User\Desktop\inobitec_stud>"D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe" merge --nologo -f xml -o "build\coverage\probe\native_t1_c.xml" "build\coverage\probe\e2e_t1_c.coverage"
+  ```
+  как я понимаю это тот же перевод в читаемый формат из бинарника, но без шага с cobertura. сразу в xml. далее нужно посмотртеть содержимое на элементы, атрибуты, etc.:
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> $p='build\coverage\probe\native_t1_c.xml'
+  >> [regex]::Matches((Get-Content $p -Raw),'<([A-Za-z][\w:.-]*)') | ForEach-Object { $_.Groups[1].Value } | Group-Object | Sort-Object Count -Descending
+
+  Count Name                      Group
+  ----- ----                      -----
+    173 range                     {range, range, range, range...}
+    49 skipped_module            {skipped_module, skipped_module, skipped_module, skipped_module...}
+    38 skipped_function          {skipped_function, skipped_function, skipped_function, skipped_function...}
+    15 function                  {function, function, function, function...}
+    15 ranges                    {ranges, ranges, ranges, ranges...}
+      4 source_file               {source_file, source_file, source_file, source_file}
+      1 results                   {results}
+      1 skipped_functions         {skipped_functions}
+      1 skipped_modules           {skipped_modules}
+      1 functions                 {functions}
+      1 module                    {module}
+      1 source_files              {source_files}
+      1 modules                   {modules}
+  ```
+  ии посмотрел ещё раз, что получилось при нативном .xml - и там есть метрика для блоков, но не как элемент, а как атрибут. что видно по строкам вида `<module name="main.exe" block_coverage="42.62" blocks_covered="101" blocks_not_covered="136" lines_covered="69" lines_partially_covered="2" lines_not_covered="102">`. и в отличие от cobertura, тут не просто yes/no на строках, но есть и partially. 
+- выбор истичника для моего анализа - в пользу нативного .xml, .cobertura остаётся как машинный формат. на фоне этого в coverage.cmake после merge -f cobertura добавляю merge -f xml → coverage.xml. так будет появляться ещё один артефакт, более пригодный для человеческого анализа. и там же добавляю вывод block_coverage в консоль
+- минус состоит в том, что "«Разбор непокрытых веток» по § 4.7 в строгом смысле недоступен" - потому что оба формата не имеют branch-метрики. потому, "делаем block-level разбор: функции с blocks_not_covered > 0 + строки partial. Это надо назвать своим именем, а не выдавать за branch" 
+- ии посмотрел, как я изменила coverage.cmake (для формирования второго отчёта native xml) - и там есть вывод block_coverage, который живёт в <module>. на полном прогоне этих <module> будет много. и выберется просто первый по порядку - что неверно, это будет вывод для одного блока, а нам нужно по всем. и в нативном xml нет общего агрегата по block_coverage. потому пока что делаю по совету ии "убрать печать block-метрики до появления агрегатора, оставить только line-rate из Cobertura."
+- coverage.cmake перемещаю блок проверки кода ctest запущенного под collect (_collect_rc тк. код дочернего процесса через collect будет совпадать с просто кодом дочернего процесса) в самый конец - т.к. было решение, что даже если какой-то тест под coverage упал, то всё равно инструментируем, делаем отчёт, и только потом падаем. само данное решение (не то что оно в конце, оно бы и после collect приводило к тому же) приводит к тому, что неразличимо - это тесты красные? или частично не получилось инструментировать (пропустили)? (т.е. часть кода будет неисполненная, хотя по факту она даже не запускалась - инструментация на ней не удалась и её пропустили)
+
+  ии говорит, что вреда в этом нет: "это код чужой программы. Нужно ли это? МНЕНИЕ, ВЫСОКИЙ Нет: единственный потребитель — цель сборки, ей достаточно «не зелёно». Машинное различие имеет смысл для CI-политик («ретраить инфраструктурный сбой, не ретраить красный тест»), которых в проекте нет и не планируется.
+  Если когда-нибудь понадобится — не через код collect, а через ctest --output-junit <file>: ctest сам запишет машинно-читаемый результат тестов, независимо от того, что вернул обёртывающий его коллектор. ФАКТ, ВЫСОКИЙ — опция есть в ctest --help"
+
+  к тому же, потом было замечено, что для поиска пропущенной инструментации можно смотртеть <skipped_module>, <skipped_function> в нативном XML
+
+- теперь надо удостовериться, что при красном тесте реально будет формироваться отчёт. намеренно порчу ожидание tests/unit/parse_int32.cpp: OkCase{"5", 5->6} и пересборка только для него `cmake --build build/coverage --target parse_int32_cpp`
+
+  запускаю collect чисто для этого теста
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> $cov = "D:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\Extensions\Microsoft\CodeCoverage.Console\Microsoft.CodeCoverage.Console.exe"
+  >> & $cov collect --nologo --settings "cmake/coverage.settings.xml" -o "build/coverage/probe/red.coverage" -f coverage -- ctest --test-dir build/coverage --output-on-failure -R '^parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0$'
+  >> "collect rc = $LASTEXITCODE"
+  >> Test-Path build/coverage/probe/red.coverage
+  SessionId: 6cba2dad-7914-443b-b2a1-c347eab2c4d0
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+      Start 4: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+  1/1 Test #4: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ...***Failed    0.13 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = OkCases/ParseInt32Ok.Parses/0
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from OkCases/ParseInt32Ok
+  [ RUN      ] OkCases/ParseInt32Ok.Parses/0
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_int32.cpp(25): error: Expected equality of these values:
+    *got
+      Which is: 5
+    c.want
+      Which is: 6
+
+  [  FAILED  ] OkCases/ParseInt32Ok.Parses/0, where GetParam() = in="5", want=6 (0 ms)
+  [----------] 1 test from OkCases/ParseInt32Ok (0 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (0 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] OkCases/ParseInt32Ok.Parses/0, where GetParam() = in="5", want=6
+
+  1 FAILED TEST
+  0% tests passed, 1 tests failed out of 1
+  Total Test time (real) =   0.15 sec
+  The following tests FAILED:
+            4 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 (Failed)
+  Errors while running CTest
+  Результаты по объемам протестированного кода: build/coverage/probe/red.coverage
+  collect rc = 8
+  True
+  ```
+  код выхода не нулевой и red.coverage существует, непустой. делаю конвертацию в cobertura.xml
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> & $cov merge --no-logo -f cobertura -o "build\coverage\probe\red.cobertura.xml" "build\coverage\probe\red.coverage"
+  Microsoft.CodeCoverage.Console v18.7.0.0 [x86 - .NET Framework 4.8.9310.0]
+
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\probe\red.coverage".
+  Объединение в файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\probe\red.cobertura.xml"
+  ```
+  итоговый red.cobertura.xml корректен, line-rate присутствует. догадка о том, что обычный красный тест (не --no-tests) оставляет .coverage
+- теперь полный прогон, чтобы понять, как будет вести себя формирование отчётов через coverage.cmake. оставляю OkCase{"5", 6} как и до этого, выполняю `cmake --build build/coverage --target coverage` где coverage - цель над скриптовым coverage.cmake. и эта coverage-цель делает сборку всего (DEPENDS all) и потом запускает скрипт
+  ```add_custom_target(coverage
+  COMMAND ${CMAKE_COMMAND} -DCOVERAGE_EXE=... -DCTEST_EXE=... -DBUILD_DIR=...
+          -DSOURCE_DIR=... -DSETTINGS_FILE=... -DREPORT_DIR=...
+          -P "${CMAKE_SOURCE_DIR}/cmake/coverage.cmake"
+  DEPENDS all ...")
+  ```
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/coverage --target coverage
+  # ... Building / Linking / Copying
+  [69/69] Collecting code coverage
+  FAILED: [code=1] CMakeFiles/coverage C:/Users/User/Desktop/inobitec_stud/build/coverage/CMakeFiles/coverage 
+  ...
+  SessionId: a0b983cd-4552-47ed-964f-60336e5d9edf
+  # tests
+  99% tests passed, 1 tests failed out of 587
+
+  Total Test time (real) =  39.66 sec
+
+  The following tests FAILED:
+    63 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 (Failed)
+  Errors while running CTest
+  Результаты по объемам протестированного кода: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.coverage
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
+  Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml".
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
+  Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml".
+  -- coverage line rate: 0.39377814162914448
+  -- coverage report (cobertura): C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml
+  -- coverage report (native xml): C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml
+  CMake Error at C:/Users/User/Desktop/inobitec_stud/cmake/coverage.cmake:78 (message):
+    coverage collection exited with code 8; reports were still written to:
+    
+    C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml
+
+    C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml
+
+  ninja: build stopped: subcommand failed.
+  ```
+  на покрытие тестов 587 - нет теста на формат и 3х тестов на e2e/runner, обвязка. coverage.cobertura.xml и coverage.xml существуют, не пустые. ии их просмотрел, они корректные. код ctest-a из-под collect "coverage collection exited with code 8", код падения самого скрипта - 1 (FAILED: [code=1]). ещё ии нашёл что report/logs - logs пустой тк по опции -l "${REPORT_DIR}/logs/" надо подавать файл а не папку. исправляю log/ на coverage.log
+- находки ии по прогону билда с --target coverage
+  - дубли есть и они большие (сводка от ии: string_utils.cpp — 14 записей <class> (разные модули) string_utils.c — 12 geometry.c/.cpp  — по 6). т.е. "Вывод: корневой процент нельзя выдавать за покрытие проекта. Per-file union теперь не «если понадобится», а обязателен. Ранее отложенное решение по summary-exe — принято данными."
+  - block-метрика для задач сломана - т.к. все они main.exe, то со слов ии "инструмент сливает одноимённые модули в один package, и агрегат по блокам у него становится 0/0 при осмысленном lines=75.90". что он зануляется, видно в реальности: `<function id="5" name="main" type_name="" block_coverage="0.00" line_coverage="100.00" blocks_covered="0" blocks_not_covered="0"...` - при таком покрытии по строкам должно быть и покрытие по block. но из-за одного имени метрика ломается. надо делать разное OUTPUT_NAME 
+- сохраняю артефакты красного прогона из reports/* в build/coverage/probe/red-full/; откатываю "5", 6 на "5", 5 parse_int32.cpp. и выполняю 
+  ```
+  cmake --build build/coverage --target coverage
+  ...
+  100% tests passed, 0 tests failed out of 587
+
+  Total Test time (real) =  33.97 sec
+  Результаты по объемам протестированного кода: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.coverage
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
+  Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml".
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
+  Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml".
+  -- coverage line rate: 0.39377814162914448
+  -- coverage report (cobertura): C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml
+  -- coverage report (native xml): C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml
+  ```
+  ии тоже посмотрел лог зелёного прогона. всё сходится, несостыковок нет - новые отчёты перезаписали старые
+- из того что нашёл ии по зелёному прогону, недочёты
+  - coverage.log не образуется вообще , т.к. -l просто задаёт путь. ии советует не делать `"${REPORT_DIR}/coverage.log` как таковой, т.к. он был нацелен на то, чтобы различить - это тесты красные? или коллектор не смог инструментировать процесс? для этого можно использовать ctest-сводка + код возврата. а дополнительный coverage.log для этого без надобности. так что убираю из coverage.cmake формирование этого лога
+- **пропуск → native XML; сбой коллектора → ctest-сводка + код возврата**
+- ии особо отметил протухание LastTestsFailed.log - на зелёном прогоне в нём продолжают лежать ошибки с последнего ошибочного прогона. но это не новость, так было и до этого. ии тоже это подтвердил - это поведение CTest. менять не советует, советует прописать в известных ограничениях. что и делаю, пометив, что это особенность инструмента
+- теперь разбор непокрытого. ии посмотрел, отчёт от него
+
+  *Что именно не покрыто (25 строк из 693)*
+  | Класс | Строки | Почему не покрыто |
+  |---|---|---|
+  | OutOfMemory / защитный код (13) | string_utils.c:27,29; t3_c:43,120–123; t4_c:94–97,165–166 | ветки if (!tmp) / if (!points) после malloc/realloc. Без инъекции отказа аллокатора недостижимы |
+  | io-fail (9) | t3_c:57,58,60; t3_cpp:86,87; t4_c:38,39; t4_cpp:74,75 | ferror(stdin) / cin.bad(). Провоцируется только каталогом на stdin — тест есть, но Unix-only |
+  | Реальный пробел данных (3) | t3_c:156,161,163 | max[2]=z, min[1]=y, min[2]=z: ручной min/max-цикл в C, а тестовые облака имеют z=0 и y, не уходящий ниже points[0] |
+
+  t3_cpp тот же самый момент - ranges::min/max_element вместо ручного цикла (не зависят от данных) - то есть, оно будет исполняться, какие бы данные не подали. то есть, надо сделать такие кейсы, которые и для Си-стороны обеспечат выполнение этих моментов. и к с++ стороне тоже их применить, чтобы эти места реально исполнялись на данных.
+
+- и важная оговорка, в т.ч. будет жить в известных ограничениях: 
+  - "нет branch-метрики, она обнуляется - block-счётчики надёжны только по DLL (main-модули слипаются из-за одинакового OUTPUT_NAME), поэтому разбор — построчный." при необходимости branch-метрики, будет выполнено переименование
+- завожу тест на min/max из t3_c которые не покрывались (t3_c:156,161,163). входной файл - t3_z_span. говорю ии записать туда значения. также говорю ему записать независимую константу-ожидание kT3ZSpan в tests/e2e/expected_t3.hpp. в t3_cases.hpp добавляю тест-кейс {"t3_z_span", {}, "t3_z_span", exit_code::success, Stream::out, kT3ZSpan}
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset e2e -R z_span --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 418: e2e/t3_e2e/All/T3E2E.Matches/t3_c_z_span
+  1/2 Test #418: e2e/t3_e2e/All/T3E2E.Matches/t3_c_z_span .....   Passed    0.12 sec
+      Start 460: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_z_span
+  2/2 Test #460: e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_z_span ...   Passed    0.12 sec
+
+  100% tests passed, 0 tests failed out of 2
+
+  Total Test time (real) =   0.29 sec
+  ```
+- негатив.контроль - у kT3ZSpan меняю Среднее расстояние от точек до центроида: 1.155->1.156, пересборка и снова
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset e2e -R z_span --output-on-failure
+  ...
+  0% tests passed, 2 tests failed out of 2
+
+  Total Test time (real) =   0.28 sec
+
+  The following tests FAILED:
+    418 - e2e/t3_e2e/All/T3E2E.Matches/t3_c_z_span (Failed)
+    460 - e2e/t3_e2e/All/T3E2E.Matches/t3_cpp_z_span (Failed)
+  ```
+  откатываю намеренную ошибку, пересобраию и `ctest --preset e2e -R z_span --output-on-failure 100% tests passed, 0 tests failed out of 2 Total Test time (real) =   0.31 sec`
+
+- далее выполняю пересборку всего для покрытия `cmake --build build/coverage --target coverage`
+  ```
+  ...
+  100% tests passed, 0 tests failed out of 589
+
+  Total Test time (real) =  34.61 sec
+  Результаты по объемам протестированного кода: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.coverage
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
+  Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml".
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
+  Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml".
+  -- coverage line rate: 0.39500613999181333
+  -- coverage report (cobertura): C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml
+  -- coverage report (native xml): C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml
+  ```
+  в cobertura.xml ищу ...\t3_bbox_c\main.c и там с hits=0 только следующие строки: 43, 57, 58, 60, 120-123. то есть в 156, 161, 163 исполнение зашло, это обеспечил новый тест 
+- **итог непокрытого**
+  | Класс | Строки | Почему не покрыто |
+  |---|---|---|
+  | OutOfMemory / защитный код (13) | string_utils.c:27,29; t3_c:43,120–123; t4_c:94–97,165–166 | ветки if (!tmp) / if (!points) после malloc/realloc. Без инъекции отказа аллокатора недостижимы |
+  | io-fail (9) | t3_c:57,58,60; t3_cpp:86,87; t4_c:38,39; t4_cpp:74,75 | ferror(stdin) / cin.bad(). Провоцируется только каталогом на stdin — тест есть, но Unix-only |
+
+  "9 io-fail строк закроются при Linux-coverage (будущий этап), 13 OOM — только инъекцией отказа, которой в проекте нет" - вот эти 13 веток с отказом аллокатора и около того - они недостижимые. в каждом из ООМ нужно спровоцировать инъекцию отказа аллокатора (подмена malloc/realloc или CRT-хук) - "это отдельная инфраструктура, которой в проекте нет и в текущем слое не требуется". также, в некоторых ветках есть exit(some_code), что нельзя проверить внутрипроцессным тестом - т.к. тестовый процесс тоже закончится, для них нужен процессный тест (e2e/death test). так что документирую их, как защитные, недостижимые осознанно. строки из t3_c (156,161,163) закрыты кейсом t3_z_span. 
+
+  *проверено одним методом, независимой сверки нет* - union-число будет более честным после того, как будет summary-exe. по нему удостовеюсь или исправлю число
+- на финальной проверке ии настаивает, чтобы на vm прогнались тесты с новым t3_z_span
+
+*Что не получилось*
+- о старом LastTestsFailed.log. на данный момент он так и будет оставаться с последним падением даже после зелёного прогона, но "Если когда-нибудь понадобится машинно-читаемый результат именно текущего прогона - правильный путь `ctest --output-junit <file>` (свежий по построению), а не удаление чужого файла."
+- если будет необходима block-метрика, то нужно будет сделать переименование OUTPUT_NAME всех main-ов и поменять всё, что как-то упоминает main.exe; склоняюсь к тому, чтобы сделать её отдельной правкой, т.к. это не сложно и даст block-метрику. и то, что везде name=main делает отчёт менее читаемым. и тогда можно будет сделать block-метрику через coverage.cmake
+
+- TODO сделать в след. сессии, чтобы закрыть этап:
+  - summary-exe: union по (файл, строка) как штатный артефакт и проверка присутствия всех продуктовых модулей в отчёте;
+  - переименование OUTPUT_NAME (только если нужна block-метрика) - в 4.7 сказано про разбор веток, он недоступен нигде, и мне кажется в т.ч. ввиду этого нужно сделать рабочим по крайней мере то, что доступно.
+  - Linux-часть coverage.
+
+*Что заметила при работе с deepseek*
+- вчера он говорил, что "Агрегация/дедупликация по filename не реализована." - этот вывод был сделан из-за якобы дублирования string_utils.cpp в .xml; сегодня он перечитал и обнаружил, что это ввиду того, что внутри string_utils.cpp есть anonymous namespace в котором живут 2 ф-ции, а есть свободные ф-ции. и вот свободные и анонимные образовали два <class> в отчёте. и в самом начале есть `<coverage line-rate=...>` - он честно говорит о среднем покрытии по бинарям. но вот о строках точную информацию получить сложее, если данный модуль попал в отчёт несколько раз. надо смотреть по двум частям отчёта. потому нужно будет сделать объединение по файлу, чтобы не потерять данные по каждой строке
+
+  и от ии: "Одна деталь, которую стоит знать заранее: у всех восьми задач OUTPUT_NAME main, поэтому `<package name="main">` в полном отчёте встретится много раз и по XML не отличить, какая это задача — различаются только наборы файлов внутри. Для дедупликации это не мешает (она по файлу+строке), но для отчёта «по задачам» — не хватит. "
 
 ## 8. Диалоги с DeepSeek
 
