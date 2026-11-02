@@ -376,6 +376,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
   set(CMAKE_MAP_IMPORTED_CONFIG_COVERAGE "Release")
 endif()
 
+# библиотека с парсером cobertura.xml, тестируется юнит-тестами
+add_subdirectory(tools/coverage_union)
 # тесты на знчения и коды
 add_subdirectory(tests) 
 

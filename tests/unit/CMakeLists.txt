@@ -55,3 +55,7 @@ add_unit_gtest(parse_radius_c parse_radius_c.cpp string_utils_c_static)
 # vertex_form_index (string_utils)
 add_unit_gtest(vertex_form_index_cpp vertex_form_index.cpp string_utils_cpp_static)
 add_unit_gtest(vertex_form_index_c vertex_form_index_c.cpp string_utils_c_static)
+
+# юнит-тест библиотеки для работы с cobertura.xml
+add_unit_gtest(coverage_union_test coverage_union_test.cpp coverage_union_lib)
+

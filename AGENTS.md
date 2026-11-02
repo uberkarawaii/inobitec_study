@@ -8250,6 +8250,402 @@ Total Test time (real) =   9.37 sec
 
   и от ии: "Одна деталь, которую стоит знать заранее: у всех восьми задач OUTPUT_NAME main, поэтому `<package name="main">` в полном отчёте встретится много раз и по XML не отличить, какая это задача — различаются только наборы файлов внутри. Для дедупликации это не мешает (она по файлу+строке), но для отчёта «по задачам» — не хватит. "
 
+# 2026-10-28 - 2026-10-29
+*Что сделано*
+- новая сессия с ии, создание модуля для union по файл-строка, т.к. сейчас много дублей, читать сложно (счёт руками/скриптом). ии говорит сделать микро-практику
+  ```
+  Микро-практика перед реализацией
+  Возьми один файл, например t4_filter_c/main.c, и по текущему coverage.cobertura.xml вручную выпиши: какие строки покрыты хотя бы в одной копии, какие — нет, и классифицируй 8 непокрытых (OOM или io-fail). Потом сверь с выводом инструмента. Расхождение — сигнал, что ты не поняла, какая копия что исполняет.
+  ```
+- инструмент для парса coverage.cobertura.xml будет отдельным .exe, у которого есть своя библиотека. и вот эту библиотеку будут тестировать unit-тесты. картина будет такой
+  - статическая библиотека - задействуется при всех видах сборок, т.к. участвует в юнит-тестах; используется при формировании union-отчёта
+  - coverage_union_test.exe - unit-тест над стат. библиотекой, будет исполняться ctest-ом для любой сборки
+  - coverage_union.exe - исполняется под coverage-сборкой, формирует union-отчёт. вызывается coverage.cmake 
+- завожу папку tools/coverage_union и в ней coverage_union.hpp/.cpp - библиотека; main.cpp - для работы с файлами и вывода - то, что будет собираться при coverage-сборке; CMakeLists.txt
+- заполняю coverage_union.hpp/.cpp, комментирю, вношу правки от ии. по ходу он отмечает, что сейчас нет поддержки комментариев - т.е. мы просто полагаемся на то, в нынешнем .cobertura.xml нет комментариев, но если они там будут то `<!-- <class filename="rubbish"><line number="1" hits="1" /></class> -->` будет воспринят как класс. хотя это не так. для этого предлагает иметь общий хелпер для определения тегов, а не делать каждый раз через xml.find("something")
+
+*Что не получилось*
+- совет от ии: "covered/valid в Summary — это int, но при больших отчётах лучше std::size_t/std::int64_t, чтобы не думать о переполнении. Сейчас 693 строки — не проблема, но тип честнее сделать шире. [МНЕНИЕ, СРЕДНИЙ]" но "int для covered/valid/номеров строк — нормально: строк в файлах заведомо меньше INT_MAX" потому тип пока не меняю
+- TODO в Summary нет кол-ва ожидаемых файлов, потому "files: N/M expected придётся печатать в main после format_summary"
+
+# 2026-10-30
+*Что сделано*
+- пишу обший парсер для нахождения тегов, с поддержкой комментариев. выяснилось, что в .xml валдидыми могут быть след. конструкции `<![CDATA[...]]>` и` <!DOCTYPE ...>`. CDATA внутри [] может содержать <>, DOCTYPE - может содрежать > внутри []. т.е. если берём в рассчёт, что такой синтаксис допустим, то просто искать закрывающий > после < не получится. надо учитывать то, что этот > может быть частью произвольной подстроки внутри этих разделов. 
+  
+  сначала мне показалось неправильным, что мы их не поддерживаем и кидаем ошибку, если что-то такое встречается. но ии говорит, и я правда такого не видела, - что Cobertura не генерирует таких конструкций. так что нет смысла в парсере для cobertura.xml (не для xml вообще) поддреживать то, чего там не может быть. так что `<![CDATA[...]]>` и` <!DOCTYPE ...>` будут вызывать ошибку парсера
+
+  также в парсере будет проверка, что закрывающий тег:
+  - не имеет чего-то лишнего тип `</class attr="x">`
+  - нет типа `</class/>`, closing == true и self_closing == true одновременно - это вызовет ошибку
+
+  чего парсер "не будет уметь" (помимо CDATA/DOCTYPE) т.к. ии сказал, что это проверять для Cobertura - лишняя проверка:
+  - не будет возможен namespace (от ии: "is_name_char только ASCII; имена с namespace-префиксом (ns:class) не совпадут с class/line. Для Cobertura это ок, но это ограничение парсера.")
+  - не будет проверяться первый символ (от ии: "is_name_char разрешает цифру, . и - первым символом. В XML имя не может начинаться с цифры, . или -; для Cobertura это неважно, ...")
+
+- переношу parse_cobertura на TagReader
+  - по совету ии: считаем, что в исходнике к-во строк не превышает INT_MAX - иначе кидаем malformed
+
+  от ии, что он считает не критичным, но достойным того, чтобы это особо отметить:
+  - is_name_char (24–27) разрешает первый символ — цифру, . или -. В XML имя так начинаться не может; для Cobertura неважно, <3> просто будет проигнорирован как неизвестный тег.
+  - <class/ > и <class / > (126) дают self_closing=false и принимаются как обычный открывающий тег. Это невалидный XML, но Cobertura такого не даёт.
+  - <line> не проверяется на self_closing: <line ...> без / тоже примется, а </line> будет проигнорирован. Cobertura использует <line ... />, так что не критично.
+
+*Что не получилось*
+- TODO: при написании README попросить ии пройтсь по coverage_union.cpp и сделать описание возможностей парсера
+
+# 2026-11-01
+*Что сделано*
+- записываю в tools/coverage_union/CMakeLists.txt сборку цели coverage_union_lib
+- в корневом CMakeLists.txt - add_subdirectory(tools/coverage_union) - чтобы потом юнит тесты из /tests мог линковаться к coverage_union_lib
+- собираю только библиотеку
+  ```
+  cmake --preset debug
+  ...
+  cmake --build build/debug --target coverage_union_lib
+  [2/2] Linking CXX static library tools\coverage_union\coverage_union_lib.lib
+  ```
+- далее tools/coverage_union/main.cpp - он будет содержать CLI-часть для печати в консоль при сборке coverage-цели. соотв., собираться он будет только при coverage-сборке. в tools/coverage_union/CMakeLists.txt прописываю необходимые ф-ции для сборки цели coverage_union
+
+# 2026-11-02
+*Что сделано*
+- собираю цель coverage_union, которая tools/coverage_union/main.cpp
+  ```
+  cmake --build build/debug --target coverage_union
+  ...
+  -- Configuring done (4.4s)
+  CMake Error at D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake:615 (_add_executable):
+    Cannot find source file:
+
+      EXCLUDE_FROM_ALL
+  Call Stack (most recent call first):
+    tools/coverage_union/CMakeLists.txt:12 (add_executable)
+  ...
+  ```
+  EXCLUDE_FROM_ALL система видит "как ресурс" и конечно не находит его. гуглю EXCLUDE_FROM_ALL cmake, на stack overflow есть пример `add_library(foo STATIC EXCLUDE_FROM_ALL "src/foo.cpp")` а у меня сейчас `add_executable(coverage_union main.cpp EXCLUDE_FROM_ALL)`. порядок другой. меняю на `add_executable(coverage_union EXCLUDE_FROM_ALL main.cpp)`. повторяю
+  ```
+  cmake --build build/debug --target coverage_union
+  ...
+  -- Generating done (0.2s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/debug
+
+  [2/3] Linking CXX executable tools\coverage_union\coverage_union.exe
+  ```
+  ии посмотрел результат. блокеров нет, но, от ии: *Одно наблюдение: --source-root . не делает пути относительными, потому что . — относительный корень, а lexically_relative с ним даёт пустой результат. coverage.cmake будет передавать абсолютный ${SOURCE_DIR}, так что интеграция не страдает. Для ручного запуска либо передавай абсолютный путь, либо это отдельная правка relative_path*
+
+- тесты на coverage_union_lib. создаю tests/unit/coverage_union_test.cpp
+  - в тестах не будет проверяться, какой текст в stderr, т.к. он будет выводиться только на уровне tools/.../main.cpp - т.е. coverage_union.exe, который собирается под cvg. и на coverage_union.exe юнит-теста нет, а на coverage_union_lib - есть. от ии: "Если появятся acceptance-тесты для coverage_union.exe, тогда да: проверять stdout, stderr и конкретный exit-код, включая ошибочные ветки. Сейчас таких тестов нет;"
+
+  в итоге, в юнит-тесте у библиотеки coverage_union_lib будут проверяться все открытые ф-ции:
+  - parse_cobertura покрыт успешными и ошибочными кейсами;
+  - summarize покрыт;
+  - format_summary покрыт частично;
+  - missing_expected покрыт полностью по смыслу.
+
+- добавляю в пресеты unit и unit-release coverage_union, чтобы данный тест исполнялся при любых сборках
+- прогоняю реконфиг, ребилд и тесты для debug и release
+  ```
+  cmake --preset debug
+  cmake --build build/debug
+  [1/1] Linking CXX executable tests\unit\coverage_union_test.exe
+  FAILED: [code=4294967295] tests/unit/coverage_union_test.exe tests/unit/coverage_union_test[1]_tests.cmake C:/Users/User/Desktop/inobitec_stud/build/debug/tests/unit/coverage_union_test[1]_tests.cmake 
+  ...
+
+  coverage_union_lib.lib(coverage_union.cpp.obj) : error LNK2038: mismatch detected for 'annotate_string': value '0' doesn't match value '1' in coverage_union_test.cpp.obj
+
+  coverage_union_lib.lib(coverage_union.cpp.obj) : error LNK2038: mismatch detected for 'annotate_vector': value '0' doesn't match value '1' in coverage_union_test.cpp.obj
+
+  coverage_union_lib.lib(coverage_union.cpp.obj) : error LNK2038: mismatch detected for 'annotate_optional': value '0' doesn't match value '1' in coverage_union_test.cpp.obj
+
+  tests\unit\coverage_union_test.exe : fatal error LNK1319: 3 mismatches detected
+
+  ninja: build stopped: subcommand failed.
+  ```
+  погуглила error LNK2038. https://learn.microsoft.com/ru-ru/cpp/error-messages/tool-errors/linker-tools-error-lnk2038?view=msvc-170. тут совет: "Эта ошибка может возникать, когда файл объекта в проекте устарел. Прежде чем попробовать другие решения этой ошибки, выполните чистую сборку, чтобы убедиться, что файлы объектов являются текущими.". пробую сделать чистую сборку `cmake --build build/debug --clean-first`. эффекта не дало, результат тот же - mismatch detected в тех же 3 местах. 
+  
+  ещё на MS Learn есть след. информация: "Несоответствие символов обнаружено компоновщиком. Эта ошибка означает, что различные части приложения, включая библиотеки или другой код объекта, с которыми ссылается приложение, используют конфликтующие определения символа." возможно, проблема в нейминге переменных, если он совпал. и потом в объектнике, где слинковано статиески, это повлекло конфликт. не помню что точно по неймспейсам, что именно внутри них. 
+
+  посмотрела coverage_union.cpp и coverage_union_test.cpp - даже по векторам, имена уникальные. значит, это что-то другое. гуглю "error LNK2038: mismatch detected for 'annotate_string': value '0' doesn't match value '1' in" и есть https://www.reddit.com/r/cpp_questions/comments/1n8yg0r/msvc_2022asan_linker_problem_with_boostfilesystem/, на нём советуют https://learn.microsoft.com/en-us/cpp/sanitizers/error-container-overflow?view=msvc-170. там прямо говрится "An ODR violation occurs when one translation unit annotates a standard type, such as vector, with ASan annotations, but another translation unit doesn't. In this example, the linker might simultaneously see one declaration of vector<int>::push_back that has address sanitizer annotations, and another declaration of vector<int>::push_back that doesn't. ... To resolve this error, either disable annotations in all projects that use the corresponding macro, or build each project using /fsanitize=address and annotations enabled."
+
+  как я поняла, проблема в том, что один из coverage_union.cpp/coverage_union_test.cpp скомпилирован с ASan-ом, а другой - без. вопрос, какой как - я помню, что configure_target(coverage_union_lib OFF) - т.е. библиотека coverage_union.cpp без Асана. значить, gtest coverage_union_test - с ASan. но это догадка, точечно спрашиваю ии только след.момент: "мои юнит-тесты на gtest включают ASan?" от ии: "add_unit_gtest вызывает configure_target(target ON), поэтому тестовый exe в Debug получает ASan ... В Release ASan нет". я собирала под дебаг, так что проблема с высокой вероятностью была именно в том, что в статически слинкованных частях одна часть была не под асан. прямо спрашиваю ии - согласен он с моим выводом или нет, и что советует сделать - собрать configure_target(coverage_union_lib ON) или  disable annotations? я думаю, что посоветует первое
+
+  да это та причина и советует первое, и не только configure_target(coverage_union_lib ON) но и configure_target(coverage_union ON) - про второе я не соглашусь, т.к. эта цель нужна только в coverage-сборке. говорю ии об этом. его ответ: "Тогда CLI-цель можно оставить OFF. В твоей матрице она собирается только в Coverage, а в Coverage ASan нет ни у ON, ни у OFF ... Оговорка: если когда-нибудь соберёшь coverage_union.exe в Debug, получишь тот же mismatch, потому что main.cpp использует STL-контейнеры. Тогда понадобится configure_target(coverage_union ON)". где это лучше задокументировать? от ии "Я бы не документировал, а убрал ловушку... Документирование требует, чтобы кто-то прочитал комментарий в нужный момент; это дороже и ненадёжнее". с этим я уже согласна, так что делаю для обоих целей coverage_union_lib/coverage_union ON
+
+- реконфиг и ребилд ещё раз
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [3/3] Linking CXX executable tests\unit\coverage_union_test.exe
+  ```
+  далее
+  ```
+  ctest --preset full
+  ...
+          Start 265: coverage_union_test/Summarize.ComputesTotalsAndUncovered
+  265/630 Test #265: coverage_union_test/Summarize.ComputesTotalsAndUncovered ........   Passed    0.23 sec
+          Start 266: coverage_union_test/FormatSummary.ContainsTotalAndUncovered
+  266/630 Test #266: coverage_union_test/FormatSummary.ContainsTotalAndUncovered .....   Passed    0.23 sec
+          Start 267: coverage_union_test/FormatSummary.ZeroValidAndNoUncovered
+  267/630 Test #267: coverage_union_test/FormatSummary.ZeroValidAndNoUncovered .......   Passed    0.24 sec
+          Start 268: coverage_union_test/OkCases/ParseCoberturaOk.Parses/0
+  268/630 Test #268: coverage_union_test/OkCases/ParseCoberturaOk.Parses/0 ...........   Passed ...
+
+  100% tests passed, 0 tests failed out of 630
+
+  Total Test time (real) =  92.94 sec
+  ```
+- те же действия делаю для релиза
+  ```
+  cmake --preset release
+  cmake --build build/release
+  ctest --preset full-release
+  ...
+  630/630 Test #630: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 630
+
+  Total Test time (real) =  30.79 sec
+  ```
+  даю ии логи тестов, и посмотреть что собралось, для полноты картины. он блокеров не увидел, иду к негатив.контролю
+- негатив. контроль, по совету ии: "Достаточно 5 мутаций, по одной на разные группы поведения. После каждой — только ctest --test-dir build/debug -R coverage_union --output-on-failure, затем откат". 
+  1. слияние hits не по принципу максимума `slot = std::max(slot, h)` становится просто `slot = h`. хотим падения на OkCases/ParseCoberturaOk.Parses/1
+    ```
+    cmake --build build/debug
+    ...
+    ctest --test-dir build/debug -R coverage_union --output-on-failure
+    ...
+          Start 269: coverage_union_test/OkCases/ParseCoberturaOk.Parses/1
+  5/37 Test #269: coverage_union_test/OkCases/ParseCoberturaOk.Parses/1 ...........***Failed    0.11 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = OkCases/ParseCoberturaOk.Parses/1
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from OkCases/ParseCoberturaOk
+  [ RUN      ] OkCases/ParseCoberturaOk.Parses/1
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(36): error: Expected equality of these values:
+    it->second.hits
+      Which is: { (1, 5), (2, 1), (3, 0) }
+    w.hits
+      Which is: { (1, 5), (2, 3), (3, 0) }
+
+  [  FAILED  ] OkCases/ParseCoberturaOk.Parses/1, where GetParam() = xml="<coverage>
+    <class filename="C:\src\a.c">
+      <lines>
+        <line number="1" hits="0" />
+        <line number="2" hits="3" />
+      </lines>
+    </class>
+    <class filename="C:\src\a.c">
+      <lines>
+        <line number="1" hits="5" />
+        <line number="2" hits="1" />
+        <line number="3" hits="0" />
+      </lines>
+    </class>
+  </coverage>", fold_case=0 (4 ms)
+  [----------] 1 test from OkCases/ParseCoberturaOk (4 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (4 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] OkCases/ParseCoberturaOk.Parses/1, where GetParam() = xml="<coverage>
+    <class filename="C:\src\a.c">
+      <lines>
+        <line number="1" hits="0" />
+        <line number="2" hits="3" />
+      </lines>
+    </class>
+    <class filename="C:\src\a.c">
+      <lines>
+        <line number="1" hits="5" />
+        <line number="2" hits="1" />
+        <line number="3" hits="0" />
+      </lines>
+    </class>
+  </coverage>", fold_case=0
+
+  1 FAILED TEST
+  ...
+  97% tests passed, 1 tests failed out of 37
+  ...
+    ```
+    откатываю на std::max(slot, h)
+  
+  2. отключение парса комментария. в ветке `if (xml_.substr(pos_, 4) == "<!--")...` делаю `if (false && xml_.substr(pos_, 4) == "<!--")` - сюда больше не зайти. ожидается падение OkCases/ParseCoberturaOk.Parses/2 - там ложные class / line в комментариях, на этом должно упасть, т.к. теперь не различит, что это внутри комментария
+  ```
+  cmake --build build/debug
+    ...
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+    ...
+         Start 270: coverage_union_test/OkCases/ParseCoberturaOk.Parses/2
+  6/37 Test #270: coverage_union_test/OkCases/ParseCoberturaOk.Parses/2 ...........***Failed    0.12 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = OkCases/ParseCoberturaOk.Parses/2
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from OkCases/ParseCoberturaOk
+  [ RUN      ] OkCases/ParseCoberturaOk.Parses/2
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(70): error: Value of: got.has_value()
+    Actual: false
+  Expected: true
+  reason=0 what=unsupported markup
+
+  [  FAILED  ] OkCases/ParseCoberturaOk.Parses/2, where GetParam() = xml="<!-- <class filename="fake.c"><line number="99" hits="9" /></class> -->
+  <coverage>
+    <!-- <class filename="fake2.c" /> -->
+    <class filename="C:\src\real.c">
+      <lines>
+        <!-- <line number="77" hits="7" /> -->
+        <line number="4" hits="1" />
+        <!-- <line number="5" hits="1" /> -->
+      </lines>
+    </class>
+  </coverage>
+  <!-- <class filename="fake3.c" /> -->", fold_case=0 (3 ms)
+  [----------] 1 test from OkCases/ParseCoberturaOk (3 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (4 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] OkCases/ParseCoberturaOk.Parses/2, where GetParam() = xml="<!-- <class filename="fake.c"><line number="99" hits="9" /></class> -->
+  <coverage>
+    <!-- <class filename="fake2.c" /> -->
+    <class filename="C:\src\real.c">
+      <lines>
+        <!-- <line number="77" hits="7" /> -->
+        <line number="4" hits="1" />
+        <!-- <line number="5" hits="1" /> -->
+      </lines>
+    </class>
+  </coverage>
+  <!-- <class filename="fake3.c" /> -->", fold_case=0
+
+  1 FAILED TEST
+  ...
+  97% tests passed, 1 tests failed out of 37
+  ```
+  убираю первый false из ветки для комментария
+
+  3. убираю условие, которое помогает ловить неинструм.файлы, у которых 0 покрытых строк `if (it == cov.files.end() || it->second.hits.empty()) → if (it == cov.files.end())`. должен упасть MissingCases/MissingExpectedCases.Finds/3, там empty.c
+  ```
+  cmake --build build/debug
+    ...
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+    ...
+        Start 299: coverage_union_test/MissingCases/MissingExpectedCases.Finds/3
+  35/37 Test #299: coverage_union_test/MissingCases/MissingExpectedCases.Finds/3 ...***Failed    0.12 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = MissingCases/MissingExpectedCases.Finds/3
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from MissingCases/MissingExpectedCases
+  [ RUN      ] MissingCases/MissingExpectedCases.Finds/3
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(493): error: Expected equality of these values:
+    got
+      Which is: {}
+    c.want_missing
+      Which is: { "c:/empty.c" }
+
+  [  FAILED  ] MissingCases/MissingExpectedCases.Finds/3, where GetParam() = fold_case=0 (2 ms)
+  [----------] 1 test from MissingCases/MissingExpectedCases (2 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (2 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] MissingCases/MissingExpectedCases.Finds/3, where GetParam() = fold_case=0
+
+  1 FAILED TEST
+  ...
+  97% tests passed, 1 tests failed out of 37
+  ```
+  возвращаю нужную проверку
+
+  4. испоченный вывод format_summary при valid == 0 (в format_line: valid == 0 ? 0.0 → valid == 0 ? 1.0). падение должно быть на  FormatSummary.ZeroValidAndNoUncovered
+    ```
+  cmake --build build/debug
+    ...
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+    ...
+        Start 267: coverage_union_test/FormatSummary.ZeroValidAndNoUncovered
+  3/37 Test #267: coverage_union_test/FormatSummary.ZeroValidAndNoUncovered .......***Failed    0.11 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = FormatSummary.ZeroValidAndNoUncovered
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from FormatSummary
+  [ RUN      ] FormatSummary.ZeroValidAndNoUncovered
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(464): error: Expected: (text.find("0.00%")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+  [  FAILED  ] FormatSummary.ZeroValidAndNoUncovered (2 ms)
+  [----------] 1 test from FormatSummary (2 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (2 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] FormatSummary.ZeroValidAndNoUncovered
+
+  1 FAILED TEST
+  ...
+  97% tests passed, 1 tests failed out of 37
+  ```
+  возвращаю 0.0 вместо 1.0
+
+  5. не падаем на пустом filename - убираю if (path.empty()) return malformed. ожидаю падения ErrCases/ParseCoberturaErr.Rejects/10
+    ```
+  cmake --build build/debug
+    ...
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+    ...
+          Start 287: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/11
+  23/37 Test #287: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/11 .......***Failed    0.13 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = ErrCases/ParseCoberturaErr.Rejects/11
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from ErrCases/ParseCoberturaErr
+  [ RUN      ] ErrCases/ParseCoberturaErr.Rejects/11
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(239): error: Value of: got.has_value()
+    Actual: true
+  Expected: false
+
+  [  FAILED  ] ErrCases/ParseCoberturaErr.Rejects/11, where GetParam() = xml="<coverage>
+    <class filename="">
+        <lines><line number="5" hits="2" /></lines>
+    </class>
+  </coverage>", want=0 (1 ms)
+  [----------] 1 test from ErrCases/ParseCoberturaErr (1 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (2 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] ErrCases/ParseCoberturaErr.Rejects/11, where GetParam() = xml="<coverage>
+    <class filename="">
+        <lines><line number="5" hits="2" /></lines>
+    </class>
+  </coverage>", want=0
+
+  1 FAILED TEST
+  ...
+
+  97% tests passed, 1 tests failed out of 37
+
+  Total Test time (real) =   5.84 sec
+  ```
+  возвращаю блок с if (path.empty()) return malformed
+
+- после негативных проверок прогоняю сборки и full-тесты: `ctest --preset full ... 100% tests passed, 0 tests failed out of 630 Total Test time (real) =  88.60 sec` и `ctest --preset full-release ... 100% tests passed, 0 tests failed out of 630 Total Test time (real) =  26.15 sec`. даю ии просмотреть все логи - при негатив.тестах и после них
+
+*Что не получилось*
+- возможный, но не обязательный TODO в coverage_union_test.cpp, от ии: "Остались только необязательные края вроде точных строк what, number == INT_MAX как валидной границы, hits == UINT64_MAX, non-self-closing <line>. Для текущего этапа не нужны."
+- TODO дальнешние действия от ии "порядок: сборка + тесты → негативный контроль → интеграция в coverage.cmake → полный coverage-прогон и проверка summary → документация/VM/клон." закончу сессию на негатив.контроле, новую начну с "интеграция в coverage.cmake"
+  
+  и то, что ии заметил на финальном промпте, чтобы не забыть проверить:
+  - --expected и --output end-to-end.
+  - Поведение --source-root . (относительный корень не делает пути относительными).
+ 
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.
@@ -8268,3 +8664,4 @@ opencode export <session-id> > dialog_logs/2026-06-15_task1.json
 **Когда выгружать — СРАЗУ после сессии**, не в конце недели: OpenCode автоматически чистит старые тела сообщений; не выгрузил сразу — экспорт может вернуть пусто. **Дисциплина сессий: новая задача/тема = новая сессия**, не одна накопительная на месяц — каждый лог про одну тему.
 
 **Что НЕ делать:** пересказы, конспекты, рефлексию пост-фактум, редактуру JSON. Опечатки и неудачные попытки — то самое сырьё. Анализ — работа наставника; твоя рефлексия встроена в сам диалог (приёмы § 4.2) в момент его ведения.
+
