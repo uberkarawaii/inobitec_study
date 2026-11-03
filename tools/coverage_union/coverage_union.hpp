@@ -79,4 +79,7 @@ std::string format_summary(const Summary&);
 // если для файла valid==0, то он не был инструментирован
 std::vector<std::string> missing_expected(const Coverage&, std::span<const std::string> expected, bool fold_case);
 
+// секция отчёта со списком ожидаемых источников, которых нет в отчёте; пустая строка, если missing пуст
+std::string format_missing_sources(std::span<const std::string> missing);
+
 } // namespace cov

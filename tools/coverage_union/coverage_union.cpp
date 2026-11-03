@@ -473,4 +473,14 @@ std::vector<std::string> missing_expected(const Coverage& cov, std::span<const s
     }
     return missing;
 }
+
+// секция отчёта со списком ожидаемых источников, которых нет в отчёте; пустая строка, если missing пуст
+std::string format_missing_sources(std::span<const std::string> missing) {
+    if (missing.empty())
+        return {};
+    std::string out = "\nmissing product sources:\n";
+    for (const auto& p : missing)
+        out += std::format("  {}\n", p);
+    return out;
+}
 } // namespace cov

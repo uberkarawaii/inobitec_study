@@ -8693,12 +8693,12 @@ Total Test time (real) =   9.37 sec
   там же меняю логику FATAL_ERROR - теперь будет накопление ошибок, и вывод их всех в конце со статусом FATAL_ERROR. иначе, если при каждой ситуации делать message(FATAL_ERROR ...), то будет падение сразу и дальнейшие FATAL_ERROR не сработают, хотя должны. теперь же ситуации с ненулевым кодом создания отчёта, несозданный отчёт и красные тесты/неполная инструментация накапливаются в переменной и если хоть что-то из этого произошло, то будет выведено в самом конце
 - выполняю `cmake --preset coverage` и проверяю build/coverage/coverage_expected_sources.txt - он непустой и там 14 ожидаемых путей. далее, `cmake --build build/coverage --target coverage` 
   ```
-          Start 589: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
-  589/589 Test #589: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.07 sec
+                  Start 626: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  626/626 Test #626: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.11 sec
 
-  100% tests passed, 0 tests failed out of 589
+  100% tests passed, 0 tests failed out of 626
 
-  Total Test time (real) =  34.61 sec
+  ...
   Результаты по объемам протестированного кода: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.coverage
   Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
   Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml".
@@ -8860,7 +8860,263 @@ Total Test time (real) =   9.37 sec
   ```
 - регресс на vm.
   ```
+  cmake --preset debug / release
+  cmake --build build/debug
 
+  [1/4] Building CXX object tools/coverage_union/CMakeFiles/coverage_union_lib.dir/coverage_union.cpp.o
+  [2/4] Linking CXX static library tools/coverage_union/libcoverage_union_lib.a
+  [3/4] Building CXX object tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.o
+  [4/4] Linking CXX executable tests/unit/coverage_union_test
+
+  cmake --build build/release
+  [1/4] Building CXX object tools/coverage_union/CMakeFiles/coverage_union_lib.dir/coverage_union.cpp.o
+  [2/4] Linking CXX static library tools/coverage_union/libcoverage_union_lib.a
+  [3/4] Building CXX object tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.o
+  [4/4] Linking CXX executable tests/unit/coverage_union_test
+
+  ctest --preset full
+  ...
+          Start 634: e2e/runner/E2ERunner.MissingErrorDir
+  634/634 Test #634: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 634
+
+  Total Test time (real) =  10.85 sec
+
+  ctest --preset full-release
+  ...
+          Start 634: e2e/runner/E2ERunner.MissingErrorDir
+  634/634 Test #634: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 634
+
+  Total Test time (real) =   3.46 sec
+  ```
+  и смотрю, что cmake --preset coverage под линуксом даст ошибку
+  ```
+  cmake --preset coverage
+  ...
+  -- vcpkg instance : /home/karavai/dev/vcpkg
+  -- vcpkg triplet  : x64-linux
+  CMake Error at CMakeLists.txt:190 (message):
+    There is no coverage build for non-Windows OS
+
+  -- Configuring incomplete, errors occurred!
+  ```
+- прогон на свежем клоне. говорю ии сделать это, пока сама запускаю на vm и предоставить отчёт прогонов. его summary:
+  ```
+  cmake --preset debug / release / coverage
+  MSVC 19.51, Ninja 1.13, CMake 4.3, git 2.54, vcpkg-tool 2026-07-27 — all tested
+  CodeCoverage 18.7 — tested, найден
+  -- Configuring done / Generating done — все три конфигурации
+
+  cmake --build build/debug      → [96/96]
+  cmake --build build/release    → [96/96]
+
+  ctest --preset full            → 100% tests passed, 0 tests failed out of 630, 96.05 s, rc=0
+  ctest --preset full-release    → 100% tests passed, 0 tests failed out of 630, 30.74 s, rc=0
+
+  cmake --build build/coverage --target coverage
+    → [99/99] Collecting code coverage
+    → 100% tests passed, 0 tests failed out of 626, 50.21 s
+    → TOTAL  671/693  96.83%
+    → files: 14/14 expected
+    → rc=0
+
+  Артефакты клона: манифест — 14 строк; coverage_summary.txt есть, последняя строка files: 14/14 expected. coverage_union.exe собран только в build/coverage, в debug/release его нет — EXCLUDE_FROM_ALL подтверждён на клоне, а не только в основном дереве.
+  ```
+- говорю ии посмотреть результаты прогона на вм. там всё корректно, но на всякий случай. ии не видит каких-либо расхождений
+- теперь заполнение документации. readme / changelog дополняю в соотв. с новым функционалом
+- на финальном промпте ии предложил протестировать поведение ещё в двух ситуациях
+  1. «красные тесты + сбой summary одновременно» - должны быть две ошибки, накопиться. для этого меняю вход tests/input_data/t1_abc abc->abd и в манифест путей добавляю C:\...\tools\coverage_union\main.cpp. после этого прогон:
+    ```
+  cmake --build build/coverage --target coverage > build/coverage/both_neg_log.txt 2>&1
+  # both_neg_log:
+    [1/1] Collecting code coverage
+    FAILED: [code=1] CMakeFiles/coverage...
+    ...
+    t4_filter_cpp/main.cpp         59/61      96.72%
+  TOTAL                         671/693     96.83%
+
+  uncovered lines:
+  ...
+  files: 14/15 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  CMake Error at C:/Users/User/Desktop/inobitec_stud/cmake/coverage.cmake:100 (message):
+    coverage union report exited with code 65
+
+    coverage collection exited with code 8
+
+    reports were still written to:
+    ...
+    ninja: build stopped: subcommand failed.
+
+  c:\Users\User\Desktop\inobitec_stud>echo %ERRORLEVEL%
+  1
+  ```
+    исправляю abd на abc, `cmake --preset coverage`, 
+    ```
+  cmake --build build/coverage --target coverage
+  ...
+  TOTAL                         671/693     96.83%
+
+  uncovered lines:
+    common/string_utils.c: 27, 29
+    t3_bbox_c/main.c: 43, 57, 58, 60, 120, 121, 122, 123
+    t3_bbox_cpp/main.cpp: 86, 87
+    t4_filter_c/main.c: 38, 39, 94, 95, 96, 97, 165, 166
+    t4_filter_cpp/main.cpp: 74, 75
+  files: 14/14 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+  2. второй сценарий от ии - не подсунуть "левый" путь, котрый по идее и не должне инструментироваться, а сделать так, чтобы настоящий «продуктовый исходник не был инструментирован» (т.к., это не одно и то же. до этого весь код инструментирован, и в манифесте "лишний" путь. т.е., это проверка того, что манифест и отчёт связаны. а то, что будет сейчас - в манифесте пути есть, т.к. они из графа сборки, но инструментация их не охватила. а в первом случае не-инструментация не воспроизводится)
+  
+    делаю копию настроек `copy cmake\coverage.settings.xml build\coverage\probe\no_t4.xml` и в них меняю t[1-4] → t[1-3]. после чего, по совету ии, запускаю скрипт руками с изолир. папкой всех отчётов, "чтобы не затереть рабочие отчёты"
+    ```
+    cmake -DCOVERAGE_EXE="D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/Extensions/Microsoft/CodeCoverage.Console/Microsoft.CodeCoverage.Console.exe" ^
+      -DCTEST_EXE="D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/ctest.exe" ^
+      -DBUILD_DIR="C:/Users/User/Desktop/inobitec_stud/build/coverage" ^
+      -DSOURCE_DIR="C:/Users/User/Desktop/inobitec_stud" ^
+      -DSETTINGS_FILE="C:/Users/User/Desktop/inobitec_stud/build/coverage/probe/no_t4.xml" ^
+      -DCOVERAGE_UNION_EXE="C:/Users/User/Desktop/inobitec_stud/build/coverage/tools/coverage_union/coverage_union.exe" ^
+      -DEXPECTED_SOURCES="C:/Users/User/Desktop/inobitec_stud/build/coverage/coverage_expected_sources.txt" ^
+      -DREPORT_DIR="C:/Users/User/Desktop/inobitec_stud/build/coverage/probe/no_t4_reports" ^
+      -P cmake/coverage.cmake > build\coverage\probe\no_t4_log.txt 2>&1
+    
+    # coverage_summary.txt:
+    ...
+    TOTAL                         537/549     97.81%
+
+    uncovered lines:
+      common/string_utils.c: 27, 29
+      t3_bbox_c/main.c: 43, 57, 58, 60, 120, 121, 122, 123
+      t3_bbox_cpp/main.cpp: 86, 87
+    files: 12/14 expected
+
+    c:\Users\User\Desktop\inobitec_stud>echo %ERRORLEVEL%
+    1
+    ```
+    всё верно, но мне не нравится то момент, что в coverage_summary не выводится, чего именно не хватает
+- ии соглашается: "неполнота артефакта. Если открыть только coverage_summary.txt (а он у нас назван «человекочитаемым и достоверным»), нельзя понять, чего не хватает — только сколько". и советом ии является включить missing sources в отчёт. согласна, сделаю так. все пути до missing Будут частью отчёта, не будут дублироваться в stderr. 
+
+  в coverage_union.hpp/cpp делаю ф-цию format_missing_sources. из main.cpp убираю цикл печати при if (!missing.empty()). reconfig, rebuild, и повторяю второй тест (настоящий «продуктовый исходник не был инструментирован»)
+  ```
+  cmake -DCOVERAGE_EXE=...
+  # coverage_summary.txt:
+  ...
+  t3_bbox_cpp/main.cpp           47/49      95.92%
+  TOTAL                         537/549     97.81%
+
+  uncovered lines:
+    common/string_utils.c: 27, 29
+    t3_bbox_c/main.c: 43, 57, 58, 60, 120, 121, 122, 123
+    t3_bbox_cpp/main.cpp: 86, 87
+
+  missing product sources:
+    C:/Users/User/Desktop/inobitec_stud/t4_filter_c/main.c
+    C:/Users/User/Desktop/inobitec_stud/t4_filter_cpp/main.cpp
+  files: 12/14 expected
+
+  c:\Users\User\Desktop\inobitec_stud>echo %ERRORLEVEL%
+  1
+  ```
+  появился missing product sources, чего и хотелось. 
+- юнит-тесты на новую ф-цию format_missing_sources в coverage_union_test.cpp. делаю проверку
+  ```
+  cmake --build build/debug
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+        Start 268: coverage_union_test/FormatMissingSources.EmptyReturnsEmpty
+  4/40 Test #268: coverage_union_test/FormatMissingSources.EmptyReturnsEmpty ......   Passed    0.12 sec
+        Start 269: coverage_union_test/FormatMissingSources.SingleSource
+  5/40 Test #269: coverage_union_test/FormatMissingSources.SingleSource ...........   Passed    0.12 sec
+        Start 270: coverage_union_test/FormatMissingSources.PreservesOrder
+  6/40 Test #270: coverage_union_test/FormatMissingSources.PreservesOrder .........   Passed    0.12 sec
+  ...
+        Start 304: coverage_union_test/MissingCases/MissingExpectedCases.Finds/5
+  40/40 Test #304: coverage_union_test/MissingCases/MissingExpectedCases.Finds/5 ...   Passed    0.23 sec
+
+  100% tests passed, 0 tests failed out of 40
+
+  Total Test time (real) =   6.07 sec
+  ```
+  и полный прогон 
+  ```
+  ctest --preset full
+  ...
+          Start 633: e2e/runner/E2ERunner.MissingErrorDir
+  633/633 Test #633: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 633
+
+  Total Test time (real) =  90.93 sec
+
+  test --preset full-release
+  ...
+          Start 633: e2e/runner/E2ERunner.MissingErrorDir
+  633/633 Test #633: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 633
+
+  Total Test time (real) =  25.24 sec
+
+  cmake --build build/coverage --target coverage
+  ...
+          Start 628: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version
+  628/629 Test #628: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version .....................   Passed    0.07 sec
+          Start 629: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  629/629 Test #629: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.07 sec
+
+  100% tests passed, 0 tests failed out of 629
+
+  Total Test time (real) =  46.46 sec
+  Результаты по объемам протестированного кода:...
+  ...
+  files: 14/14 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+- негатив. тест на то, что новый тест на format_missing_sources реально сравнивает текст. в coverage_union_test.cpp в `EXPECT_EQ(cov::format_missing_sources(missing), "\nmissing product sources:\n  c:/a.c\n");` заменяю "\nmissing product sources:\n  c:/a.c\n" на "missing product sources:\n  c:/a.c\n" - без \n в начале. прогон
+  ```
+  cmake --build build/debug
+  ...
+  ctest --test-dir build/debug -R "FormatMissingSources\.SingleSource" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+    Start 269: coverage_union_test/FormatMissingSources.SingleSource
+  1/1 Test #269: coverage_union_test/FormatMissingSources.SingleSource ...***Failed    0.11 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(477): error: Expected equality of these values:
+    cov::format_missing_sources(missing)
+      Which is: "\nmissing product sources:\n  c:/a.c\n"
+    "missing product sources:\n  c:/a.c\n"
+  With diff:
+  @@ -1,3 +1,2 @@
+  -
+  missing product sources:
+    c:/a.c\n
+  ...
+  1 FAILED TEST
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =   0.18 sec
+
+  The following tests FAILED:
+    269 - coverage_union_test/FormatMissingSources.SingleSource (Failed)
+  Errors while running CTest
+
+  c:\Users\User\Desktop\inobitec_stud>echo %ERRORLEVEL% 8
+  ```
+- откатываю. выполняю пересборку
+  ```
+  cmake --build build/debug
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 40
+  Total Test time (real) =   6.47 sec
+
+  ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 633
+  Total Test time (real) =  88.04 sec
   ```
 
 *Что зметила при работе с deepseek*

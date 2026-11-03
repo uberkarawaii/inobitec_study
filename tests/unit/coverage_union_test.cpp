@@ -465,6 +465,23 @@ TEST(FormatSummary, ZeroValidAndNoUncovered) {
     EXPECT_EQ(text.find("uncovered lines:"), std::string::npos);
 }
 
+// ---------- format_missing_sources ----------
+
+TEST(FormatMissingSources, EmptyReturnsEmpty) {
+    const std::vector<std::string> missing;
+    EXPECT_EQ(cov::format_missing_sources(missing), "");
+}
+
+TEST(FormatMissingSources, SingleSource) {
+    const std::vector<std::string> missing{"c:/a.c"};
+    EXPECT_EQ(cov::format_missing_sources(missing), "\nmissing product sources:\n  c:/a.c\n");
+}
+
+TEST(FormatMissingSources, PreservesOrder) {
+    const std::vector<std::string> missing{"c:/b.c", "c:/a.c"};
+    EXPECT_EQ(cov::format_missing_sources(missing), "\nmissing product sources:\n  c:/b.c\n  c:/a.c\n");
+}
+
 // ---------- missing_expected ----------
 
 struct MissingCase {

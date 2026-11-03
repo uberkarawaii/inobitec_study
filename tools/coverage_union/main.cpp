@@ -203,6 +203,8 @@ int main(int argc, char* argv[]) {
 
     // вывод сводки по проекту
     std::string report = cov::format_summary(cov::summarize(*parsed, options->source_root));
+    // если есть неинструментированное, прибавляем это к отчёту
+    report += cov::format_missing_sources(missing);
     if (!options->expected.empty())
         report += std::format("files: {}/{} expected\n", expected.size() - missing.size(), expected.size());
 
@@ -214,11 +216,8 @@ int main(int argc, char* argv[]) {
 
     // если есть то, что должно было быть инструментировано, но оно инструментировано не было,
     // выводим и падаем с ошибкой
-    if (!missing.empty()) {
-        for (const auto& path : missing)
-            std::println(stderr, "missing product source in coverage report: {}", path);
+    if (!missing.empty())
         return exit_code::data;
-    }
 
     return exit_code::success;
 }
