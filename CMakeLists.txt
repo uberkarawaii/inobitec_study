@@ -268,12 +268,13 @@ endfunction()
 # сборки exe из main.c/main.cpp; уходит в каталог build/cfg/dir
 function(add_task dir trgt src lib)
   # добавление исполняемного файла 
-  # цель и её исходник. цель имеет одно имя (логическое, типа t1_c), а сделанный ею файл - другое (OUTPUT_NAME main)
+  # цель и её исходник
+  # цель t1_c отдаёт файл t1_c.exe; уникальность имени нужна coverage-инструменту, иначе модули слипаются
   add_executable(${trgt} ${src})
 
   # в CMAKE_BINARY_DIR будет тот каталог, который был передан по -B
   set_target_properties(${trgt} PROPERTIES
-  OUTPUT_NAME main
+  OUTPUT_NAME ${trgt}
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${dir})
 
   # с кем линкуемся
@@ -339,6 +340,20 @@ add_task(t3_bbox_c t3_c t3_bbox_c/main.c common_c_shared)
 # TASK 4
 add_task(t4_filter_cpp t4_cpp t4_filter_cpp/main.cpp common_cpp_shared)
 add_task(t4_filter_c t4_c t4_filter_c/main.c common_c_shared)
+
+# guard чтобы у инструментированного были уникальные имена. иначе блок-метрика слипнется
+# если когда-то имена модулей будут одинаковые, то падение
+if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  get_property(_product_targets GLOBAL PROPERTY PRODUCT_TARGETS)
+  set(_output_names "")
+  foreach(_t IN LISTS _product_targets)
+    get_target_property(_out ${_t} OUTPUT_NAME)
+    if(_out IN_LIST _output_names)
+      message(FATAL_ERROR "duplicate OUTPUT_NAME '${_out}' among product targets (${_t}); coverage module names must be unique")
+    endif()
+    list(APPEND _output_names "${_out}")
+  endforeach()
+endif()
 
 # === ФОРМАТИРОВАНИЕ ===
 

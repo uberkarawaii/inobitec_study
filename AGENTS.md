@@ -9118,6 +9118,147 @@ Total Test time (real) =   9.37 sec
   100% tests passed, 0 tests failed out of 633
   Total Test time (real) =  88.04 sec
   ```
+- новая сессия и след. ступень - переименование OUTPUT_NAME у множества main. пока делаю только переименование и проверку, а вывод block-метрики в summary - отдельной правкой
+- ии советует сделать гвард от регресса - проверять что все OUTPUT_NAME уникальные. соглашусь, т.к. блок-метрика мне будет нужна и я хочу падать, если есть дубли, которые тихо сольются, а не тихо выводить неверную статистику
+- в корневом CMakeLists.txt add_task: OUTPUT_NAME main -> OUTPUT_NAME ${trgt}
+- там же после восьми вызовов add_task добавляю гвард на модули с одинаковыми именами
+- в cmake/coverage.settings.xml меняю фильтр модулей `.*[\\/]t[1-4]_[^\\/]*[\\/]main\.exe$ → .*[\\/]t[1-4]_[^\\/]*[\\/][^\\/]+\.exe$.` а где имена исходников, оставляю с main
+- до прогона делаю две вещи: сохраняю baseline отчётов, т.к. coverage.cmake будет удалять отчёты
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> $baseline = Join-Path $env:TEMP 'opencode\coverage_baseline_2026-11-03'
+  >> New-Item -ItemType Directory -Force -Path $baseline | Out-Null
+  >> Copy-Item build\coverage\reports\coverage_summary.txt   $baseline
+  >> Copy-Item build\coverage\reports\coverage.cobertura.xml $baseline
+  >> Copy-Item build\coverage\reports\coverage.xml           $baseline
+  PS C:\Users\User\Desktop\inobitec_stud> [xml]$old = Get-Content -Raw build\coverage\reports\coverage.xml
+  >> $old.results.modules.module |
+  >>   Select-Object name, block_coverage, blocks_covered, blocks_not_covered |
+  >>   Export-Csv (Join-Path $baseline 'modules_before.csv') -NoTypeInformation
+  PS C:\Users\User\Desktop\inobitec_stud> Get-ChildItem $baseline | Select-Object Name, Length
+
+  Name                    Length
+  ----                    ------
+  coverage.cobertura.xml  347383
+  coverage.xml           3213058
+  coverage_summary.txt      1020
+  modules_before.csv         929
+
+  # уборка старых main.* из каталогов задач
+  PS C:\Users\User\Desktop\inobitec_stud> foreach ($cfg in 'debug', 'release', 'coverage') {
+  >>   Get-ChildItem "build\$cfg" -Directory -ErrorAction SilentlyContinue |
+  >>     Where-Object { $_.Name -match '^t[1-4]_' } |
+  >>     ForEach-Object {
+  >>       Get-ChildItem $_.FullName -File -Filter 'main.*' -ErrorAction SilentlyContinue |
+  >>         Remove-Item -Force
+  >>     }
+  >> }
+
+  # контроль: пусто (ни одного main.exe/pdb/ilk в build)
+  PS C:\Users\User\Desktop\inobitec_stud> Get-ChildItem build -Recurse -File -Include 'main.exe', 'main.pdb', 'main.ilk' |
+  >>   Select-Object FullName
+  ```
+  далее, прогоняю
+  ```
+  cmake --preset coverage --fresh
+  cmake --build build/coverage --target coverage
+  [1/27] Building C object CMakeFiles\t2_c.dir\t2_passport_c\main.c.obj
+  [2/27] Building C object CMakeFiles\t4_c.dir\t4_filter_c\main.c.obj
+  [3/27] Building C object CMakeFiles\t1_c.dir\t1_dist_matrix_c\main.c.obj
+  [4/27] Building C object CMakeFiles\t3_c.dir\t3_bbox_c\main.c.obj
+  [5/27] Linking C executable t4_filter_c\t4_c.exe
+  [6/27] Linking C executable t2_passport_c\t2_c.exe
+  [7/27] Linking C executable t1_dist_matrix_c\t1_c.exe
+  ...
+  100% tests passed, 0 tests failed out of 629
+  Total Test time (real) =  51.99 sec
+  Результаты по объемам протестированного кода:
+  ...
+  files: 14/14 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+  после прогона делаю
+  ```
+  # line-регресс: summary должен совпасть с baseline
+  PS C:\Users\User\Desktop\inobitec_stud> $baseline = Join-Path $env:TEMP 'opencode\coverage_baseline_2026-11-03'
+  >> Compare-Object (Get-Content (Join-Path $baseline 'coverage_summary.txt')) `
+  >>                (Get-Content build\coverage\reports\coverage_summary.txt)
+
+  # block-метрика: 8 модулей задач, без main, block-счётчики не 0/0
+  PS C:\Users\User\Desktop\inobitec_stud> $x = [xml](Get-Content -Raw build\coverage\reports\coverage.xml)
+  >> $x.results.modules.module | Where-Object { $_.name -match '^t[1-4]_' } |
+  >>   Select-Object name, block_coverage, blocks_covered, blocks_not_covered
+  >> $x.results.modules.module | Where-Object { $_.name -eq 'main' } | Measure-Object
+
+  name       block_coverage blocks_covered blocks_not_covered
+  ----       -------------- -------------- ------------------
+  t1_c.exe   42.62          101            136
+  t1_cpp.exe 49.03          126            131
+  t2_c.exe   71.74          132            52
+  t3_c.exe   86.41          89             14
+  t4_c.exe   88.68          94             12
+  t2_cpp.exe 77.16          152            45
+  t4_cpp.exe 76.80          96             29
+  t3_cpp.exe 88.24          105            14
+  ```
+  у первой команды вывод пуст, значит что новые отчеты совпадают по цифрам со старыми, скопированными в $baseline.
+- негативный контроль. временно делаю как раньше - OUTPUT_NAME main, и т.к. гвард должен сработать на этапе конфигурации, то во время `cmake --preset coverage --fresh` жду ошибку о дубле:
+  ```
+  cmake --preset coverage --fresh
+  ...
+  -- vcpkg triplet  : x64-windows
+  -- Microsoft.CodeCoverage.Console was found: D:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/Extensions/Microsoft/CodeCoverage.Console/Microsoft.CodeCoverage.Console.exe
+  -- CodeCoverage 18.7 is one of tested 18.7
+  CMake Error at CMakeLists.txt:352 (message):
+    duplicate OUTPUT_NAME 'main' among product targets (t1_c); coverage module
+    names must be unique
+
+  -- Configuring incomplete, errors occurred!
+  ```
+  откатываю нейминг на ${trgt}, снова `cmake --preset coverage --fresh`:
+  ```
+  -- Configuring done (8.0s)
+  -- Generating done (0.2s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/coverage
+  ```
+- перестройка build и release т.к. они на старых именах
+  ```
+  cmake --preset debug
+  cmake --build build/debug
+  ctest --preset full
+  ...
+          Start 633: e2e/runner/E2ERunner.MissingErrorDir
+  633/633 Test #633: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 633
+
+  Total Test time (real) =  86.66 sec
+
+  cmake --preset release
+  cmake --build build/release
+  ctest --preset full-release
+  ...
+          Start 633: e2e/runner/E2ERunner.MissingErrorDir
+  633/633 Test #633: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.12 sec
+
+  100% tests passed, 0 tests failed out of 633
+
+  Total Test time (real) =  35.18 sec
+
+  cmake --build build/debug --target format-check
+  [1/1] Checking clang-format of all C/C++ files
+  -- clang-format: file format is correct
+
+  build\debug\t1_dist_matrix_c\t1_c.exe --version
+  0.2.0
+
+  echo %ERRORLEVEL%
+  0
+  ```
+- делаю прогон на вм.
+  ```
+  cmake --preset debug   && cmake --build build/debug   && ctest --preset full
+  cmake --preset release && cmake --build build/release && ctest --preset full-release 
+  ```
 
 *Что зметила при работе с deepseek*
 - в coverage.cmake логика такая, что даже если тесты красные, то отчёты софрмируются, и падение с сообщ."тесты не прошли" будет только в самом конце. сейчас добавляется логика для вызова cli-программы, использующей coverage_union библиотеку. и если этот execute_process упадёт с ошибкой/summary-отчёт не создастся, будет падение. и оно случится перед падением от тестов. т.е., получится неполная картина. ии советует так: "Нюанс, который надо решить сознательно: если одновременно красные тесты и «нет источника», message(FATAL_ERROR) покажет только одно. Вариант «накопить оба в один текст» чище по §4.6, но длиннее; по умолчанию предлагаю простой вариант (сначала summary, в конце collect)."

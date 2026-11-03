@@ -11,7 +11,7 @@
           <CodeCoverage>
             <ModulePaths>
               <Include>
-                <ModulePath>.*[\\/]t[1-4]_[^\\/]*[\\/]main\.exe$</ModulePath>
+                <ModulePath>.*[\\/]t[1-4]_[^\\/]*[\\/][^\\/]+\.exe$</ModulePath>
                 <ModulePath>.*[\\/]common_(c|cpp)_shared\.dll$</ModulePath>
                 <ModulePath>.*[\\/]tests[\\/]unit[\\/][^\\/]*\.exe$</ModulePath>
               </Include>
