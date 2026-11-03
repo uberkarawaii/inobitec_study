@@ -296,6 +296,9 @@ function(add_task dir trgt src lib)
 
   # команда для cl+link. флаг PRODUCT_TARGET = ON - т.е. пойдём по ветке if (PRODUCT_TARGET) с флагами для программ-задач
   configure_target(${trgt} ON)
+
+  # в переменной-свойстве накапливаем то, для чего вызывался add_task - так получаем список продуктовых целей
+  set_property(GLOBAL APPEND PROPERTY PRODUCT_TARGETS "${trgt}")
  
 endfunction()
 
@@ -381,8 +384,32 @@ add_subdirectory(tools/coverage_union)
 # тесты на знчения и коды
 add_subdirectory(tests) 
 
-# особая цель при сборки с покрытием
+# особая цель при сборке с покрытием
 if(WIN32 AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  # в PRODUCT_TARGETS записаны все задачи
+  get_property(_tasks GLOBAL PROPERTY PRODUCT_TARGETS)
+  # инструментироваться будут и задачи, и dll-библиотеки
+  set(_targets ${_tasks} common_c_shared common_cpp_shared)
+
+  set(_sources "")
+  # _targets = t1_c, t1_cpp, ..., common_*_shared 
+  foreach(_t IN LISTS _targets)
+    get_target_property(_dir ${_t} SOURCE_DIR)   # где цель объявлена
+    get_target_property(_srcs ${_t} SOURCES)     # main.c / geometry.c / ...
+    # если путь до файла не абсолютный, то прибавляем к нему префикс
+    foreach(_s IN LISTS _srcs)
+      if(NOT IS_ABSOLUTE "${_s}")
+        set(_s "${_dir}/${_s}")                  
+      endif()
+      list(APPEND _sources "${_s}")
+    endforeach()
+  endforeach()
+  # страховка - если позже добавим в _targets ещё и common_*_static, тогда geometry.c придёт из двух целей
+  list(REMOVE_DUPLICATES _sources)
+  list(SORT _sources)
+  string(JOIN "\n" _expected_text ${_sources})
+  file(WRITE "${CMAKE_BINARY_DIR}/coverage_expected_sources.txt" "${_expected_text}\n")   
+
   add_custom_target(coverage
     COMMAND ${CMAKE_COMMAND}
       "-DCOVERAGE_EXE=${MICROSOFT_COVERAGE}"
@@ -391,6 +418,8 @@ if(WIN32 AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Coverage")
       "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
       "-DSETTINGS_FILE=${CMAKE_SOURCE_DIR}/cmake/coverage.settings.xml"
       "-DREPORT_DIR=${CMAKE_BINARY_DIR}/reports"
+      "-DCOVERAGE_UNION_EXE=$<TARGET_FILE:coverage_union>"                   # cli-exe для отчёта
+      "-DEXPECTED_SOURCES=${CMAKE_BINARY_DIR}/coverage_expected_sources.txt" # manifest
       -P "${CMAKE_SOURCE_DIR}/cmake/coverage.cmake"
     DEPENDS all
     COMMENT "Collecting code coverage"

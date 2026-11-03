@@ -8638,6 +8638,44 @@ Total Test time (real) =   9.37 sec
 
 - после негативных проверок прогоняю сборки и full-тесты: `ctest --preset full ... 100% tests passed, 0 tests failed out of 630 Total Test time (real) =  88.60 sec` и `ctest --preset full-release ... 100% tests passed, 0 tests failed out of 630 Total Test time (real) =  26.15 sec`. даю ии просмотреть все логи - при негатив.тестах и после них
 
+- далее проба руками, пока без интеграции с coverage.cmake. выполняю
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --preset coverage
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/coverage --target coverage_union
+  ...
+  [4/4] Linking CXX executable tools\coverage_union\coverage_union.exe
+  ```
+  в build/coverage/probe/expected.txt делаю временный манифест - нагенеренный ии, а не системой сборки. и прогоняю 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>build\coverage\tools\coverage_union\coverage_union.exe --cobertura build/coverage/reports/coverage.cobertura.xml --source-root C:\Users\User\Desktop\inobitec_stud --expected build/coverage/probe/expected.txt --output build/coverage/probe/output.txt
+  coverage union (line-based, Cobertura)
+  common/cli.c                   15/15     100.00%
+  common/cli.cpp                 13/13     100.00%
+  common/geometry.c              42/42     100.00%
+  common/geometry.cpp            44/44     100.00%
+  common/string_utils.c          80/82      97.56%
+  common/string_utils.cpp        65/65     100.00%
+  t1_dist_matrix_c/main.c        34/34     100.00%
+  t1_dist_matrix_cpp/main.cpp    36/36     100.00%
+  t2_passport_c/main.c           49/49     100.00%
+  t2_passport_cpp/main.cpp       38/38     100.00%
+  t3_bbox_c/main.c               74/82      90.24%
+  t3_bbox_cpp/main.cpp           47/49      95.92%
+  t4_filter_c/main.c             75/83      90.36%
+  t4_filter_cpp/main.cpp         59/61      96.72%
+  TOTAL                         671/693     96.83%
+
+  uncovered lines:
+    common/string_utils.c: 27, 29
+    t3_bbox_c/main.c: 43, 57, 58, 60, 120, 121, 122, 123
+    t3_bbox_cpp/main.cpp: 86, 87
+    t4_filter_c/main.c: 38, 39, 94, 95, 96, 97, 165, 166
+    t4_filter_cpp/main.cpp: 74, 75
+  files: 14/14 expected
+  ```
+  то же самое в output.txt; непокрыто ровно то, что и было до этого - 13 OOM-веток + 9 io-fail. и ушёл момент того, как было раньше, когда складывались проценты по копиям и потом делились на кол-во, что на самом деле неверно, т.к. нужно складывать строки, у которых хоть раз был hit и делить на общее кол-во строк файла. сейчас так и происходит. 
+- ии отметил эмпирическую проверку гипотезы о --source-root: "- флаг не указан - будут абсолютные пути; - указан, но не совпадает с путями отчёта (например, c: в манифесте и C: в --sources-root) - тоже абсолютные; - указан и совпадает - будут относительные."
+
 *Что не получилось*
 - возможный, но не обязательный TODO в coverage_union_test.cpp, от ии: "Остались только необязательные края вроде точных строк what, number == INT_MAX как валидной границы, hits == UINT64_MAX, non-self-closing <line>. Для текущего этапа не нужны."
 - TODO дальнешние действия от ии "порядок: сборка + тесты → негативный контроль → интеграция в coverage.cmake → полный coverage-прогон и проверка summary → документация/VM/клон." закончу сессию на негатив.контроле, новую начну с "интеграция в coverage.cmake"
@@ -8645,7 +8683,191 @@ Total Test time (real) =   9.37 sec
   и то, что ии заметил на финальном промпте, чтобы не забыть проверить:
   - --expected и --output end-to-end.
   - Поведение --source-root . (относительный корень не делает пути относительными).
- 
+
+# 2026-11-03
+*Что сделано*
+- в корневом CMakeLists.txt в add_task дописываю в конце APPEND к переменной, чтобы при каждом вызове add_task в переменной накапливались продукт.цели
+- в корневом CMakeLists.txt, где происходит coverage-сборка, добавляю формирование манифеста и в add_custom_target(coverage...) добавляю два аргумента - путь к манифесту и coverage_union(который tools/coverage_union/main.cpp)
+- добавляю в cmake/coverage.cmake в ресурсы COVERAGE_UNION_EXE, EXPECTED_SOURCES и прописываю удаление отчёта coverage_summary.txt, при начале новой сборки. убираю печать метрики с line-rate из .cobertura.xml, т.к. это усреднённый процент, а не all_hits/all_strings
+
+  там же меняю логику FATAL_ERROR - теперь будет накопление ошибок, и вывод их всех в конце со статусом FATAL_ERROR. иначе, если при каждой ситуации делать message(FATAL_ERROR ...), то будет падение сразу и дальнейшие FATAL_ERROR не сработают, хотя должны. теперь же ситуации с ненулевым кодом создания отчёта, несозданный отчёт и красные тесты/неполная инструментация накапливаются в переменной и если хоть что-то из этого произошло, то будет выведено в самом конце
+- выполняю `cmake --preset coverage` и проверяю build/coverage/coverage_expected_sources.txt - он непустой и там 14 ожидаемых путей. далее, `cmake --build build/coverage --target coverage` 
+  ```
+          Start 589: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  589/589 Test #589: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.07 sec
+
+  100% tests passed, 0 tests failed out of 589
+
+  Total Test time (real) =  34.61 sec
+  Результаты по объемам протестированного кода: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.coverage
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
+  Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml".
+  Включает файл "C:\Users\User\Desktop\inobitec_stud\build\coverage\reports\coverage.coverage".
+  Объединение в файл "C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml".
+  -- coverage line rate: 0.39500613999181333
+  -- coverage report (cobertura): C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml
+  -- coverage report (native xml): C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml
+  coverage union (line-based, Cobertura)
+  common/cli.c                   15/15     100.00%
+  common/cli.cpp                 13/13     100.00%
+  common/geometry.c              42/42     100.00%
+  common/geometry.cpp            44/44     100.00%
+  common/string_utils.c          80/82      97.56%
+  common/string_utils.cpp        65/65     100.00%
+  t1_dist_matrix_c/main.c        34/34     100.00%
+  t1_dist_matrix_cpp/main.cpp    36/36     100.00%
+  t2_passport_c/main.c           49/49     100.00%
+  t2_passport_cpp/main.cpp       38/38     100.00%
+  t3_bbox_c/main.c               74/82      90.24%
+  t3_bbox_cpp/main.cpp           47/49      95.92%
+  t4_filter_c/main.c             75/83      90.36%
+  t4_filter_cpp/main.cpp         59/61      96.72%
+  TOTAL                         671/693     96.83%
+
+  uncovered lines:
+    common/string_utils.c: 27, 29
+    t3_bbox_c/main.c: 43, 57, 58, 60, 120, 121, 122, 123
+    t3_bbox_cpp/main.cpp: 86, 87
+    t4_filter_c/main.c: 38, 39, 94, 95, 96, 97, 165, 166
+    t4_filter_cpp/main.cpp: 74, 75
+  files: 14/14 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+- негативный контроль. в манифест добавляю то, что точно не будет инструментировано, т.к. не пройдёт по фильтрам coverage.settings.xml. так, missing_excected будет непустым. добавляю в манифест C:\Users\User\Desktop\inobitec_stud\tools\coverage_union\main.cpp и снова
+  ```
+  [1/1] Collecting code coverage
+  FAILED: [code=1] CMakeFiles/coverage C:/Users/User/Desktop/inobitec_stud/build/coverage/CMakeFiles/coverage 
+  C:\Windows\system32\cmd.exe /C "cd /D C:\Users\User\Desktop\inobitec_stud\build\coverage && ...
+  ...
+          Start 626: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  626/626 Test #626: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ...............   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 626
+
+  Total Test time (real) =  48.92 sec
+  ...
+  t4_filter_cpp/main.cpp         59/61      96.72%
+  TOTAL                         671/693     96.83%
+
+  uncovered lines:
+    common/string_utils.c: 27, 29
+    t3_bbox_c/main.c: 43, 57, 58, 60, 120, 121, 122, 123
+    t3_bbox_cpp/main.cpp: 86, 87
+    t4_filter_c/main.c: 38, 39, 94, 95, 96, 97, 165, 166
+    t4_filter_cpp/main.cpp: 74, 75
+  files: 14/15 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  CMake Error at C:/Users/User/Desktop/inobitec_stud/cmake/coverage.cmake:100 (message):
+    coverage union report exited with code 65
+
+    reports were still written to:
+
+    C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml
+
+    C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml
+    
+    C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+
+  ninja: build stopped: subcommand failed.
+
+  echo %ERRORLEVEL%
+  1
+  ```
+  сходится - 14/15 и код 65. 
+- откатываю - убираю лишний 15 путь из манифеста и прогоняю 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/coverage --target coverage
+  ...
+  TOTAL                         671/693     96.83%
+
+  uncovered lines:
+    common/string_utils.c: 27, 29
+    t3_bbox_c/main.c: 43, 57, 58, 60, 120, 121, 122, 123
+    t3_bbox_cpp/main.cpp: 86, 87
+    t4_filter_c/main.c: 38, 39, 94, 95, 96, 97, 165, 166
+    t4_filter_cpp/main.cpp: 74, 75
+  files: 14/14 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+- проверка, что file(REMOVE "${REPORT_DIR}/coverage_summary.txt") работатет. воссоздание ситуации, когда старый отчёт лежит, а новый билд падает раньше создания отчёта. ожидаю, то отчёта (старого) не останется. по совету ии делаю это в новой папке, чтобы не навредить существующим корректным отчётам
+  ```
+  c:\Users\User\Desktop\inobitec_stud> mkdir build\coverage\probe\stale
+
+  c:\Users\User\Desktop\inobitec_stud> copy /y build\coverage\reports\coverage_summary.txt build\coverage\probe\stale\coverage_summary.txt
+  Скопировано файлов:         1.
+
+  c:\Users\User\Desktop\inobitec_stud> cmake -DCOVERAGE_EXE=no_such_tool.exe -DCTEST_EXE=dummy -DBUILD_DIR=dummy -DSOURCE_DIR=dummy ^
+  Продолжить?         -DSETTINGS_FILE=dummy -DCOVERAGE_UNION_EXE=dummy -DEXPECTED_SOURCES=dummy ^
+  Продолжить?         -DREPORT_DIR=build/coverage/probe/stale -P cmake\coverage.cmake
+  CMake Error at cmake/coverage.cmake:34 (message):
+    coverage file was not created: build/coverage/probe/stale/coverage.coverage
+
+  c:\Users\User\Desktop\inobitec_stud>echo %ERRORLEVEL%
+  1
+  
+  c:\Users\User\Desktop\inobitec_stud>dir build\coverage\probe\stale
+  Том в устройстве C имеет метку Windows 10
+  Серийный номер тома: 60BE-0CE0
+
+  Содержимое папки c:\Users\User\Desktop\inobitec_stud\build\coverage\probe\stale
+
+  03.11.2026  10:58    <DIR>          .
+  03.11.2026  10:58    <DIR>          ..
+                0 файлов              0 байт
+                2 папок  11 170 856 960 байт свободно
+  ```
+  папка пустая, т.е. старого отчёта там нет. то поведение, которое и ожидалось
+- независимый пересчёт метрики покрытия через PS-скрипт
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> [xml]$x = Get-Content -Raw build/coverage/reports/coverage.cobertura.xml
+  >> $u = @{}
+  >> foreach ($c in $x.SelectNodes('//class')) {
+  >>   $f = ($c.filename -replace '\\','/').ToLower()
+  >>   foreach ($l in $c.SelectNodes('lines/line')) {
+  >>     $k = "$f|$($l.number)"; $h = [uint64]$l.hits
+  >>     if (-not $u.ContainsKey($k) -or $u[$k] -lt $h) { $u[$k] = $h }
+  >>   }
+  >> }
+  >> $valid = $u.Count; $covered = ($u.Values | Where-Object { $_ -gt 0 }).Count
+  >> "union: $covered/$valid = {0:N2}%" -f (100.0*$covered/$valid)
+  union: 671/693 = 96,83%
+  ```
+  так же, как и в coverage_summary.txt - `TOTAL  671/693     96.83%`. проверка доказывает, что "арифметика union реализована верно". но не доказывает, что  (от ии):
+  - не проверяет сам сбор данных (hits пришли от Microsoft.CodeCoverage.Console — это чужая зона);
+  - не подтверждает per-file цифры отдельно — сверялся только TOTAL;
+  - не обосновывает выбор правила «union по max(hits)» — это проектное решение, а не то, что можно проверить замером.
+- регресс. проверка, что ничего не сломано после всего сделанного
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --target format-check
+  [1/1] Checking clang-format of all C/C++ files
+  -- clang-format: file format is correct
+
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  ninja: no work to do.
+
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/release
+  ninja: no work to do.
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 630
+  Total Test time (real) =  93.90 sec
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 630
+  Total Test time (real) =  35.45 sec
+  ```
+- регресс на vm.
+  ```
+
+  ```
+
+*Что зметила при работе с deepseek*
+- в coverage.cmake логика такая, что даже если тесты красные, то отчёты софрмируются, и падение с сообщ."тесты не прошли" будет только в самом конце. сейчас добавляется логика для вызова cli-программы, использующей coverage_union библиотеку. и если этот execute_process упадёт с ошибкой/summary-отчёт не создастся, будет падение. и оно случится перед падением от тестов. т.е., получится неполная картина. ии советует так: "Нюанс, который надо решить сознательно: если одновременно красные тесты и «нет источника», message(FATAL_ERROR) покажет только одно. Вариант «накопить оба в один текст» чище по §4.6, но длиннее; по умолчанию предлагаю простой вариант (сначала summary, в конце collect)."
+
+  не соглашаюсь, т.к. такое решение приведёт к неполной картине. ии соглашается: "Поэтому меняю рекомендацию на «накопить»: это те же ~6 строк, а диагностика честная."
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.
