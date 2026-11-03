@@ -9256,9 +9256,48 @@ Total Test time (real) =   9.37 sec
   ```
 - делаю прогон на вм.
   ```
-  cmake --preset debug   && cmake --build build/debug   && ctest --preset full
-  cmake --preset release && cmake --build build/release && ctest --preset full-release 
+  cmake --preset debug
+  cmake --build build/debug
+  [1/20] Linking C executable t2_passport_c/t2_c
+  ...
+  [20/20] Linking CXX executable tests/e2e/t4_e2e
+  ...
+  ctest --preset full
+          Start 637: e2e/runner/E2ERunner.MissingErrorDir
+  637/637 Test #637: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 637
+
+  Total Test time (real) =  10.28 sec
+
+
+  cmake --preset release
+  cmake --build build/release
+  ...
+  [20/20] Linking CXX executable tests/e2e/t4_e2e
+
+  ctest --preset full-release
+  ...
+          Start 637: e2e/runner/E2ERunner.MissingErrorDir
+  637/637 Test #637: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 637
+
+  Total Test time (real) =   2.71 sec
   ```
+- свежий клон. говорю ии сделать все прогоны и вывести summary по итогам:
+  ```
+  debug	Configuring done (25.8s), exit 0	[96/96], exit 0	633/633 passed, 103.67 s, exit 0
+  release	Configuring done (21.4s), exit 0	[96/96], exit 0	633/633 passed, 37.40 s, exit 0
+  coverage	Configuring done (24.8s), exit 0	[99/99] Collecting code coverage, exit 0	629/629 passed, 51.18 s, exit 0 
+
+  Coverage на клоне:
+  - TOTAL 671/693 96.83%, files: 14/14 expected;
+  - coverage_summary.txt побайтово совпадает с baseline рабочего дерева (Compare-Object пуст);
+  - в native XML 8 модулей задач, main — 0, block-счётчики ненулевые 
+  ```
+
+
 
 *Что зметила при работе с deepseek*
 - в coverage.cmake логика такая, что даже если тесты красные, то отчёты софрмируются, и падение с сообщ."тесты не прошли" будет только в самом конце. сейчас добавляется логика для вызова cli-программы, использующей coverage_union библиотеку. и если этот execute_process упадёт с ошибкой/summary-отчёт не создастся, будет падение. и оно случится перед падением от тестов. т.е., получится неполная картина. ии советует так: "Нюанс, который надо решить сознательно: если одновременно красные тесты и «нет источника», message(FATAL_ERROR) покажет только одно. Вариант «накопить оба в один текст» чище по §4.6, но длиннее; по умолчанию предлагаю простой вариант (сначала summary, в конце collect)."
