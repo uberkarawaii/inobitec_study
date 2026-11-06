@@ -9729,16 +9729,23 @@ Total Test time (real) =   9.37 sec
   Cleaning... 123 files.
   [96/96] Linking CXX executable tests\e2e\t4_e2e.exe
 
-  c:\Users\User\Desktop\inobitec_stud>cmake --build build/coverage --target coverage
-  [1/1] Collecting code coverage
-  SessionId: 8712d6b6-abbf-4f92-9421-5ff8054642d3
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/coverage --target coverage --clean-first
+  1/1] Cleaning all built files...
+  Cleaning... 125 files.
+  [1/99] Building C object common\CMakeFiles\common_c_static.dir\geometry.c.obj
+  ...
+  98/99] Linking CXX executable tests\unit\coverage_union_test.exe
+  [99/99] Collecting code coverage
+  SessionId: db5b5005-948c-48b2-a412-d661082ebbec
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+          Start   1: parse_point_cpp/OkCases/ParsePointOk.Parses/0
   ...
           Start 666: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
   666/666 Test #666: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ....................   Passed    0.11 sec
 
   100% tests passed, 0 tests failed out of 666
 
-  Total Test time (real) =  65.55 sec
+  Total Test time (real) =  61.19 sec
   ...
   files: 14/14 expected
   modules: 10/10 expected
@@ -9748,6 +9755,94 @@ Total Test time (real) =   9.37 sec
 # 2026-11-06
 *Что сделано*
 - прогон на виртуалке по build/release сборкам - проверить, что новые тесты по парсу xml появились, падений и warning-ов нет.
+
+  ```
+  cmake --preset debug
+  ...
+  -- Configuring done (1.7s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/debug
+
+  cmake --build build/debug --clean-first
+  [1/1] Cleaning all built files...
+  Cleaning... 117 files.
+  [1/92] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o
+  ...
+  [91/92] Linking CXX executable tests/e2e/t4_e2e
+  [92/92] Linking CXX executable tests/e2e/e2e_runner_test
+
+  ctest --preset full
+  ...
+          Start 674: e2e/runner/E2ERunner.MissingErrorDir
+  674/674 Test #674: e2e/runner/E2ERunner.MissingErrorDir .................................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 674
+
+  Total Test time (real) =  10.03 sec
+
+  # ================================================================================================
+
+  cmake --preset release 
+  ...
+  -- Configuring done (1.2s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/release
+  cmake --build build/release 
+  [1/1] Cleaning all built files...
+  Cleaning... 117 files.
+  [1/92] Building C object common/CMakeFiles/common_c_static.dir/string_utils.c.o
+  [2/92] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o
+  ...
+  [90/92] Linking CXX executable tests/unit/coverage_union_test
+  [91/92] Building CXX object tests/e2e/CMakeFiles/e2e_runner_test.dir/e2e_runner_test.cpp.o
+  [92/92] Linking CXX executable tests/e2e/e2e_runner_test
+
+  ctest --preset full-release
+  ...
+          Start 637: e2e/runner/E2ERunner.MissingErrorDir
+  637/637 Test #637: e2e/runner/E2ERunner.MissingErrorDir ............................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 637
+
+  Total Test time (real) =   2.28 sec
+
+  # ================================================================================================
+  cmake --preset coverage
+  ...
+  -- vcpkg toolchain: /home/karavai/dev/vcpkg/scripts/buildsystems/vcpkg.cmake
+  -- vcpkg instance : /home/karavai/dev/vcpkg
+  -- vcpkg triplet  : x64-linux
+  CMake Error at CMakeLists.txt:190 (message):
+    There is no coverage build for non-Windows OS
+
+
+  -- Configuring incomplete, errors occurred!
+  ```
+- прогон свежего клона на windows - клонирую в отдельную папку и говорю ии сделать для всех вариантов сборки конфигурацию/сборку/для build и release - тесты и предоставить summary по итогам. summary от ии:
+  ```
+  Debug
+  - cmake --fresh --preset debug — успешно.
+  - cmake --build build/debug — [96/96], warnings/errors нет.
+  - ctest --preset full — 100% tests passed, 0 tests failed out of 670.
+  Release
+  - cmake --fresh --preset release — успешно.
+  - cmake --build build/release — [96/96], warnings/errors нет.
+  - ctest --preset full-release — 100% tests passed, 0 tests failed out of 670.
+  Coverage
+  - cmake --fresh --preset coverage — успешно, CodeCoverage 18.7 найден.
+  - cmake --build build/coverage --target coverage — успешно, [99/99].
+  - Тесты под coverage: 100% tests passed, 0 tests failed out of 666.
+  - В логе: 0 строк с warning, 0 с error C/error LNK/fatal error/CMake Error, 0 с [ FAILED ].
+  - Итог summary:
+  - TOTAL 671/693 96.83%;
+  - files: 14/14 expected;
+  - modules: 10/10 expected;
+  - block-таблица по всем 10 модулям.
+  # build\coverage\coverage_expected_sources.txt и build\coverage\coverage_expected_modules.txt он также проверил. там 14 и 10 строк ожидаемых исходников/бинарников соответственно. блокеров нет
+  ```
+
+*Что заметила при работе с deepseek*
+- на финальном промпте в "что могло остаться непроверенным" сказал, что "/analyze MSVC не запускался." хотя на этой ступени, coverage, нет /analyze. переспросила, он сказал "Про /analyze — моя формулировка была слишком широкой ... Но по лестнице слоёв статанализ отнесён к слою 22, то есть позже coverage."
 
 ## 8. Диалоги с DeepSeek
 
