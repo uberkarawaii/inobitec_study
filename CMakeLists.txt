@@ -423,7 +423,40 @@ if(WIN32 AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Coverage")
   list(REMOVE_DUPLICATES _sources)
   list(SORT _sources)
   string(JOIN "\n" _expected_text ${_sources})
-  file(WRITE "${CMAKE_BINARY_DIR}/coverage_expected_sources.txt" "${_expected_text}\n")   
+  file(WRITE "${CMAKE_BINARY_DIR}/coverage_expected_sources.txt" "${_expected_text}\n")
+
+  # манифест модулей для block-метрики: только продуктовые цели
+  # (8 задач + common_*_shared), unit-тесты сюда не входят
+  set(_expected_modules "")
+  foreach(_t IN LISTS _targets)
+    get_target_property(_out ${_t} OUTPUT_NAME)
+    if(NOT _out)
+      set(_out "${_t}")
+    endif()
+
+    get_target_property(_type ${_t} TYPE)
+    if(_type STREQUAL "EXECUTABLE")
+      set(_suffix "${CMAKE_EXECUTABLE_SUFFIX}")
+    elseif(_type STREQUAL "SHARED_LIBRARY")
+      set(_suffix "${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    else()
+      message(FATAL_ERROR "unexpected target type for ${_t}: ${_type}")
+    endif()
+
+    list(APPEND _expected_modules "${_out}${_suffix}")
+  endforeach()
+
+  # fail-fast на одинаковые имена модулей: native XML не должен получить дубли
+  list(LENGTH _expected_modules _modules_before)
+  list(REMOVE_DUPLICATES _expected_modules)
+  list(LENGTH _expected_modules _modules_after)
+  if(NOT _modules_before EQUAL _modules_after)
+    message(FATAL_ERROR "duplicate module file names among coverage targets")
+  endif()
+
+  list(SORT _expected_modules)
+  string(JOIN "\n" _expected_modules_text ${_expected_modules})
+  file(WRITE "${CMAKE_BINARY_DIR}/coverage_expected_modules.txt" "${_expected_modules_text}\n")   
 
   add_custom_target(coverage
     COMMAND ${CMAKE_COMMAND}
@@ -434,7 +467,8 @@ if(WIN32 AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Coverage")
       "-DSETTINGS_FILE=${CMAKE_SOURCE_DIR}/cmake/coverage.settings.xml"
       "-DREPORT_DIR=${CMAKE_BINARY_DIR}/reports"
       "-DCOVERAGE_UNION_EXE=$<TARGET_FILE:coverage_union>"                   # cli-exe для отчёта
-      "-DEXPECTED_SOURCES=${CMAKE_BINARY_DIR}/coverage_expected_sources.txt" # manifest
+      "-DEXPECTED_SOURCES=${CMAKE_BINARY_DIR}/coverage_expected_sources.txt" # manifest for cobertura
+      "-DEXPECTED_MODULES=${CMAKE_BINARY_DIR}/coverage_expected_modules.txt" # manifest for xml 
       -P "${CMAKE_SOURCE_DIR}/cmake/coverage.cmake"
     DEPENDS all
     COMMENT "Collecting code coverage"

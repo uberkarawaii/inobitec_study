@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <ostream>
@@ -516,5 +517,332 @@ INSTANTIATE_TEST_SUITE_P(MissingCases, MissingExpectedCases,
                                            MissingCase{{"c:/empty.c"}, false, {"c:/empty.c"}},
                                            MissingCase{{"c:/zero.c"}, false, {}},
                                            MissingCase{{"c:/absent.c"}, false, {"c:/absent.c"}}));
+
+// ----------- native xml parse tests ----------
+
+// ===== FOR OK CASES =====
+struct NativeOkCase {
+    std::string_view xml;
+    bool fold_case = false;
+    std::vector<cov::ModuleStat> want;
+};
+
+// для печати в TEST_P при падении
+std::ostream& operator<<(std::ostream& os, const NativeOkCase& nc) {
+    os << "xml=\"" << nc.xml << "\", fold_case=" << nc.fold_case;
+    return os;
+}
+
+// parse_native_xml сортирует модули в лексикографич. порядке
+// потому сравниваем i-тое с i-тым, не "находя по имени"
+void expect_native(const cov::NativeCoverage& got, const std::vector<cov::ModuleStat>& want) {
+    ASSERT_EQ(got.modules.size(), want.size());
+
+    // ждём равенства по имени, покрытым и непокрытым
+    for (std::size_t i = 0; i < want.size(); ++i) {
+        EXPECT_EQ(got.modules[i].name, want[i].name);
+        EXPECT_EQ(got.modules[i].blocks_covered, want[i].blocks_covered);
+        EXPECT_EQ(got.modules[i].blocks_not_covered, want[i].blocks_not_covered);
+    }
+}
+
+// suite-шаблон для TEST_P
+class ParseNativeOk : public ::testing::TestWithParam<NativeOkCase> {};
+
+TEST_P(ParseNativeOk, Parses) {
+    const NativeOkCase& c = GetParam();
+    const auto got = cov::parse_native_xml(c.xml, c.fold_case);
+    ASSERT_TRUE(got.has_value()) << "reason=" << static_cast<int>(got.error().reason) << " what=" << got.error().what;
+    expect_native(*got, c.want);
+}
+
+// ===== FOR ERR CASES =====
+struct NativeErrCase {
+    std::string_view xml;
+    bool fold_case = false;
+    cov::ParseReason want;
+};
+
+// для печати в TEST_P при ошибке
+std::ostream& operator<<(std::ostream& os, const NativeErrCase& c) {
+    os << "xml=\"" << c.xml << "\", fold_case=" << c.fold_case << ", want=" << static_cast<int>(c.want);
+    return os;
+}
+
+// suite-шаблон для TEST_P
+class ParseNativeErr : public ::testing::TestWithParam<NativeErrCase> {};
+
+TEST_P(ParseNativeErr, Rejects) {
+    const NativeErrCase& c = GetParam();
+    const auto got = cov::parse_native_xml(c.xml, c.fold_case);
+    ASSERT_FALSE(got.has_value());
+    EXPECT_EQ(got.error().reason, c.want);
+    EXPECT_FALSE(got.error().what.empty());
+    EXPECT_LE(got.error().offset, c.xml.size());
+}
+
+// ===== OK TEST CASES =====
+// минимальный верный вариант
+constexpr std::string_view kNativeMinimal = R"xml(<results>
+  <modules>
+    <module name="t2_c.exe" blocks_covered="20" blocks_not_covered="5" />
+    <module name="t1_c.exe" blocks_covered="10" blocks_not_covered="2" />
+  </modules>
+</results>)xml";
+// вариант с вложенными структурами
+constexpr std::string_view kNativeRealistic = R"xml(<?xml version="1.0" encoding="utf-8"?>
+<results>
+  <!-- comment -->
+  <modules>
+    <module name="t2_c.exe" blocks_covered="132" blocks_not_covered="52">
+      <functions>
+        <function name="main" blocks_covered="52" blocks_not_covered="0" />
+      </functions>
+      <source_files>
+        <source_file id="0" path="C:\src\main.c" />
+      </source_files>
+      <skipped_functions>
+        <skipped_function name="__foo" reason="source_excluded" />
+      </skipped_functions>
+    </module>
+    <module name="t1_c.exe" blocks_covered="101" blocks_not_covered="136">
+      <functions>
+        <function name="main" blocks_covered="52" blocks_not_covered="0" />
+      </functions>
+    </module>
+  </modules>
+</results>)xml";
+// самозакрывающийся модуль
+constexpr std::string_view kNativeSelfClosing = R"xml(<results><modules>
+  <module name="a.exe" blocks_covered="1" blocks_not_covered="2" />
+</modules></results>)xml";
+// без блоков
+constexpr std::string_view kNativeZeroBlocks = R"xml(<results><modules>
+  <module name="empty.exe" blocks_covered="0" blocks_not_covered="0" />
+</modules></results>)xml";
+// xml-сущность в имени
+constexpr std::string_view kNativeEntity = R"xml(<results><modules>
+  <module name="a&amp;b.exe" blocks_covered="1" blocks_not_covered="0" />
+</modules></results>)xml";
+// fold_case=false в инстансе, a.exe A.exe должны дать два разных модуля
+constexpr std::string_view kNativeCaseNames = R"xml(<results><modules>
+  <module name="A.exe" blocks_covered="1" blocks_not_covered="0" />
+  <module name="a.exe" blocks_covered="2" blocks_not_covered="0" />
+</modules></results>)xml";
+
+INSTANTIATE_TEST_SUITE_P(
+    NativeOkCases, ParseNativeOk,
+    ::testing::Values(NativeOkCase{kNativeMinimal, false, {{"t1_c.exe", 10, 2}, {"t2_c.exe", 20, 5}}},
+                      NativeOkCase{kNativeRealistic, false, {{"t1_c.exe", 101, 136}, {"t2_c.exe", 132, 52}}},
+                      NativeOkCase{kNativeSelfClosing, false, {{"a.exe", 1, 2}}},
+                      NativeOkCase{kNativeZeroBlocks, false, {{"empty.exe", 0, 0}}},
+                      NativeOkCase{kNativeEntity, false, {{"a&b.exe", 1, 0}}},
+                      NativeOkCase{kNativeCaseNames, false, {{"A.exe", 1, 0}, {"a.exe", 2, 0}}}));
+
+// ===== ERR TEST CASES =====
+constexpr std::string_view kNativeNoModules = R"xml(<results><modules></modules></results>)xml";
+
+constexpr std::string_view kNativeUnclosedModule = R"xml(<results><modules>
+  <module name="a.exe" blocks_covered="1" blocks_not_covered="0">
+</modules></results>)xml";
+
+constexpr std::string_view kNativeUnexpectedClose = R"xml(<results><modules></module></modules></results>)xml";
+
+constexpr std::string_view kNativeNestedModule = R"xml(<results><modules>
+  <module name="a.exe" blocks_covered="1" blocks_not_covered="0">
+    <module name="b.exe" blocks_covered="2" blocks_not_covered="0"></module>
+  </module>
+</modules></results>)xml";
+
+constexpr std::string_view kNativeDuplicate = R"xml(<results><modules>
+  <module name="a.exe" blocks_covered="1" blocks_not_covered="0"></module>
+  <module name="a.exe" blocks_covered="2" blocks_not_covered="0"></module>
+</modules></results>)xml";
+
+constexpr std::string_view kNativeDuplicateCase = R"xml(<results><modules>
+  <module name="A.exe" blocks_covered="1" blocks_not_covered="0"></module>
+  <module name="a.exe" blocks_covered="2" blocks_not_covered="0"></module>
+</modules></results>)xml";
+
+constexpr std::string_view kNativeNoName =
+    R"xml(<results><modules><module blocks_covered="1" blocks_not_covered="0"/></modules></results>)xml";
+
+constexpr std::string_view kNativeEmptyName =
+    R"xml(<results><modules><module name="" blocks_covered="1" blocks_not_covered="0"/></modules></results>)xml";
+
+constexpr std::string_view kNativeNoCovered =
+    R"xml(<results><modules><module name="a.exe" blocks_not_covered="0"/></modules></results>)xml";
+
+constexpr std::string_view kNativeNoNotCovered =
+    R"xml(<results><modules><module name="a.exe" blocks_covered="1"/></modules></results>)xml";
+
+constexpr std::string_view kNativeBadNumber =
+    R"xml(<results><modules><module name="a.exe" blocks_covered="uwu" blocks_not_covered="0"/></modules></results>)xml";
+
+constexpr std::string_view kNativeNegative =
+    R"xml(<results><modules><module name="a.exe" blocks_covered="-1" blocks_not_covered="0"/></modules></results>)xml";
+
+constexpr std::string_view kNativeOverflow =
+    R"xml(<results><modules><module name="a.exe" blocks_covered="18446744073709551616" blocks_not_covered="0"/></modules></results>)xml";
+
+constexpr std::string_view kNativeSelfClosingThenClose = R"xml(<results><modules>
+  <module name="a.exe" blocks_covered="1" blocks_not_covered="0" />
+  </module>
+</modules></results>)xml";
+
+INSTANTIATE_TEST_SUITE_P(NativeErrCases, ParseNativeErr,
+                         ::testing::Values(NativeErrCase{kNativeNoModules, false, cov::ParseReason::no_modules},
+                                           NativeErrCase{"", false, cov::ParseReason::no_modules},
+                                           NativeErrCase{kNativeUnclosedModule, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeUnexpectedClose, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeNestedModule, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeDuplicate, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeDuplicateCase, true, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeNoName, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeEmptyName, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeNoCovered, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeNoNotCovered, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeBadNumber, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeNegative, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeOverflow, false, cov::ParseReason::malformed},
+                                           NativeErrCase{kNativeSelfClosingThenClose, false,
+                                                         cov::ParseReason::malformed}));
+
+// ---------- missing_modules ----------
+// проверяет: что всё ожидаемое на месте; что отсутствующее идёт в верном порядке
+// кейс когда нет никаких ожиданий; поведение при fold_case=true/false
+TEST(MissingModules, AllPresent) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"t1.exe", 1, 0}, {"t2.exe", 2, 0}};
+
+    const std::vector<std::string> expected{"t2.exe", "t1.exe"};
+    EXPECT_TRUE(cov::missing_modules(cov, expected, false).empty());
+}
+
+TEST(MissingModules, ReportsAbsentInExpectedOrder) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"t1.exe", 1, 0}};
+
+    const std::vector<std::string> expected{"b.exe", "t1.exe", "a.exe"};
+    const std::vector<std::string> want{"b.exe", "a.exe"};
+    EXPECT_EQ(cov::missing_modules(cov, expected, false), want);
+}
+
+TEST(MissingModules, EmptyExpected) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"t1.exe", 1, 0}};
+
+    const std::vector<std::string> expected;
+    EXPECT_TRUE(cov::missing_modules(cov, expected, false).empty());
+}
+
+TEST(MissingModules, FoldCase) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"t1.exe", 1, 0}};
+
+    const std::vector<std::string> expected{"T1.EXE"};
+    EXPECT_TRUE(cov::missing_modules(cov, expected, true).empty());
+    EXPECT_EQ(cov::missing_modules(cov, expected, false), expected);
+}
+
+// ---------- select_modules ----------
+// задействуется expect_native - проверяет равенство имён/bloc covered/block not covered у got/wanted,
+// ожидая лексикографический порядок
+TEST(SelectModules, FiltersAndPreservesExpectedOrder) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"a.exe", 1, 0}, {"b.exe", 2, 0}, {"c.exe", 3, 0}};
+
+    const std::vector<std::string> expected{"c.exe", "a.exe"};
+    const std::vector<cov::ModuleStat> want{{"c.exe", 3, 0}, {"a.exe", 1, 0}};
+    expect_native(cov::select_modules(cov, expected, false), want);
+}
+
+TEST(SelectModules, SkipsAbsent) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"a.exe", 1, 0}};
+
+    const std::vector<std::string> expected{"a.exe", "absent.exe"};
+    const std::vector<cov::ModuleStat> want{{"a.exe", 1, 0}};
+    expect_native(cov::select_modules(cov, expected, false), want);
+}
+
+TEST(SelectModules, EmptyExpected) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"a.exe", 1, 0}};
+
+    const std::vector<std::string> expected;
+    EXPECT_TRUE(cov::select_modules(cov, expected, false).modules.empty());
+}
+
+TEST(SelectModules, FoldCase) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"t1.exe", 1, 0}};
+
+    const std::vector<std::string> expected{"T1.EXE"};
+    const std::vector<cov::ModuleStat> want{{"t1.exe", 1, 0}};
+    expect_native(cov::select_modules(cov, expected, true), want);
+    EXPECT_TRUE(cov::select_modules(cov, expected, false).modules.empty());
+}
+
+// ---------- format_block_summary ----------
+
+TEST(FormatBlockSummary, Empty) {
+    const cov::NativeCoverage cov;
+    EXPECT_EQ(cov::format_block_summary(cov), "");
+}
+
+TEST(FormatBlockSummary, OneModule) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"a.exe", 1, 3}};
+
+    const std::string text = cov::format_block_summary(cov);
+    EXPECT_NE(text.find("block coverage (native XML, per module; not a union):"), std::string::npos);
+    EXPECT_NE(text.find("1/4"), std::string::npos);
+    EXPECT_NE(text.find("25.00%"), std::string::npos);
+    EXPECT_EQ(text.find("TOTAL"), std::string::npos);
+}
+
+TEST(FormatBlockSummary, FullCoverage) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"a.exe", 5, 0}};
+
+    const std::string text = cov::format_block_summary(cov);
+    EXPECT_NE(text.find("5/5"), std::string::npos);
+    EXPECT_NE(text.find("100.00%"), std::string::npos);
+}
+
+TEST(FormatBlockSummary, ZeroTotal) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"a.exe", 0, 0}};
+
+    const std::string text = cov::format_block_summary(cov);
+    EXPECT_NE(text.find("0/0"), std::string::npos);
+    EXPECT_NE(text.find("0.00%"), std::string::npos);
+}
+
+TEST(FormatBlockSummary, PreservesModuleOrder) {
+    cov::NativeCoverage cov;
+    cov.modules = {{"b.exe", 1, 0}, {"a.exe", 2, 0}};
+
+    const std::string text = cov::format_block_summary(cov);
+    EXPECT_LT(text.find("b.exe"), text.find("a.exe"));
+}
+
+// ---------- format_missing_modules ----------
+
+TEST(FormatMissingModules, Empty) {
+    const std::vector<std::string> missing;
+    EXPECT_EQ(cov::format_missing_modules(missing), "");
+}
+
+TEST(FormatMissingModules, Single) {
+    const std::vector<std::string> missing{"x.exe"};
+    EXPECT_EQ(cov::format_missing_modules(missing), "\nmissing product modules:\n  x.exe\n");
+}
+
+TEST(FormatMissingModules, PreservesOrder) {
+    const std::vector<std::string> missing{"b.exe", "a.exe"};
+    EXPECT_EQ(cov::format_missing_modules(missing), "\nmissing product modules:\n  b.exe\n  a.exe\n");
+}
 
 } // namespace

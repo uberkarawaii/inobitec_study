@@ -18,7 +18,8 @@ namespace cov {
 // malformed - не получилось разобрать тег или атрибут
 // no_classes - не найдено ни одного <class>
 // no_lines - не найдено ни одной <line>
-enum class ParseReason { malformed, no_classes, no_lines };
+// no_modules - не найдено ни одного <module ...> в native xml
+enum class ParseReason { malformed, no_classes, no_lines, no_modules };
 // содержание ошибки для вывода (причина, смещение, текст ошибки)
 struct ParseError {
     ParseReason reason;
@@ -81,5 +82,33 @@ std::vector<std::string> missing_expected(const Coverage&, std::span<const std::
 
 // секция отчёта со списком ожидаемых источников, которых нет в отчёте; пустая строка, если missing пуст
 std::string format_missing_sources(std::span<const std::string> missing);
+
+// ===== Block-метрика =====
+// имя модуля и две метрики по нему из xml
+struct ModuleStat {
+    std::string name;
+    std::uint64_t blocks_covered;
+    std::uint64_t blocks_not_covered;
+};
+
+// все модули в алфавитном порядке из .xml
+// для форматированного вывода и проверки полноты
+struct NativeCoverage {
+    std::vector<ModuleStat> modules;
+};
+
+// из native xml читает все строки вида  <module id / name / path / block_coverage ...>, отдаёт вектор с метриками
+std::expected<NativeCoverage, ParseError> parse_native_xml(std::string_view xml, bool fold_case);
+
+// проверяет по манифесту - есть ли модули без покрытия, которые указаны в манифесте
+std::vector<std::string> missing_modules(const NativeCoverage&, std::span<const std::string> expected, bool fold_case);
+
+// вернуть только модули из expected, в порядке expected
+NativeCoverage select_modules(const NativeCoverage&, std::span<const std::string> expected, bool fold_case);
+
+// печать таблицы с block-метрикой по всем модулям
+std::string format_block_summary(const NativeCoverage&);
+// если есть непокрытые продкутовые модули, печатает их
+std::string format_missing_modules(std::span<const std::string> missing);
 
 } // namespace cov

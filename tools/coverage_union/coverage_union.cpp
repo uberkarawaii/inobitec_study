@@ -282,10 +282,26 @@ std::string relative_path(std::string_view path, std::string_view source_root) {
     return rel;
 }
 
-// форматный вывод статистики для отдельного файла
-std::string format_line(std::string_view path, int covered, int valid, std::size_t width) {
+// общий хелпер для печати метрик по строкам и по блокам
+std::string format_counts(std::string_view path, std::uint64_t covered, std::uint64_t valid, std::size_t width) {
     const double pct = valid == 0 ? 0.0 : 100.0 * static_cast<double>(covered) / static_cast<double>(valid);
     return std::format("{:<{}} {:>5}/{:<5} {:>7.2f}%\n", path, width, covered, valid, pct);
+}
+
+// форматный вывод статистики для отдельного файла
+std::string format_line(std::string_view path, int covered, int valid, std::size_t width) {
+    return format_counts(path, static_cast<std::uint64_t>(covered), static_cast<std::uint64_t>(valid), width);
+}
+
+// общий вывод списка missing для sources/modules
+// вызывается из format_missing_sources и format_missing_modules
+std::string format_missing_list(std::span<const std::string> missing, std::string_view title) {
+    if (missing.empty())
+        return {};
+    std::string out = std::format("\n{}:\n", title);
+    for (const auto& p : missing)
+        out += std::format("  {}\n", p);
+    return out;
 }
 } // namespace
 
@@ -475,12 +491,148 @@ std::vector<std::string> missing_expected(const Coverage& cov, std::span<const s
 }
 
 // секция отчёта со списком ожидаемых источников, которых нет в отчёте; пустая строка, если missing пуст
+// существующий format_missing_sources теперь использует общий хелпер
 std::string format_missing_sources(std::span<const std::string> missing) {
-    if (missing.empty())
-        return {};
-    std::string out = "\nmissing product sources:\n";
-    for (const auto& p : missing)
-        out += std::format("  {}\n", p);
+    return format_missing_list(missing, "missing product sources");
+}
+
+// ===== BLOCK-METRIC (native xml) ======
+// ================================================================================================
+// разбор нативного XML Microsoft.CodeCoverage.Console
+std::expected<NativeCoverage, ParseError> parse_native_xml(std::string_view xml, bool fold_case) {
+    // вектор с объектами name + blocks_covered + blocks_not_covered
+    NativeCoverage cov;
+    // ищем каждый след. тег в xml
+    TagReader reader(xml);
+    Tag tag{};
+    // состояние - мы внутри модуля или снаружи
+    bool in_module = false;
+
+    while (true) {
+        auto has = reader.next(tag);
+        // имеем либо ParseErr - тогда его возвращаем; либо !flag - тогда теги закончились
+        if (!has)
+            return std::unexpected(has.error());
+        if (!*has)
+            break;
+
+        // <skipped_module>, <modules>, <function> и пр. игнорируются
+        if (tag.name != "module")
+            continue;
+
+        // </module>
+        if (tag.closing) {
+            if (!in_module)
+                return std::unexpected(make_error(ParseReason::malformed, tag.begin, "unexpected </module>"));
+            in_module = false;
+            continue;
+        }
+
+        // <module> внутри <module>
+        if (in_module)
+            return std::unexpected(make_error(ParseReason::malformed, tag.begin, "nested <module>"));
+
+        // нахождение всех тегов, нужных для объекта NativeCoverage. если хотя бы одного нет - ошибка
+        const std::string_view attrs = tag.attributes();
+        auto raw_name = find_attr(attrs, "name");
+        auto raw_covered = find_attr(attrs, "blocks_covered");
+        auto raw_not_covered = find_attr(attrs, "blocks_not_covered");
+        if (!raw_name || !raw_covered || !raw_not_covered)
+            return std::unexpected(
+                make_error(ParseReason::malformed, tag.begin, "module without name/blocks_covered/blocks_not_covered"));
+
+        // перевести спецсимволы в обычные
+        const std::string name = decode_entities(*raw_name);
+        // не обезаем имя, только если .empty() - то выходим. остальное считаеся за валидное имя
+        if (name.empty())
+            return std::unexpected(make_error(ParseReason::malformed, tag.begin, "empty module name"));
+
+        // парс blocks_covered и blocks_not_covered
+        std::uint64_t covered = 0;
+        std::uint64_t not_covered = 0;
+        if (!parse_u64(*raw_covered, covered) || !parse_u64(*raw_not_covered, not_covered))
+            return std::unexpected(
+                make_error(ParseReason::malformed, tag.begin, "bad blocks_covered/blocks_not_covered"));
+
+        // name - имя текущего модуля. проходим по всем распознанным до этого cov.modules,
+        // у модуля m берём имя и сравниваем его с именем текущего модуля, который сейчас обрабатывается
+        const std::string key = normalize_key(name, fold_case);
+        const auto duplicate = std::find_if(cov.modules.begin(), cov.modules.end(), [&](const ModuleStat& m) {
+            return normalize_key(m.name, fold_case) == key;
+        });
+        // если итератор вернул не .end() ("прошли до конца, тк ничего не совпало"), а что-то совпало, то выходим
+        // т.к. имена у всего продуктового уникальны
+        if (duplicate != cov.modules.end())
+            return std::unexpected(make_error(ParseReason::malformed, tag.begin, "duplicate module name"));
+
+        // если с имененм всё в порядке, то добавляем модуль с метриками в вектор
+        cov.modules.push_back(ModuleStat{name, covered, not_covered});
+        if (!tag.self_closing)
+            in_module = true;
+    }
+    // тегов не осталось, а состояние - "внутри module" -> незакрытый тег
+    if (in_module)
+        return std::unexpected(make_error(ParseReason::malformed, 0, "unclosed <module>"));
+    if (cov.modules.empty())
+        return std::unexpected(make_error(ParseReason::no_modules, 0, "no <module> in report"));
+
+    std::ranges::sort(cov.modules, {}, &ModuleStat::name);
+    return cov;
+}
+
+// ================================================================================================
+// проход по манифесту и реальным блокам. если что-то из манифеста не находим в cov - оно идёт в missing
+std::vector<std::string> missing_modules(const NativeCoverage& cov, std::span<const std::string> expected,
+                                         bool fold_case) {
+    std::vector<std::string> missing;
+    for (const auto& e : expected) {
+        // имя модуля из манифеста
+        const std::string key = normalize_key(e, fold_case);
+        // any_of - lambda, внутри - цикл
+        // идём по всем cov-элементам, сравниваем имена каждого элем. cov с именем из манифеста
+        // как только вернётся true, цикл в any_of
+        // если true не было ни разу, дойдём до end() и вернётся false
+        const bool found = std::any_of(cov.modules.begin(), cov.modules.end(),
+                                       [&](const ModuleStat& m) { return normalize_key(m.name, fold_case) == key; });
+        if (!found)
+            missing.push_back(e);
+    }
+    return missing;
+}
+
+// ================================================================================================
+// вернуть только модули из expected, в порядке expected
+NativeCoverage select_modules(const NativeCoverage& cov, std::span<const std::string> expected, bool fold_case) {
+    NativeCoverage out;
+    for (const auto& e : expected) {
+        const std::string key = normalize_key(e, fold_case);
+        const auto it = std::find_if(cov.modules.begin(), cov.modules.end(),
+                                     [&](const ModuleStat& m) { return normalize_key(m.name, fold_case) == key; });
+        if (it != cov.modules.end())
+            out.modules.push_back(*it);
+    }
     return out;
+}
+
+// ================================================================================================
+// вывод статистики покрытия по модулям
+std::string format_block_summary(const NativeCoverage& cov) {
+    if (cov.modules.empty())
+        return {};
+
+    std::size_t width = std::string_view("block coverage").size();
+    for (const auto& m : cov.modules)
+        width = std::max(width, m.name.size());
+
+    std::string out = "\nblock coverage (native XML, per module; not a union):\n";
+    for (const auto& m : cov.modules) {
+        const std::uint64_t total = m.blocks_covered + m.blocks_not_covered;
+        out += format_counts(m.name, m.blocks_covered, total, width);
+    }
+    return out;
+}
+
+std::string format_missing_modules(std::span<const std::string> missing) {
+    return format_missing_list(missing, "missing product modules");
 }
 } // namespace cov

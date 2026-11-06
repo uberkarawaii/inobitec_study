@@ -1,7 +1,8 @@
 # cmake -DCOVERAGE_EXE=... -DCTEST_EXE=... -DBUILD_DIR=... -DSOURCE_DIR=... \
-#       -DSETTINGS_FILE=... -DREPORT_DIR=... -P cmake/coverage.cmake
+#       -DSETTINGS_FILE=... -DREPORT_DIR=... -DEXPECTED_MODULES=... -P cmake/coverage.cmake
 
-foreach(v COVERAGE_EXE CTEST_EXE BUILD_DIR SOURCE_DIR SETTINGS_FILE REPORT_DIR COVERAGE_UNION_EXE EXPECTED_SOURCES)
+foreach(v COVERAGE_EXE CTEST_EXE BUILD_DIR SOURCE_DIR SETTINGS_FILE 
+          REPORT_DIR COVERAGE_UNION_EXE EXPECTED_SOURCES EXPECTED_MODULES)
   if(NOT DEFINED ${v} OR "${${v}}" STREQUAL "")
     message(FATAL_ERROR "${v} is not set")
   endif()
@@ -67,6 +68,8 @@ message(STATUS "coverage report (native xml): ${_xml}")
 set(_summary "${REPORT_DIR}/coverage_summary.txt")
 # построение человекочитаемого отчёта по .cobertura.xml, ex-code процесса - _summary_rc
 execute_process(COMMAND "${COVERAGE_UNION_EXE}" --cobertura "${_cobertura_xml}"
+                --native "${_xml}"
+                --modules "${EXPECTED_MODULES}"
                 --source-root "${SOURCE_DIR}" --expected "${EXPECTED_SOURCES}"
                 --output "${_summary}" RESULT_VARIABLE "_summary_rc")
 

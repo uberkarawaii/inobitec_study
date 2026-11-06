@@ -9304,6 +9304,451 @@ Total Test time (real) =   9.37 sec
 
   не соглашаюсь, т.к. такое решение приведёт к неполной картине. ии соглашается: "Поэтому меняю рекомендацию на «накопить»: это те же ~6 строк, а диагностика честная."
 
+# 2026-11-04
+*Что сделано*
+- новая сессия с внедрением block-метрики. ии сказал, что у native xml такая особенность: блоки уникальных только в рамках конкретного бинаря. и если этот бинарь включён 2 раза, и в нём блок А, который тоже повторён 2 раза, то у блока А нет какого-то уникального id, и в 2 разных местах он будет как бы "разным".
+
+  усреднение невозможно, т.к. мы имеем block_coverage — это covered/total конкретного модуля. если мы возьмём block_coverage для того же модуля в другом включении, то мы не понимаем, какие именно блоки были покрыты а какие нет. для строк картина сохранена - мы можем увидеть, что для этой строки был hit в таком-то включении, в след. - не был и т.д. и в иноге считаем max(hits)/all, а тут у нас только среднее. и его так нельзя сложить и поделить на кол-во получится средний процент покрытия. а не само покрытие. потому в summary пойдёт block-метрика per-module
+
+  модель будет та же, что и при нахождении line-метрики - coverage_union_lib/main.cpp/coverage.cmake с теми же ролями. и без флага --native block-метрика выводиться не будет
+
+- tools/coverage_union/coverage_union.hpp/.cpp - добавляю соотв. ф-ции и структуры для API для работы с native xml и получения блок-метрики. добавляю категорию no_modules в ParseReason
+
+  в .cpp меняю format_line во избежание дублирования для block - из format_line будет вызываться общий хелпер для печати. и добавляю format_missing_list - общий вывод списка пропущенного для sources и modules
+- дополняю tools/coverage_union/main.cpp для вызова ф-ций из coverage_union для нахождения block-метрик
+- CMakeLists корневой. добавляю генерацию манифеста модулей и во флагах add custom target для coverage добавляю по флагу передачу coverage_expected_modules.txt - манифест модулей, который должен быть примерно следующего вида: 
+  ```
+  common_c_shared.dll
+  common_cpp_shared.dll
+  ...
+  t4_cpp.exe
+  ```
+- cmake/coverage.cmake - добавляю передачу EXPECTED_MODULES и при вызове COVERAGE_UNION_EXE добавляю  --native ... --modules ...
+- реконфиг `cmake --preset coverage --fresh`, наполнение module-манифеста:
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Content build/coverage/coverage_expected_modules.txt
+  common_c_shared.dll
+  common_cpp_shared.dll
+  t1_c.exe
+  t1_cpp.exe
+  t2_c.exe
+  t2_cpp.exe
+  t3_c.exe
+  t3_cpp.exe
+  t4_c.exe
+  t4_cpp.exe
+  ```
+  сборка и прогон
+  ```
+  cmake --build build/coverage --target coverage
+  [1/3] Building CXX object tools\coverage_union\CMakeFiles\coverage_union.dir\main.cpp.obj
+  [2/3] Linking CXX executable tools\coverage_union\coverage_union.exe
+  [3/3] Collecting code coverage
+  SessionId: d1c3d607-8c5b-4496-ad41-89efce33542f
+  ...
+  block coverage (native XML, per module; not a union):
+  common_c_shared.dll     136/185     73.51%
+  common_cpp_shared.dll   104/173     60.12%
+  t1_c.exe                101/237     42.62%
+  t1_cpp.exe              126/257     49.03%
+  t2_c.exe                132/184     71.74%
+  t2_cpp.exe              152/197     77.16%
+  t3_c.exe                 89/103     86.41%
+  t3_cpp.exe              105/119     88.24%
+  t4_c.exe                 94/106     88.68%
+  t4_cpp.exe               96/125     76.80%
+  files: 14/14 expected
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+- негативные проверки. подготовка переменных и папки
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> $exe  = "build\coverage\tools\coverage_union\coverage_union.exe"
+  >> $cob  = "build\coverage\reports\coverage.cobertura.xml"
+  >> $nat  = "build\coverage\reports\coverage.xml"
+  >> $mods = "build\coverage\coverage_expected_modules.txt"
+  >> $probe = "build\coverage\probe"
+  >>
+  >> New-Item -ItemType Directory -Force $probe | Out-Null
+  ```
+  1. тест ситуации --modules без --native - должно упасть с usage
+    ```
+    PS C:\Users\User\Desktop\inobitec_stud> & $exe --cobertura $cob --modules $mods
+    usage: coverage_union --cobertura <file> [--native <file>] [--modules <file>] [--source-root <dir>] [--expected <file>] [--output <file>]
+
+    PS C:\Users\User\Desktop\inobitec_stud> "exit=$LASTEXITCODE"
+    exit=64
+    ```
+  2. запуск с несуществующим native XML. ожидаем iofail
+    ```
+    PS C:\Users\User\Desktop\inobitec_stud> & $exe --cobertura $cob --native "$probe\no_such_native.xml" --modules $mods
+    cannot open 'build\coverage\probe\no_such_native.xml': no such file or directory (errno 2)
+    PS C:\Users\User\Desktop\inobitec_stud> "exit=$LASTEXITCODE"
+    exit=74
+    ```
+  3. запуск с Native XML в котором нет <module>
+    ```
+    PS C:\Users\User\Desktop\inobitec_stud> @'
+    >> <?xml version="1.0" encoding="utf-8"?>
+    >> <results><modules></modules></results>
+    >> '@ | Set-Content -LiteralPath "$probe\no_modules.xml" -Encoding ASCII
+    PS C:\Users\User\Desktop\inobitec_stud> & $exe --cobertura $cob --native "$probe\no_modules.xml" --modules $mods
+    parse error at byte 0: no <module> in report
+    PS C:\Users\User\Desktop\inobitec_stud> "exit=$LASTEXITCODE"
+    exit=66
+    ```
+  4. запуск с манифестом, в котором есть несуществующий модуль
+    ```
+    PS C:\Users\User\Desktop\inobitec_stud> Copy-Item -LiteralPath $mods -Destination "$probe\modules_bad.txt" -Force
+    PS C:\Users\User\Desktop\inobitec_stud> Add-Content -LiteralPath "$probe\modules_bad.txt" -Value "no_such_module.exe"
+    PS C:\Users\User\Desktop\inobitec_stud> & $exe --cobertura $cob --native $nat --modules "$probe\modules_bad.txt" `
+    >>        --source-root (Get-Location).Path --output "$probe\neg4_summary.txt"
+    coverage union (line-based, Cobertura)
+    common/cli.c                   15/15     100.00%
+    common/cli.cpp                 13/13     100.00%
+    ...
+    block coverage (native XML, per module; not a union):
+    common_c_shared.dll     136/185     73.51%
+    missing product modules:
+    no_such_module.exe
+    modules: 10/11 expected
+    PS C:\Users\User\Desktop\inobitec_stud> "exit=$LASTEXITCODE"
+    exit=65
+    PS C:\Users\User\Desktop\inobitec_stud> Get-Content -LiteralPath "$probe\neg4_summary.txt" |
+    >>   Select-String -Pattern 'missing product modules|no_such_module|modules:'
+
+    missing product modules:
+      no_such_module.exe
+    modules: 10/11 expected
+    ```
+- доп. проверка, что можно запустить native без modules
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> & $exe --cobertura $cob --native $nat
+  coverage union (line-based, Cobertura)
+  C:\Users\User\Desktop\inobitec_stud\common\cli.c                   15/15     100.00%
+  C:\Users\User\Desktop\inobitec_stud\common\cli.cpp                 13/13     100.00%
+  C:\Users\User\Desktop\inobitec_stud\common\geometry.c              42/42     100.00%
+  C:\Users\User\Desktop\inobitec_stud\common\geometry.cpp            44/44     100.00%
+  C:\Users\User\Desktop\inobitec_stud\common\string_utils.c          80/82      97.56%
+  C:\Users\User\Desktop\inobitec_stud\common\string_utils.cpp        65/65     100.00%
+  C:\Users\User\Desktop\inobitec_stud\t1_dist_matrix_c\main.c        34/34     100.00%
+  C:\Users\User\Desktop\inobitec_stud\t1_dist_matrix_cpp\main.cpp    36/36     100.00%
+  C:\Users\User\Desktop\inobitec_stud\t2_passport_c\main.c           49/49     100.00%
+  C:\Users\User\Desktop\inobitec_stud\t2_passport_cpp\main.cpp       38/38     100.00%
+  C:\Users\User\Desktop\inobitec_stud\t3_bbox_c\main.c               74/82      90.24%
+  C:\Users\User\Desktop\inobitec_stud\t3_bbox_cpp\main.cpp           47/49      95.92%
+  C:\Users\User\Desktop\inobitec_stud\t4_filter_c\main.c             75/83      90.36%
+  C:\Users\User\Desktop\inobitec_stud\t4_filter_cpp\main.cpp         59/61      96.72%
+  TOTAL                                                             671/693     96.83%
+
+  uncovered lines:
+    C:\Users\User\Desktop\inobitec_stud\common\string_utils.c: 27, 29
+    C:\Users\User\Desktop\inobitec_stud\t3_bbox_c\main.c: 43, 57, 58, 60, 120, 121, 122, 123
+    C:\Users\User\Desktop\inobitec_stud\t3_bbox_cpp\main.cpp: 86, 87
+    C:\Users\User\Desktop\inobitec_stud\t4_filter_c\main.c: 38, 39, 94, 95, 96, 97, 165, 166
+    C:\Users\User\Desktop\inobitec_stud\t4_filter_cpp\main.cpp: 74, 75
+
+  block coverage (native XML, per module; not a union):
+  centroid_c.exe                4/166      2.41%
+  centroid_cpp.exe              5/51       9.80%
+  common_c_shared.dll         136/185     73.51%
+  common_cpp_shared.dll       104/173     60.12%
+  is_empty_c.exe                6/104      5.77%
+  is_empty_cpp.exe              9/101      8.91%
+  is_hex_prefix_c.exe          14/104     13.46%
+  parse_int32_c.exe            26/104     25.00%
+  parse_int32_cpp.exe          34/101     33.66%
+  parse_point_c.exe            56/166     33.73%
+  parse_point_cpp.exe          37/51      72.55%
+  parse_radius_c.exe           47/104     45.19%
+  parse_radius_cpp.exe         27/101     26.73%
+  point_distance_c.exe          2/166      1.20%
+  point_distance_cpp.exe        1/51       1.96%
+  polygon_vertex_c.exe          3/166      1.81%
+  polygon_vertex_cpp.exe        3/51       5.88%
+  t1_c.exe                    101/237     42.62%
+  t1_cpp.exe                  126/257     49.03%
+  t2_c.exe                    132/184     71.74%
+  t2_cpp.exe                  152/197     77.16%
+  t3_c.exe                     89/103     86.41%
+  t3_cpp.exe                  105/119     88.24%
+  t4_c.exe                     94/106     88.68%
+  t4_cpp.exe                   96/125     76.80%
+  trim_string_c.exe             9/104      8.65%
+  trim_string_cpp.exe          24/101     23.76%
+  vertex_form_index_c.exe       5/104      4.81%
+  vertex_form_index_cpp.exe     5/101      4.95%
+  ``` 
+
+# 2026-11-05
+*Что сделано*
+- coverage_union_test.cpp - добавляю юнит-тесты на parse_native_xml, missing_modules, select_modules, format_block_summary, format_missing_modules
+- проверяю, что тесты проходят
+  ```
+  cmake --preset debug
+  cmake --build build/debug --target coverage_union_test
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+        Start 271: coverage_union_test/MissingModules.AllPresent
+  7/77 Test #271: coverage_union_test/MissingModules.AllPresent ........................   Passed    0.12 sec
+        Start 272: coverage_union_test/MissingModules.ReportsAbsentInExpectedOrder
+  8/77 Test #272: coverage_union_test/MissingModules.ReportsAbsentInExpectedOrder ......   Passed    0.23 sec
+        Start 273: coverage_union_test/MissingModules.EmptyExpected
+  9/77 Test #273: coverage_union_test/MissingModules.EmptyExpected .....................   Passed    0.24 sec
+  ...
+        Start 281: coverage_union_test/FormatBlockSummary.FullCoverage
+  17/77 Test #281: coverage_union_test/FormatBlockSummary.FullCoverage ..................   Passed    0.22 sec
+  ...
+        Start 341: coverage_union_test/NativeErrCases/ParseNativeErr.Rejects/14
+  77/77 Test #341: coverage_union_test/NativeErrCases/ParseNativeErr.Rejects/14 .........   Passed    0.12 sec
+
+  100% tests passed, 0 tests failed out of 77
+
+  Total Test time (real) =  13.50 sec
+  ```
+  тесты на native xml появились, их к-во увеличилось
+- негатив. контроль. сначала для parse_native_xml - меняю код парсера, для падения одного ok-case, и одного err-case:
+  - убираю std::ranges::sort(...) - должны упасть ок-кейсы kNativeMinimal и kNativeRealistic т.к. там сначала t2.exe, потом t1.exe.
+  - меняю в проверке дублей `const std::string key = normalize_key(name, fold_case)` меняю fold_case на false, то же самое делаю в лямбде `return normalize_key(m.name, fold_case) == key;` - должен упасть только kNativeDuplicateCase (т.к. там в инстансах задан fold_case=true)
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --target coverage_union_test
+  [1/3] Building CXX object tools\coverage_union\CMakeFiles\coverage_union_lib.dir\coverage_union.cpp.obj
+  C:\Users\User\Desktop\inobitec_stud\tools\coverage_union\coverage_union.cpp(502): warning C4100: 'fold_case': unreferenced parameter
+  [3/3] Linking CXX executable tests\unit\coverage_union_test.exe
+  # его убрали намеренно - предупреждение это ок
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  96% tests passed, 3 tests failed out of 77
+
+  Total Test time (real) =  13.19 sec
+
+  The following tests FAILED:
+    321 - coverage_union_test/NativeOkCases/ParseNativeOk.Parses/0 (Failed)
+    322 - coverage_union_test/NativeOkCases/ParseNativeOk.Parses/1 (Failed)
+    333 - coverage_union_test/NativeErrCases/ParseNativeErr.Rejects/6 (Failed)
+  Errors while running CTest
+  ```
+  упало что надо. откатываю на fold_case И возвращаю сортировку. снова сборка и прогон
+  ```
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 77
+
+  Total Test time (real) =  12.57 sec
+  ```
+- негатив. тест на missing_modules. в `TEST(MissingModules, ReportsAbsentInExpectedOrder)` реальное покрытие: {{"t1.exe", 1, 0}}. в то время как ожидали expected{"b.exe", "t1.exe", "a.exe"}. соотв. в missing хотим видеть  want{"b.exe", "a.exe"}. для негатив теста меняю want{"b.exe", "a.exe"} на  want{"b.exe"} - реально возратиться  want{"b.exe", "a.exe"}
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure  
+        Start 272: coverage_union_test/MissingModules.ReportsAbsentInExpectedOrder
+  8/77 Test #272: coverage_union_test/MissingModules.ReportsAbsentInExpectedOrder ......***Failed    0.12 sec
+  ...
+  [ RUN      ] MissingModules.ReportsAbsentInExpectedOrder
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(728): error: Expected equality of these values:
+    cov::missing_modules(cov, expected, false)
+      Which is: { "b.exe", "a.exe" }
+    want
+      Which is: { "b.exe" }
+  ...
+  99% tests passed, 1 tests failed out of 77
+
+  Total Test time (real) =  11.77 sec
+
+  The following tests FAILED:
+    272 - coverage_union_test/MissingModules.ReportsAbsentInExpectedOrder (Failed)
+  Errors while running CTest
+  ```
+  упал именно MissingModules. откатываю ожидание на верное, пересобираю и снова прогон
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+
+  100% tests passed, 0 tests failed out of 77
+
+  Total Test time (real) =  13.00 sec
+  ```
+- далее негатив тест. на select_modules. в TEST(SelectModules, FiltersAndPreservesExpectedOrder) имеются модули: {{"a.exe", 1, 0}, {"b.exe", 2, 0}, {"c.exe", 3, 0}} и манифест ожиданий expected{"c.exe", "a.exe"}. то есть в итоге хотим, чтобы было want{{"c.exe", 3, 0}, {"a.exe", 1, 0}} - именно те модули, именно в таком порядке, как в манифесте. меняю expected{"c.exe", "a.exe"} -> expected{"a.exe", "c.exe"}. пересборка и прогон:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(543): error: Expected equality of these values:
+  got.modules[i].name
+    Which is: "a.exe"
+  want[i].name
+    Which is: "c.exe"
+
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(544): error: Expected equality of these values:
+    got.modules[i].blocks_covered
+      Which is: 1
+    want[i].blocks_covered
+      Which is: 3
+
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(543): error: Expected equality of these values:
+    got.modules[i].name
+      Which is: "c.exe"
+    want[i].name
+      Which is: "a.exe"
+
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(544): error: Expected equality of these values:
+    got.modules[i].blocks_covered
+      Which is: 3
+    want[i].blocks_covered
+      Which is: 1
+  ...
+  99% tests passed, 1 tests failed out of 77
+
+  Total Test time (real) =  12.60 sec
+
+  The following tests FAILED:
+    275 - coverage_union_test/SelectModules.FiltersAndPreservesExpectedOrder (Failed)
+  Errors while running CTest
+  ```
+  откатываю expected на прежний, пересборка и прогон
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+
+  100% tests passed, 0 tests failed out of 77
+
+  Total Test time (real) =  12.36 sec
+  ```
+- негатив. тест format_block_summary: в TEST(FormatBlockSummary, OneModule) меняю EXPECT_NE(text.find("25.00%"), std::string::npos) на EXPECT_NE(text.find("20.00%"), std::string::npos). должен упасть OneModule-тест. пересборка и прогон
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+        Start 280: coverage_union_test/FormatBlockSummary.OneModule
+  16/77 Test #280: coverage_union_test/FormatBlockSummary.OneModule .....................***Failed    0.24 sec
+  ...
+  [ RUN      ] FormatBlockSummary.OneModule
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(801): error: Expected: (text.find("20.00%")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+  ...
+
+  99% tests passed, 1 tests failed out of 77
+
+  Total Test time (real) =  12.59 sec
+
+  The following tests FAILED:
+    280 - coverage_union_test/FormatBlockSummary.OneModule (Failed)
+  Errors while running CTest
+  ```
+  откатываю значение на 25.00%, пересобираю и делаю прогон
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 77
+
+  Total Test time (real) =  12.22 sec 
+  ```
+-  негатив. тест на format_missing_modules. в TEST(FormatMissingModules, Single) меняю EXPECT_EQ(... "\nmissing product modules:\n  x.exe\n") на EXPECT_EQ(... "missing product modules:\n  x.exe\n"). пересборка и прогон:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+        Start 285: coverage_union_test/FormatMissingModules.Single
+  21/77 Test #285: coverage_union_test/FormatMissingModules.Single ......................***Failed    0.12 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(840): error: Expected equality of these values:
+    cov::format_missing_modules(missing)
+      Which is: "\nmissing product modules:\n  x.exe\n"
+    "missing product modules:\n  x.exe\n"
+  With diff:
+  @@ -1,3 +1,2 @@
+  -
+  missing product modules:
+    x.exe\n
+  ...
+  99% tests passed, 1 tests failed out of 77
+
+  Total Test time (real) =  12.66 sec
+
+  The following tests FAILED:
+    285 - coverage_union_test/FormatMissingModules.Single (Failed)
+  Errors while running CTest
+  ```
+  возвращаю \n, пересобираю, прогон:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+
+  100% tests passed, 0 tests failed out of 77
+
+  Total Test time (real) =  12.50 sec
+  ```
+- после всех негативных: 
+  ```
+  ctest --preset full
+  ...
+          Start 670: e2e/runner/E2ERunner.MissingErrorDir
+  670/670 Test #670: e2e/runner/E2ERunner.MissingErrorDir .................................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 670
+
+  Total Test time (real) = 100.40 sec
+  ```
+- прогон на релизе
+  ```
+  cmake --preset release
+  cmake --build build/release --target coverage_union_test
+  ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 670
+
+  Total Test time (real) =  29.30 sec
+  ```
+- дополнила/изменила readme, changelog во всех моментах, связанных с добавлением обработки native xml, получения и вывода block-метрики
+- прогоняю coverage-сборку после добавления тестов, чтобы убедиться, что новые моменты не повлияли на её корректность
+  ```
+  cmake --preset coverage
+  cmake --build build/coverage --target coverage
+  # смотрю build/coverage/coverage_expected_modules.txt:
+  common_c_shared.dll
+  common_cpp_shared.dll
+  ... t1-t3_c/cpp.exe
+  t4_c.exe
+  t4_cpp.exe
+  # содержит все ожидаемые модули 
+
+  # сводная таблица также есть:
+  block coverage (native XML, per module; not a union):
+  common_c_shared.dll     136/185     73.51%
+  common_cpp_shared.dll   104/173     60.12%
+  t1_c.exe                101/237     42.62%
+  t1_cpp.exe              126/257     49.03%
+  t2_c.exe                132/184     71.74%
+  t2_cpp.exe              152/197     77.16%
+  t3_c.exe                 89/103     86.41%
+  t3_cpp.exe              105/119     88.24%
+  t4_c.exe                 94/106     88.68%
+  t4_cpp.exe               96/125     76.80%
+  files: 14/14 expected
+  modules: 10/10 expected
+  ```
+- проверяю, что нет warnings при сборке на релизе и coverage
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/release --clean-first
+  [1/1] Cleaning all built files...
+  Cleaning... 123 files.
+  [96/96] Linking CXX executable tests\e2e\t4_e2e.exe
+
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/coverage --target coverage
+  [1/1] Collecting code coverage
+  SessionId: 8712d6b6-abbf-4f92-9421-5ff8054642d3
+  ...
+          Start 666: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  666/666 Test #666: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ....................   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 666
+
+  Total Test time (real) =  65.55 sec
+  ...
+  files: 14/14 expected
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+
+# 2026-11-06
+*Что сделано*
+- прогон на виртуалке по build/release сборкам - проверить, что новые тесты по парсу xml появились, падений и warning-ов нет.
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.
