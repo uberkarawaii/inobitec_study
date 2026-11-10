@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <format>
 #include <limits>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -271,6 +272,20 @@ std::string normalize_key(std::string_view path, bool fold_case) {
     return out;
 }
 
+// приводит путь к каноническому виду для сравнения:
+// - относительный путь склеивается с source_root;
+// - lexically_normal убирает "./" и "..";
+// - normalize_key приводит слеши и регистр.
+std::string canonical_key(std::string_view path, std::string_view source_root, bool fold_case) {
+    if (source_root.empty())
+        return normalize_key(path, fold_case);
+
+    std::filesystem::path p{path};
+    if (p.is_relative())
+        p = std::filesystem::path{source_root} / p;
+    return normalize_key(p.lexically_normal().generic_string(), fold_case);
+}
+
 std::string relative_path(std::string_view path, std::string_view source_root) {
     if (source_root.empty())
         return std::string(path);
@@ -479,12 +494,22 @@ std::string format_summary(const Summary& s) {
 // если есть файлы, которые должны были быть инструментированы, но не были, - вернуть их список
 // expected - список путей из манифеста
 // fold_case должен быть тот же, что и переданный в parse_cobertura
-std::vector<std::string> missing_expected(const Coverage& cov, std::span<const std::string> expected, bool fold_case) {
+std::vector<std::string> missing_expected(const Coverage& cov, std::span<const std::string> expected, bool fold_case,
+                                          std::string_view source_root) {
+    // берём канонич. путь файла и смотрим, есть ли хотя бы одна инструментированная строка хотя бы в одной копии
+    std::map<std::string, bool> present;
+    for (const auto& [key, fc] : cov.files) {
+        const std::string canonical = canonical_key(key, source_root, fold_case);
+        // OR, а не присваивание: если один и тот же файл пришёл дважды,
+        // достаточно, чтобы hits были в любой копии
+        present[canonical] = present[canonical] || !fc.hits.empty();
+    }
+
     std::vector<std::string> missing;
     for (const auto& e : expected) {
-        const auto it = cov.files.find(normalize_key(e, fold_case));
-        // если файла нет или у него ноль инструментированных строк
-        if (it == cov.files.end() || it->second.hits.empty())
+        const auto it = present.find(canonical_key(e, source_root, fold_case));
+        // если итератор дошёл до конца, не обнаружив файла, или у файла 0 инструментированных строк
+        if (it == present.end() || !it->second)
             missing.push_back(e);
     }
     return missing;

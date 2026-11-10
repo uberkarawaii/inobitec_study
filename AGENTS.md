@@ -9844,6 +9844,511 @@ Total Test time (real) =   9.37 sec
 *Что заметила при работе с deepseek*
 - на финальном промпте в "что могло остаться непроверенным" сказал, что "/analyze MSVC не запускался." хотя на этой ступени, coverage, нет /analyze. переспросила, он сказал "Про /analyze — моя формулировка была слишком широкой ... Но по лестнице слоёв статанализ отнесён к слою 22, то есть позже coverage."
 
+# 2026-11-07
+*Что сделано*
+- теперь нужно обеспечить coverage также под линуксом. для начала, проверки и зонд на VM, которые советует ии. проверить `g++ --version, gcov --version, gcovr --version` и их совместимость, и сделать программу в sandbox/, чтобы понять, какие будут пути в Cobertura: common/a.c или ./common/a.c и пр. особенности
+- проверка
+  ```
+  g++ --version
+  g++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+  Copyright (C) 2025 Free Software Foundation, Inc.
+  This is free software; see the source for copying conditions.  There is NO
+  warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+  gcov --version
+  gcov (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+  JSON format version: 2
+  Copyright (C) 2025 Free Software Foundation, Inc.
+  This is free software; see the source for copying conditions.  There is NO
+  warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
+  gcovr --version
+  Команда «gcovr» не найдена, но может быть установлена с помощью:
+  sudo apt install gcovr
+  ```
+  gcov утилита GCC, gcovr - python-утилита, вызывающая gcov и агрегирующая его результаты. gcov не производит cobertura.xml, потому нужно вызвать gcovr поверх gcov, чтобы gcovr из результатов gcov сделал .cobertura.xml 
+- устанавливаю gcovr
+  ```
+  sudo apt update
+  sudo apt install pipx
+  pipx install gcovr==8.8
+    Traceback (most recent call last):
+    File "/usr/lib/python3.14/pathlib/__init__.py", line 1012, in mkdir
+      os.mkdir(self, mode)
+      ~~~~~~~~^^^^^^^^^^^^
+  FileNotFoundError: [Errno 2] No such file or directory: '/home/karavai/.local/state/pipx/log'
+
+  During handling of the above exception, another exception occurred:
+
+  ...
+  OSError: [Errno 28] No space left on device: '/home/karavai/.local/state/pipx'
+  ...
+  OSError: [Errno 28] No space left on device
+
+  Original exception was:
+  Traceback (most recent call last):
+    File "/usr/lib/python3.14/pathlib/__init__.py", line 1012, in mkdir
+      os.mkdir(self, mode)
+      ~~~~~~~~^^^^^^^^^^^^
+  FileNotFoundError: [Errno 2] No such file or directory: '/home/karavai/.local/state/pipx/log'
+
+  During handling of the above exception, another exception occurred:
+
+  ...
+      ~~~~~~~~^^^^^^^^^^^^
+  OSError: [Errno 28] No space left on device: '/home/karavai/.local/state/pipx'
+  ```
+  думаю основная проблема в том, что закончилось место. добавляю его через интерфейс virtual box: файл-инструменты-носители и внизу Ubuntu.vdi увеличиваю с 15гб до 30гб. теперь надо разметить эту новую память:
+  ```
+  lsblk
+  ...
+  sda      8:0    0    30G  0 disk 
+  ├─sda1   8:1    0     1M  0 part 
+  └─sda2   8:2    0    15G  0 part /
+  # 15гб неразмечены
+
+  sudo fdisk /dev/sda
+  d # delete раздел
+  2 # второй раздел
+  n # new Раздел
+  2 # также под номером 2
+  Enter
+  Enter
+  # Начальный и конечный сектора по умолчанию
+  Remove signature? N
+  w # write и выйти
+
+  sudo resize2fs /dev/sda2
+  ...
+  файловая система на /dev/sda2 теперь длиной 7863552 (4K) блоков
+
+  df -h
+  Файл.система          Размер Использовано  Дост Использовано% Cмонтировано в
+  tmpfs                   1,5G         1,8M  1,5G            1% /run
+  /dev/sda2                30G          14G   15G           50% /
+  ...
+  ```
+  теперь все 30гб задействованы
+- повторяю с того момента, где нехватило памяти:
+  ```
+  karavai@Ubuntu:~$ pipx install gcovr==0.8 > /media/sf_ubuntu_windows_folder/pipxinstallgcovr
+  creating virtual environment...
+  creating shared libraries...
+  upgrading shared libraries...
+  installing gcovr from spec 'gcovr==0.8'...
+  Note: '/home/karavai/.local/bin' is not on your PATH environment variable.
+      These apps will not be globally accessible until your PATH is updated. Run
+      `pipx ensurepath` to automatically add it, or manually modify your PATH in
+      your shell's config file (e.g. ~/.bashrc).
+  done!
+
+  # в /media/sf_ubuntu_windows_folder/pipxinstallgcovr:
+    installed package gcovr 8.8, installed using Python 3.14.4
+  These apps are now globally available
+    - gcovr
+
+  karavai@Ubuntu:~$ pipx ensurepath
+  Success! Added /home/karavai/.local/bin to the PATH environment variable
+  ...
+  ```
+- перезапускаю вм чтобы была новая сессия консоли
+  ```
+  command -v gcovr
+  /home/karavai/.local/bin/gcovr
+
+  gcovr --version
+  gcovr 8.8
+
+  Copyright (c) 2013-2026 the gcovr authors
+  Copyright (c) 2013 Sandia Corporation.
+  Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+  the U.S. Government retains certain rights in this software.
+  ```
+*Что не получилось*
+- от ии: "Непроверенным остаётся только фактическое поведение gcovr 8.8 с GCC 15.2 на вашей VM — это и закрывает зонд." как и сказано, проверится зондом
+
+# 2026-11-09
+*Что сделано*
+- говорю ии создать скриптовый файл sandbox/coverage_probe/run_probe.sh, который будет запущен на вм из общей папки. этот скрипт создаст тестовые программы, соберёт их, запустить над ними gcov и проверит работу gcovr, какие артефакты он выдаст, и некоторые детали работы типа относительных путей, кодировки, и тд. копирую данный скрипт в общ. папку и запускаю его в клоне проекта на вм
+  ```
+  bash /media/sf_ubuntu_windows_folder/run_probe.sh
+  ```
+  возникают след. ошибки одного характера
+  ```
+  t1_probe/main.c: In function ‘main’:
+  t1_probe/main.c:4:12: warning: too many arguments for format [-Wformat-extra-args]
+      4 |     printf("0\n", probe_abs(-3));
+        |            ^~~~~
+  t1_probe/main.c:5:12: warning: too many arguments for format [-Wformat-extra-args]
+      5 |     printf("0\n", probe_abs(4));
+        |            ^~~~~
+  built
+  ```
+  ии просмотрел и сказал, что это из-за спецификатора %d, который внешний shell-printf воспринял как свой спецификатор, и т.к. аргумента для него не было, то туда был подставлен 0. 
+
+  ии переписывает это место на heredoc `cat > t1_probe/main.c <<'EOF' ...` - т.к. EOF в кавычках, переданный текст будет подставлен как есть, shell не выполнит никаких подстановок или замен. просто впишет текст.
+
+  также, ии советует добавить проверку (`cmp -s enc_default.xml enc_cp1251.xml; echo "encoding diff rc=$?"`) для понимания, что при chcp1251 исходников gcovr сработает нормально. и сравнить с поведением при --source-encoding cp1251. если нормально сработает, то будет rc=0. согласна, нужно проверять, говорю ему также добавить эту проверку
+
+- перезапускаю с обновлённым скриптом
+  ```
+  bash /media/sf_ubuntu_windows_folder/run_probe.sh
+
+  === tools ===
+  gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+  gcov (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+  JSON format version: 2
+  gcovr 8.8
+  repo root : /home/karavai/test/inobitec_study
+  probe dir : /home/karavai/test/inobitec_study/sandbox/coverage_probe_work
+
+  === build (--coverage -O0 -g) ===
+  built
+
+  === run ===
+  3
+  4
+  ran
+
+  === gcovr: relative filters ===
+  gcovr rc=0
+
+  === <class> lines ===
+  10:        <class name="probe_math_c" filename="common/probe_math.c" line-rate="1.0" branch-rate="1.0" complexity="0.0">
+  40:        <class name="main_c" filename="t1_probe/main.c" line-rate="1.0" branch-rate="1.0" complexity="0.0">
+
+  === branch/condition attrs ===
+  14:                <line number="2" hits="3" branch="false"/>
+  15:                <line number="3" hits="3" branch="true" condition-coverage="100% (2/2)">
+  20:                <line number="4" hits="1" branch="false"/>
+  21:                <line number="5" hits="2" branch="false"/>
+  26:            <line number="2" hits="3" branch="false"/>
+  27:            <line number="3" hits="3" branch="true" condition-coverage="100% (2/2)">
+  32:            <line number="4" hits="1" branch="false"/>
+  33:            <line number="5" hits="2" branch="false"/>
+  44:                <line number="3" hits="1" branch="false"/>
+  45:                <line number="4" hits="1" branch="false"/>
+  46:                <line number="5" hits="1" branch="false"/>
+  47:                <line number="6" hits="1" branch="false"/>
+  52:            <line number="3" hits="1" branch="false"/>
+  53:            <line number="4" hits="1" branch="false"/>
+  54:            <line number="5" hits="1" branch="false"/>
+  55:            <line number="6" hits="1" branch="false"/>
+
+  === first <line> entries ===
+  14:                <line number="2" hits="3" branch="false"/>
+  15:                <line number="3" hits="3" branch="true" condition-coverage="100% (2/2)">
+  20:                <line number="4" hits="1" branch="false"/>
+  21:                <line number="5" hits="2" branch="false"/>
+  26:            <line number="2" hits="3" branch="false"/>
+  27:            <line number="3" hits="3" branch="true" condition-coverage="100% (2/2)">
+  32:            <line number="4" hits="1" branch="false"/>
+  33:            <line number="5" hits="2" branch="false"/>
+  44:                <line number="3" hits="1" branch="false"/>
+  45:                <line number="4" hits="1" branch="false"/>
+  46:                <line number="5" hits="1" branch="false"/>
+  47:                <line number="6" hits="1" branch="false"/>
+  52:            <line number="3" hits="1" branch="false"/>
+  53:            <line number="4" hits="1" branch="false"/>
+  54:            <line number="5" hits="1" branch="false"/>
+  55:            <line number="6" hits="1" branch="false"/>
+
+  === tests/unit occurrences ===
+  0
+
+  === CP1251 source ===
+
+  --- gcovr without --source-encoding ---
+  rc=0
+
+  --- gcovr with --source-encoding cp1251 ---
+  rc=0
+
+  --- enc_default.xml vs enc_cp1251.xml ---
+  encoding diff rc=0
+
+  === artifacts ===
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/enc_main.gcda
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/enc_main.gcno
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/enc_main.o
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_enc
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_enc.gcda
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_enc.gcno
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_enc.o
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_math.gcda
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_math.gcno
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_math.o
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_unit
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_unit.gcda
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_unit.gcno
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/probe_unit.o
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/t1_main.gcda
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/t1_main.gcno
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/t1_main.o
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/build/t1_probe
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/common/probe_enc.c
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/common/probe_math.c
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/common/probe_math.h
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/enc_cp1251.xml
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/enc_default.xml
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/probe.cobertura.xml
+  /home/karavai/test/inobitec_study/sandbox/coverage_probe_work/t1_probe/main.c
+
+  === what to send back ===
+  - full output of this script
+  - <class filename=...> lines (path style)
+  - branch/condition lines, if any
+  - tests/unit occurrences (expected 0)
+  - CP1251 rc and error text for both runs
+  ```
+  ошибок нет, по результатам прогона видно, что 
+    - g++ gcov версии совпадают, 
+    - gcovr 8.8 нормально читает JSON format version: 2. 
+    - пути относительные и не имеют ./ (filename="common/probe_math.c")
+    - при дублях исходника gcovr объединяет копии
+    - gcovr нормально воспринимает cp1251, так что --source-encoding применять не нужно
+- делаю единообразие для путей в файлах tools/coverage_union/coverage_union.hpp, .cpp, tests/unit/coverage_union_test.cpp. 
+
+  в coverage_union.hpp в missing_expected добавляю параметр std::string_view source_root = {} для сравнения путей, которые будут в отчёте (относит.) и в манифесте (абсолютные). т.к. есть дефолт. значение, то на старые вызовы это не влияет. 
+
+  в coverage_union.cpp добавляю хелпер canonical_key, который будет приводить пути к каноническому виду. и меняю наполнение missing_expected, добавляя в него канонизацию путей, и в сигнатуре добавляю std::string_view source_root
+
+- tools/coverage_union/main.cpp в missing_sources = cov::missing_expected добавляю в конце аргумент для передачи корня (options->source_root)
+
+- tests/unit/coverage_union_test.cpp в конец структуры MissingCase добавляю поле std::string source_root. и тк оно пустое, то не повлияет на существующие инициализаторы. там же, под MissingCase дополняю std::ostream& operator<<, чтобы был вывод source_root
+- там же добавляю отдельные тесты на однозначное соответствие абс. и относит. путей
+- делаю проверки со всем добавленным на виндоусе
+  ```
+  cmake --build build/debug
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+        Start 345: coverage_union_test/NativeErrCases/ParseNativeErr.Rejects/14
+  81/81 Test #345: coverage_union_test/NativeErrCases/ParseNativeErr.Rejects/14 .................   Passed    0.24 sec
+
+  100% tests passed, 0 tests failed out of 81
+  Total Test time (real) =  12.71 sec
+
+  cmake --build build/release
+  ctest --test-dir build/release -R coverage_union --output-on-failure
+  ...
+        Start 345: coverage_union_test/NativeErrCases/ParseNativeErr.Rejects/14
+  81/81 Test #345: coverage_union_test/NativeErrCases/ParseNativeErr.Rejects/14 .................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 81
+
+  Total Test time (real) =   2.72 sec
+
+  cmake --build build/debug --target format-check
+  [1/1] Checking clang-format of all C/C++ files
+  -- clang-format: file format is correct
+  ```
+- негатив. контроль - в canonical_key убираю всё, кроме return normalize_key(path, fold_case). должны упасть RelativeReportAbsoluteExpectedWithRoot и LeadingDotSlashWithRoot, т.к. там проверка на склейку корня и относит. пути. она перестанет происходить и результаты не сойдутся собираю и прогоняю
+  ```
+  cmake --build build/debug
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+        Start 271: coverage_union_test/MissingExpected.RelativeReportAbsoluteExpectedWithRoot
+  7/81 Test #271: coverage_union_test/MissingExpected.RelativeReportAbsoluteExpectedWithRoot ...***Failed    0.13 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(527): error: Value of: cov::missing_expected(coverage, expected, false, "/src").empty()
+    Actual: false
+  Expected: true
+
+  [  FAILED  ] MissingExpected.RelativeReportAbsoluteExpectedWithRoot (1 ms)
+  [----------] 1 test from MissingExpected (1 ms total)
+  ...
+  1 FAILED TEST
+        Start 272: coverage_union_test/MissingExpected.LeadingDotSlashWithRoot
+  8/81 Test #272: coverage_union_test/MissingExpected.LeadingDotSlashWithRoot ..................***Failed    0.12 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(533): error: Value of: cov::missing_expected(coverage, expected, false, "/src").empty()
+    Actual: false
+  Expected: true
+  ...
+  1 FAILED TEST
+  ...
+  98% tests passed, 2 tests failed out of 81
+
+  Total Test time (real) =  12.94 sec
+
+  The following tests FAILED:
+    271 - coverage_union_test/MissingExpected.RelativeReportAbsoluteExpectedWithRoot (Failed)
+    272 - coverage_union_test/MissingExpected.LeadingDotSlashWithRoot (Failed)
+  Errors while running CTest
+  ```
+  откатываю метод, пересобираю и полный прогон:
+  ```
+  cmake --build build/debug
+  ctest --preset full
+  ...
+          Start 674: e2e/runner/E2ERunner.MissingErrorDir
+  674/674 Test #674: e2e/runner/E2ERunner.MissingErrorDir .........................................   Passed    0.12 sec
+
+  100% tests passed, 0 tests failed out of 674
+
+  Total Test time (real) = 104.23 sec
+  ```
+  проверка после негатива прошла
+- выставляю версии min/tested для gcovr в cmake/toolchain_versions.cmake
+- в корневом CMakeLists.txt в ветке Coverage делаю проверку CMAKE_C_COMPILER_ID/CMAKE_CXX_COMPILER_ID == GNU, т.к. тот coverage, который сейчас делается gcovr-ом, последовательность обработки файлов и каких именно, ожидает именно GNU compilers. другие компиляторы соберут не так, как gnu, и будет mismatch
+- добавляю флаги при Coverage-сборке в кроневом CMakeLists.txt - те что были, оборачиваю в if windows. и делаю ветку для линукса при условии gnu со своими флагами
+- в корневом CMakeLists.txt при сборке с целью "покрытие" убираю из начального условия WIN32 AND MSVC, манифест модулей - только под виндоус, т.к. native xml приходит из Microsoft.CodeCoverage.Console, остальная часть для обоих ОС. аргументы под разные ОС - разные, и в конце add_dependencies(coverage coverage_union), чтобы coverage_union и coverage были собраны при coverage-сборке, иначе от exclude from all не соберутся
+
+# 2026-11-10
+*Что сделано*
+- cmake/coverage.cmake меняю так, чтобы виндоус-ветка осталась, как есть. и добавилась линуксовая ветка. 
+  проверка define-ов типа -DCOVERAGE_EXE=... разделяется на проверку общих компонентов и потом - в зависимости от ОС. добавляю платформенно разделённую логику для запуска покрытия и формирования cobertura.xml и только под виндой - native xml. проверка кр. тестов и/или несформированных отчётов в конце также с учётом, что под линуксом не будет native xml
+- делаю проверку под виндой, что внесённые изменения не повлияли на поведение
+  ```
+  cmake --preset coverage --fresh
+  ...
+  -- Configuring done (18.1s)
+  -- Generating done (0.2s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/coverage
+
+  cmake --build build/coverage --target coverage
+  [1/6] Building CXX object tools\coverage_union\CMakeFiles\coverage_union_lib.dir\coverage_union.cpp.obj
+  [2/6] Linking CXX static library tools\coverage_union\coverage_union_lib.lib
+  ...
+  SessionId: 3afea7b6-f853-4e95-8209-be137a31b7a9
+  ...
+  100% tests passed, 0 tests failed out of 670
+
+  Total Test time (real) =  63.62 sec
+  ...
+  coverage union (line-based, Cobertura)
+  common/cli.c                   15/15     100.00%
+  common/cli.cpp                 13/13     100.00%
+  common/geometry.c              42/42     100.00%
+  ...
+  block coverage (native XML, per module; not a union):
+  common_c_shared.dll     136/185     73.51%
+  common_cpp_shared.dll   104/173     60.12%
+  t1_c.exe                101/237     42.62%
+  ...
+  t4_cpp.exe               96/125     76.80%
+  files: 14/14 expected
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+- негативный коднтроль под виндоус.
+  - порчу ожидание (tests/unit/parse_int32.cpp: OkCase{"5", 5} -> {"5", 6})
+    ```
+    cmake --build build/coverage --target coverage
+    [1/3] Building CXX object tests\unit\CMakeFiles\parse_int32_cpp.dir\parse_int32.cpp.obj
+    [2/3] Linking CXX executable tests\unit\parse_int32_cpp.exe
+    [3/3] Collecting code coverage
+    FAILED: [code=1] CMakeFiles/coverage
+    ...
+            Start  63: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+    63/670 Test  #63: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ................................***Failed    0.08 sec
+    Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+    ...
+    C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_int32.cpp(25): error: Expected equality of these values:
+      *got
+        Which is: 5
+      c.want
+        Which is: 6
+
+    [  FAILED  ] OkCases/ParseInt32Ok.Parses/0, where GetParam() = in="5", want=6 (0 ms)
+    [----------] 1 test from OkCases/ParseInt32Ok (0 ms total)
+
+    [----------] Global test environment tear-down
+    [==========] 1 test from 1 test suite ran. (0 ms total)
+    [  PASSED  ] 0 tests.
+    [  FAILED  ] 1 test, listed below:
+    [  FAILED  ] OkCases/ParseInt32Ok.Parses/0, where GetParam() = in="5", want=6
+
+    1 FAILED TEST
+    ...
+    files: 14/14 expected
+    modules: 10/10 expected
+    -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+    CMake Error at C:/Users/User/Desktop/inobitec_stud/cmake/coverage.cmake:178 (message):
+      coverage collection exited with code 8
+      reports were still written to:
+      C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.cobertura.xml
+      C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage.xml
+      C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+    ninja: build stopped: subcommand failed.
+    ```
+  возвращаю верное ожидание и прогон 
+    ```
+    cmake --build build/coverage --target coverage
+    ...
+    files: 14/14 expected
+    modules: 10/10 expected
+    -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+    ```
+  - случай не инструментированного исходника. в cmake/coverage.settings.xml меняю t[1-4] на t[1-3] 
+    ```
+    cmake --build build/coverage --target coverage
+    [1/1] Collecting code coverage
+    FAILED: [code=1] CMakeFiles/coverage ...
+    ...
+    missing product sources:
+      C:/Users/User/Desktop/inobitec_stud/t4_filter_c/main.c
+      C:/Users/User/Desktop/inobitec_stud/t4_filter_cpp/main.cpp
+    files: 12/14 expected
+
+    missing product modules:
+      t4_c.exe
+      t4_cpp.exe
+    modules: 8/10 expected
+    -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+    CMake Error at C:/Users/User/Desktop/inobitec_stud/cmake/coverage.cmake:178 (message):
+      coverage union report exited with code 65
+      ...
+    ```
+    вернула t[1-4] в coverage.settings.xml и прогон
+    ```
+    cmake --build build/coverage --target coverage
+    ...
+    100% tests passed, 0 tests failed out of 670
+
+    Total Test time (real) =  52.99 sec
+    ...
+    coverage union (line-based, Cobertura)
+    common/cli.c                   15/15     100.00%
+    common/cli.cpp                 13/13     100.00%
+    common/geometry.c              42/42     100.00%
+    common/geometry.cpp            44/44     100.00%
+    common/string_utils.c          80/82      97.56%
+    common/string_utils.cpp        65/65     100.00%
+    t1_dist_matrix_c/main.c        34/34     100.00%
+    t1_dist_matrix_cpp/main.cpp    36/36     100.00%
+    t2_passport_c/main.c           49/49     100.00%
+    t2_passport_cpp/main.cpp       38/38     100.00%
+    t3_bbox_c/main.c               74/82      90.24%
+    t3_bbox_cpp/main.cpp           47/49      95.92%
+    t4_filter_c/main.c             75/83      90.36%
+    t4_filter_cpp/main.cpp         59/61      96.72%
+    TOTAL                         671/693     96.83%
+
+    uncovered lines:
+      common/string_utils.c: 27, 29
+      t3_bbox_c/main.c: 43, 57, 58, 60, 120, 121, 122, 123
+      t3_bbox_cpp/main.cpp: 86, 87
+      t4_filter_c/main.c: 38, 39, 94, 95, 96, 97, 165, 166
+      t4_filter_cpp/main.cpp: 74, 75
+
+    block coverage (native XML, per module; not a union):
+    common_c_shared.dll     136/185     73.51%
+    common_cpp_shared.dll   104/173     60.12%
+    t1_c.exe                101/237     42.62%
+    t1_cpp.exe              126/257     49.03%
+    t2_c.exe                132/184     71.74%
+    t2_cpp.exe              152/197     77.16%
+    t3_c.exe                 89/103     86.41%
+    t3_cpp.exe              105/119     88.24%
+    t4_c.exe                 94/106     88.68%
+    t4_cpp.exe               96/125     76.80%
+    files: 14/14 expected
+    modules: 10/10 expected
+    -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+    ```
+- далее позитив. тест на vm
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.

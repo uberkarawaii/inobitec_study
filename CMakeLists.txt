@@ -154,8 +154,9 @@ if(VCPKG_TARGET_TRIPLET)
   message(STATUS "vcpkg triplet  : ${VCPKG_TARGET_TRIPLET}")
 endif()
 
-# Microsoft.CodeCoverage.Console при coverage-сборке 
+# Microsoft.CodeCoverage.Console (Windows) / gcovr (GNU/Linux) при coverage-сборке 
 if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  # ======= Windows =======
   if(WIN32)
     if(NOT MSVC) 
       message(FATAL_ERROR "coverage build requires MSVC") 
@@ -186,8 +187,49 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
         "(result: ${_coverage_rc}); version check skipped")
     endif()
 
+  # ======= LINUX =======
+  # оба компилятора должны быть gnu, чтобы сработал --coverage, не было mismatch gcov/.gcno
+  # цепочка --coverage -> .gcno/.gcda -> gcov -> gcovr -> Cobertura - именно под GNU
+  elseif(UNIX
+         AND CMAKE_C_COMPILER_ID STREQUAL "GNU"
+         AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # находим инструмент gcovr
+  find_program(GCOVR_EXECUTABLE NAMES gcovr)
+    if(NOT GCOVR_EXECUTABLE OR NOT EXISTS "${GCOVR_EXECUTABLE}")
+      message(FATAL_ERROR
+        "Coverage build was selected but gcovr was not found. "
+        "Install gcovr 8.x and add it to PATH: "
+        "sudo apt install pipx; pipx install gcovr==8.8; pipx ensurepath")
+    endif()
+
+    message(STATUS "gcovr was found: ${GCOVR_EXECUTABLE}")
+
+    # gcvor - какая версия?
+    execute_process(
+      COMMAND "${GCOVR_EXECUTABLE}" --version
+      OUTPUT_VARIABLE _gcovr_raw
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE _gcovr_rc)
+    # _gcov_rc - код exec_proc gcovr --version. если нулевой, то парс версии 
+    if(_gcovr_rc STREQUAL "0")
+      string(REGEX MATCH "gcovr ([0-9]+\\.[0-9]+)" _gcovr_match "${_gcovr_raw}")
+      if(_gcovr_match)
+        set(_gcovr_ver "${CMAKE_MATCH_1}")
+        check_component(gcovr "${_gcovr_ver}"
+          "${TOOLCHAIN_GCOVR_TESTED}" "${TOOLCHAIN_GCOVR_MIN}")
+      else()
+        message(WARNING "could not parse gcovr version from '${_gcovr_raw}'; "
+          "version check skipped")
+      endif()
+    # если ненулевой, то gcovr --version выполнился с ошибкой, установить версию нельзя
+    else()
+      message(WARNING "could not determine gcovr version "
+        "(result: ${_gcovr_rc}); version check skipped")
+    endif()
+
+  # ======= niether WINDOWS nor LINUX =======
   else()
-    message(FATAL_ERROR "There is no coverage build for non-Windows OS")
+    message(FATAL_ERROR "coverage build requires MSVC on Windows or GCC on Linux")
   endif()
 endif()
 
@@ -205,22 +247,46 @@ set(CMAKE_CXX_EXTENSIONS OFF)
                                
 # особые флаги для coverage-сборки. /Ob1 - инлайн только того, что явно inline, не всего, что захочет компилятор
 # условный FORCE чтобы при пустых CMAKE_*_FLAGS_COVERAGE записть приосходила
-if(NOT CMAKE_C_FLAGS_COVERAGE)
-  set(CMAKE_C_FLAGS_COVERAGE "/O2 /Ob1 /Zi /DNDEBUG"
+if(MSVC)
+
+  if(NOT CMAKE_C_FLAGS_COVERAGE)
+    set(CMAKE_C_FLAGS_COVERAGE "/O2 /Ob1 /Zi /DNDEBUG"
       CACHE STRING "Flags used by the C compiler during Coverage builds." FORCE)
-endif()
-if(NOT CMAKE_CXX_FLAGS_COVERAGE)
-  set(CMAKE_CXX_FLAGS_COVERAGE "/O2 /Ob1 /Zi /DNDEBUG"
+  endif()
+  if(NOT CMAKE_CXX_FLAGS_COVERAGE)
+    set(CMAKE_CXX_FLAGS_COVERAGE "/O2 /Ob1 /Zi /DNDEBUG"
       CACHE STRING "Flags used by the C++ compiler during Coverage builds." FORCE)
-endif()
-if(NOT CMAKE_EXE_LINKER_FLAGS_COVERAGE)
-  set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "/DEBUG"
+  endif()
+  if(NOT CMAKE_EXE_LINKER_FLAGS_COVERAGE)
+    set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "/DEBUG"
       CACHE STRING "Linker flags for Coverage builds." FORCE)
-endif()
-if(NOT CMAKE_SHARED_LINKER_FLAGS_COVERAGE)
-  set(CMAKE_SHARED_LINKER_FLAGS_COVERAGE "/DEBUG"
+  endif()
+  if(NOT CMAKE_SHARED_LINKER_FLAGS_COVERAGE)
+    set(CMAKE_SHARED_LINKER_FLAGS_COVERAGE "/DEBUG"
       CACHE STRING "Shared linker flags for Coverage builds." FORCE)
+  endif()
+
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # -O0: без инлайна, чтобы строки и блоки не разъезжались
+  # --coverage нужен и при компиляции, и при линковке (libgcov)
+  if(NOT CMAKE_C_FLAGS_COVERAGE)
+    set(CMAKE_C_FLAGS_COVERAGE "-O0 -g -DNDEBUG --coverage"
+        CACHE STRING "Flags used by the C compiler during Coverage builds." FORCE)
+  endif()
+  if(NOT CMAKE_CXX_FLAGS_COVERAGE)
+    set(CMAKE_CXX_FLAGS_COVERAGE "-O0 -g -DNDEBUG --coverage"
+        CACHE STRING "Flags used by the C++ compiler during Coverage builds." FORCE)
+  endif()
+  if(NOT CMAKE_EXE_LINKER_FLAGS_COVERAGE)
+    set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "--coverage"
+        CACHE STRING "Linker flags for Coverage builds." FORCE)
+  endif()
+  if(NOT CMAKE_SHARED_LINKER_FLAGS_COVERAGE)
+    set(CMAKE_SHARED_LINKER_FLAGS_COVERAGE "--coverage"
+        CACHE STRING "Shared linker flags for Coverage builds." FORCE)
+  endif()
 endif()
+
 
 # === ИСПРАВЛЕНИЕ DEFAULT-ФЛАГОВ ===
 # CMAke дефолтно положит /RTC1 в debug-ветку. /RTC1 ловит ошибки в runtime, для этого лезет в стек и размечает его
@@ -400,77 +466,92 @@ add_subdirectory(tools/coverage_union)
 add_subdirectory(tests) 
 
 # особая цель при сборке с покрытием
-if(WIN32 AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Coverage")
+if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
   # в PRODUCT_TARGETS записаны все задачи
   get_property(_tasks GLOBAL PROPERTY PRODUCT_TARGETS)
-  # инструментироваться будут и задачи, и dll-библиотеки
+  # инструментироваться будут и задачи, и dll/so-библиотеки
   set(_targets ${_tasks} common_c_shared common_cpp_shared)
 
+  # --- манифест исходников: общий для обеих ОС ---
   set(_sources "")
-  # _targets = t1_c, t1_cpp, ..., common_*_shared 
   foreach(_t IN LISTS _targets)
     get_target_property(_dir ${_t} SOURCE_DIR)   # где цель объявлена
     get_target_property(_srcs ${_t} SOURCES)     # main.c / geometry.c / ...
-    # если путь до файла не абсолютный, то прибавляем к нему префикс
     foreach(_s IN LISTS _srcs)
       if(NOT IS_ABSOLUTE "${_s}")
-        set(_s "${_dir}/${_s}")                  
+        set(_s "${_dir}/${_s}")
       endif()
       list(APPEND _sources "${_s}")
     endforeach()
   endforeach()
-  # страховка - если позже добавим в _targets ещё и common_*_static, тогда geometry.c придёт из двух целей
+
+  # страховка: если позже добавим common_*_static, geometry.c придёт из двух целей
   list(REMOVE_DUPLICATES _sources)
   list(SORT _sources)
   string(JOIN "\n" _expected_text ${_sources})
   file(WRITE "${CMAKE_BINARY_DIR}/coverage_expected_sources.txt" "${_expected_text}\n")
 
-  # манифест модулей для block-метрики: только продуктовые цели
-  # (8 задач + common_*_shared), unit-тесты сюда не входят
-  set(_expected_modules "")
-  foreach(_t IN LISTS _targets)
-    get_target_property(_out ${_t} OUTPUT_NAME)
-    if(NOT _out)
-      set(_out "${_t}")
+  # --- платформенно-зависимая часть ---
+  if(WIN32)
+    # манифест модулей для block-метрики: только продуктовые цели
+    # (8 задач + common_*_shared), unit-тесты сюда не входят
+    set(_expected_modules "")
+    foreach(_t IN LISTS _targets)
+      get_target_property(_out ${_t} OUTPUT_NAME)
+      if(NOT _out)
+        set(_out "${_t}")
+      endif()
+
+      get_target_property(_type ${_t} TYPE)
+      if(_type STREQUAL "EXECUTABLE")
+        set(_suffix "${CMAKE_EXECUTABLE_SUFFIX}")
+      elseif(_type STREQUAL "SHARED_LIBRARY")
+        set(_suffix "${CMAKE_SHARED_LIBRARY_SUFFIX}")
+      else()
+        message(FATAL_ERROR "unexpected target type for ${_t}: ${_type}")
+      endif()
+
+      list(APPEND _expected_modules "${_out}${_suffix}")
+    endforeach()
+
+    # fail-fast на одинаковые имена модулей: native XML не должен получить дубли
+    list(LENGTH _expected_modules _modules_before)
+    list(REMOVE_DUPLICATES _expected_modules)
+    list(LENGTH _expected_modules _modules_after)
+    if(NOT _modules_before EQUAL _modules_after)
+      message(FATAL_ERROR "duplicate module file names among coverage targets")
     endif()
 
-    get_target_property(_type ${_t} TYPE)
-    if(_type STREQUAL "EXECUTABLE")
-      set(_suffix "${CMAKE_EXECUTABLE_SUFFIX}")
-    elseif(_type STREQUAL "SHARED_LIBRARY")
-      set(_suffix "${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    else()
-      message(FATAL_ERROR "unexpected target type for ${_t}: ${_type}")
-    endif()
+    list(SORT _expected_modules)
+    string(JOIN "\n" _expected_modules_text ${_expected_modules})
+    file(WRITE "${CMAKE_BINARY_DIR}/coverage_expected_modules.txt" "${_expected_modules_text}\n")
 
-    list(APPEND _expected_modules "${_out}${_suffix}")
-  endforeach()
-
-  # fail-fast на одинаковые имена модулей: native XML не должен получить дубли
-  list(LENGTH _expected_modules _modules_before)
-  list(REMOVE_DUPLICATES _expected_modules)
-  list(LENGTH _expected_modules _modules_after)
-  if(NOT _modules_before EQUAL _modules_after)
-    message(FATAL_ERROR "duplicate module file names among coverage targets")
+    set(_coverage_backend "msvc")
+    set(_coverage_tool_args
+      "-DCOVERAGE_EXE=${MICROSOFT_COVERAGE}"
+      "-DSETTINGS_FILE=${CMAKE_SOURCE_DIR}/cmake/coverage.settings.xml"
+      "-DEXPECTED_MODULES=${CMAKE_BINARY_DIR}/coverage_expected_modules.txt")
+  else()
+    set(_coverage_backend "gcovr")
+    set(_coverage_tool_args
+      "-DGCOVR_EXE=${GCOVR_EXECUTABLE}")
   endif()
-
-  list(SORT _expected_modules)
-  string(JOIN "\n" _expected_modules_text ${_expected_modules})
-  file(WRITE "${CMAKE_BINARY_DIR}/coverage_expected_modules.txt" "${_expected_modules_text}\n")   
 
   add_custom_target(coverage
     COMMAND ${CMAKE_COMMAND}
-      "-DCOVERAGE_EXE=${MICROSOFT_COVERAGE}"
+      "-DCOVERAGE_BACKEND=${_coverage_backend}"
       "-DCTEST_EXE=${CMAKE_CTEST_COMMAND}"
       "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
       "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
-      "-DSETTINGS_FILE=${CMAKE_SOURCE_DIR}/cmake/coverage.settings.xml"
       "-DREPORT_DIR=${CMAKE_BINARY_DIR}/reports"
-      "-DCOVERAGE_UNION_EXE=$<TARGET_FILE:coverage_union>"                   # cli-exe для отчёта
-      "-DEXPECTED_SOURCES=${CMAKE_BINARY_DIR}/coverage_expected_sources.txt" # manifest for cobertura
-      "-DEXPECTED_MODULES=${CMAKE_BINARY_DIR}/coverage_expected_modules.txt" # manifest for xml 
+      "-DCOVERAGE_UNION_EXE=$<TARGET_FILE:coverage_union>"
+      "-DEXPECTED_SOURCES=${CMAKE_BINARY_DIR}/coverage_expected_sources.txt"
+      ${_coverage_tool_args}
       -P "${CMAKE_SOURCE_DIR}/cmake/coverage.cmake"
     DEPENDS all
     COMMENT "Collecting code coverage"
     VERBATIM)
+
+  # coverage_union собран как EXCLUDE_FROM_ALL; DEPENDS all его не поднимет
+  add_dependencies(coverage coverage_union)
 endif()

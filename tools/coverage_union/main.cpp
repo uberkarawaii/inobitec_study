@@ -231,7 +231,7 @@ int main(int argc, char* argv[]) {
         }
         // учитываем, какие файлы из expected не были инструментированы
         // missing_expected также считает отсутствующим файл, у которого 0 инструментированных строк
-        missing_sources = cov::missing_expected(*parsed, expected_sources, kFoldCase);
+        missing_sources = cov::missing_expected(*parsed, expected_sources, kFoldCase, options->source_root);
     }
 
     // ===== проверка наличия expected / missing, относящихся к native xml =====

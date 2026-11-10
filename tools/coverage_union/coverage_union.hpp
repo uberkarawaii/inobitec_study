@@ -78,7 +78,9 @@ std::string format_summary(const Summary&);
 
 // проверка того, что все ожидаемые файлы были инструментированы (ищет в Coverage c)
 // если для файла valid==0, то он не был инструментирован
-std::vector<std::string> missing_expected(const Coverage&, std::span<const std::string> expected, bool fold_case);
+// source_root нужен, чтобы сравнивать пути из отчёта (relative) с манифестом (absolute)
+std::vector<std::string> missing_expected(const Coverage&, std::span<const std::string> expected, bool fold_case,
+                                          std::string_view source_root = {});
 
 // секция отчёта со списком ожидаемых источников, которых нет в отчёте; пустая строка, если missing пуст
 std::string format_missing_sources(std::span<const std::string> missing);

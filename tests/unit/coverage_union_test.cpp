@@ -489,10 +489,11 @@ struct MissingCase {
     std::vector<std::string> expected;
     bool fold_case = false;
     std::vector<std::string> want_missing;
+    std::string source_root;
 };
 
 std::ostream& operator<<(std::ostream& os, const MissingCase& c) {
-    os << "fold_case=" << c.fold_case;
+    os << "fold_case=" << c.fold_case << ", source_root=" << c.source_root;
     return os;
 }
 
@@ -517,6 +518,32 @@ INSTANTIATE_TEST_SUITE_P(MissingCases, MissingExpectedCases,
                                            MissingCase{{"c:/empty.c"}, false, {"c:/empty.c"}},
                                            MissingCase{{"c:/zero.c"}, false, {}},
                                            MissingCase{{"c:/absent.c"}, false, {"c:/absent.c"}}));
+
+// тесты с относит. и абс. путями на то, чтобы missing_expected сделал их единооразными,
+// "понял" что это именно тот файл из манифеста и произвёл сравнение
+TEST(MissingExpected, RelativeReportAbsoluteExpectedWithRoot) {
+    const cov::Coverage coverage = make_coverage({{"common/a.c", "common/a.c", {{1, 1}}}});
+    const std::vector<std::string> expected{"/src/common/a.c"};
+    EXPECT_TRUE(cov::missing_expected(coverage, expected, false, "/src").empty());
+}
+
+TEST(MissingExpected, LeadingDotSlashWithRoot) {
+    const cov::Coverage coverage = make_coverage({{"./common/a.c", "./common/a.c", {{1, 1}}}});
+    const std::vector<std::string> expected{"/src/common/a.c"};
+    EXPECT_TRUE(cov::missing_expected(coverage, expected, false, "/src").empty());
+}
+
+TEST(MissingExpected, AbsoluteReportWithRoot) {
+    const cov::Coverage coverage = make_coverage({{"/src/common/a.c", "/src/common/a.c", {{1, 1}}}});
+    const std::vector<std::string> expected{"/src/common/a.c"};
+    EXPECT_TRUE(cov::missing_expected(coverage, expected, false, "/src").empty());
+}
+
+TEST(MissingExpected, RelativeReportWrongRootStillMissing) {
+    const cov::Coverage coverage = make_coverage({{"common/a.c", "common/a.c", {{1, 1}}}});
+    const std::vector<std::string> expected{"/other/common/a.c"};
+    EXPECT_EQ(cov::missing_expected(coverage, expected, false, "/src"), std::vector<std::string>{"/other/common/a.c"});
+}
 
 // ----------- native xml parse tests ----------
 
