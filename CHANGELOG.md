@@ -2,7 +2,7 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 нумерация — [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-11-10
 ### Added
 - сборка под coverage с флагами, не противоречащими Microsoft.CodeCoverage.Console (/O2 /Ob1 /Zi, линкер /DEBUG)
 - сделана проверка инструмента - наличия и версии Microsoft.CodeCoverage.Console при конфигурации (min 18.0, tested 18.7). min/tested версии лежат константами в cmake/toolchain_versions.cmake
@@ -10,7 +10,7 @@
 - configure-пресет coverage (CMAKE_BUILD_TYPE=Coverage) в CMakePresets.json как пресет для coverage-билда
 - cmake/coverage.cmake - CMake-скрипт для формирования отчётов. обеспечивает удаление старых отчётов в начале свежего coverage-билда. если тесты красные, обеспечивает то, что сначала отчёты сформируются, и только потом будет падение
 - два формата отчёта (Cobertura и native XML) формируемые в coverage.cmake. cobertura переносим, но имеет только line-rate; .xml имеет block-rate для всех модулей и показывает частичное покрытие (covered="partial") (не как cobertura, где только yes/no)
-- cmake/coverage.settings.xml - для фильтрации отчёта и инструментации потомков collect
+- cmake/coverage.msvc.settings.xml - для фильтрации отчёта и инструментации потомков collect. используется только под виндоус
 - добавлен новый e2e-кейс t3_z_span (+ tests/input_data/t3_z_span) - закрывает ветки min/max по y/z в C-версии t3
 - в .gitignore добавлен *.coverage и *.cobertura.xml
 - в .editorconfig к utf-8 группе прибавлен *.xml
@@ -22,10 +22,16 @@
 - в main.cpp добавлены CLI-опции --native, --modules ([--native <file>] - нативный xml отчёт, [--modules <file>] - манифест ожидаемо покрытых модулей). --native <file> может быть передан без --modules <file> - т.к. это означает, что не было определённых ожиданий к покрытию. а --modules <file> без --native <file> не может быть передан, т.к. тогда нет изначального ресурса для block-метрики;
 - манифест coverage_expected_modules.txt - по аналогии с coverage_expected_sources.txt, только для модулей;
 - добавлены юнит-тесты на новые ф-ции (parse_native_xml, missing_modules, select_modules, format_block_summary, format_missing_modules) и проведены негативные контроли (намеренно портился либо код парсера, либо код юнит-тестов).
+- сделано покрытие для Linux-стороны через gcovr версии 8.8 (при сборке с целью покрытие выставляются особые флаги: -O0 -g --coverage). gcovr не предоставляет возможности отчёта в native xml, как то делает Microsoft.CodeCoverage.Console. поэтому на Linux собирается только line-метрика; block-метрика остаётся Windows-only
+- добавлена проверка компонента gcovr - версии min 8.5 и tested 8.8
+- в TagReader добавлен пропуск DOCTYPE т.к. gcovr генерирует cobertura.xml с DOCTYPE-синтаксисом
+- в missing_expected сделана канонизация путей relative/absolute, т.к. в gcovr пути фигурируют относительные
+- в tests/unit/CMakeLists.txt в ф-ции add_unit_gtest при вызове gtest_discover_tests в Coverage-сборке добавлен DISCOVERY_MODE PRE_TEST, чтобы вызов инструментированного кода с новыми .gcno производился в момент, когда старые .gcda уже удалены и не было конфликта libgcov profiling error
 ### Changed
 - OUTPUT_NAME продуктовых задач изменён с main на уникальный t*_c/cpp для того, чтобы не было слияния имён в xml
-- сделана синхронная правка в coverage.settings.xml - `.*[\\/]t[1-4]_[^\\/]*[\\/]main\.exe$ → .*[\\/]t[1-4]_[^\\/]*[\\/][^\\/]+\.exe$.`
+- сделана синхронная правка в coverage.msvc.settings.xml - `.*[\\/]t[1-4]_[^\\/]*[\\/]main\.exe$ → .*[\\/]t[1-4]_[^\\/]*[\\/][^\\/]+\.exe$.`
 - в корневой CMakeLists.txt после всех add_task добавлен configure-guard уникальности - чтобы если имена модулей станут одинаковыми, было падение, а не тихая выдача неверных метрик
+- переименован cmake/coverage.settings.xml в cmake/coverage.msvc.settings.xml, чтобы было понятно, что это Windows-only файл
 
 ## [0.2.0] - 2026-10-21
 ### Changed

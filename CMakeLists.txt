@@ -72,7 +72,7 @@ set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Deploy vcpkg runtime DLLs via CMake inst
 # имя проекта сохранится в CMAKE_PROJECT_NAME
 # определяются яызки проекта: с с++; определится компилятор; 
 # появятся перменные (типа CMAKE_C_FLAGS_DEBUG) заполненные дефолтными значениями
-project(inobitec_stud VERSION 0.2.0 LANGUAGES C CXX)
+project(inobitec_stud VERSION 0.3.0 LANGUAGES C CXX)
 
 # === ТИП СБОРКИ ===
 # определение debug / release / coverage; делается через -DCMAKE_BUILD_TYPE=...
@@ -529,7 +529,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
     set(_coverage_backend "msvc")
     set(_coverage_tool_args
       "-DCOVERAGE_EXE=${MICROSOFT_COVERAGE}"
-      "-DSETTINGS_FILE=${CMAKE_SOURCE_DIR}/cmake/coverage.settings.xml"
+      "-DSETTINGS_FILE=${CMAKE_SOURCE_DIR}/cmake/coverage.msvc.settings.xml"
       "-DEXPECTED_MODULES=${CMAKE_BINARY_DIR}/coverage_expected_modules.txt")
   else()
     set(_coverage_backend "gcovr")

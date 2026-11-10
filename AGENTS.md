@@ -10573,6 +10573,374 @@ Total Test time (real) =   9.37 sec
 - меняю tests/unit/CMakeLists.txt, в add_unit_gtest делаю ветку при covearge-сборке и при не-coverage-сборке. при coverage будет добавляться DISCOVERY_MODE PRE_TEST при вызове gtest_discover_tests(...)
 
   т.к. причина была именно в coverage_union_test --gtest_list_tests после линковки. и вот этот coverage_union_test является инструментированным и от него также появятся gcno/gcda до того, как было удаление gcda. а с DISCOVERY_MODE PRE_TEST то же самое получение списка тестов будет происходить во время ctest (он сам запускает discovery перед прогоном). и проблемы с gcda не будет тк к тому моменту старые gcda уже будут удалены. 
+- reconfig, build на вм:
+  ```
+  cmake --build build/coverage --target coverage
+  [1/1] Collecting code coverage
+  Test project /home/karavai/test/inobitec_study/build/coverage
+  ...
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ```
+  warning-а нет. но тут его и не могло быть, checksum-ы с прошлого прогона не изменились. вопрос к ии: надо ли имитировать ситуацию старого gcda чтобы увидеть, что DISCOVERY_MODE PRE_TEST реально работает? да, ии согласен что проверка слабая. нужно проверять дополнтельно
+- `ninja -C build/coverage -t commands coverage_union_test | grep 'GoogleTestAddTests.cmake'` в корне репо на вм. должно быть пусто тк теперь не должно быть --gtest_list_tests во время сборки. так и есть, пусто. дополнительно `ls build/coverage/tests/unit/*include.cmake`
+  ```
+  build/coverage/tests/unit/centroid_c[1]_include.cmake
+  build/coverage/tests/unit/centroid_cpp[1]_include.cmake
+  build/coverage/tests/unit/coverage_union_test[1]_include.cmake
+  ...
+  build/coverage/tests/unit/trim_string_cpp[1]_include.cmake
+  build/coverage/tests/unit/vertex_form_index_c[1]_include.cmake
+  build/coverage/tests/unit/vertex_form_index_cpp[1]_include.cmake
+  ```
+  build/coverage/tests/unit/coverage_union_test[1]_include.cmake есть, и со слов ии "это признак PRE_TEST"
+- динамическа проверка - старый .gcda + новый .gcno. проверяю что старый gcda на месте
+  ```
+  ls -l build/coverage/tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.gcda
+  -rw-rw-r-- 1 karavai karavai 197652 Nov 10 13:51 build/coverage/tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.gcda
+  ```
+  да, такой есть. меняю tests/unit/coverage_union_test.cpp после инстансов успешных тестов добавляю пустой тест TEST(DoctypeProbe, Temp) {} и пересобираю только тестовую цель:
+  ```
+  cmake --build build/coverage --target coverage_union_test
+  [1/2] Building CXX object tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.o
+  [2/2] Linking CXX executable tests/unit/coverage_union_test
+  ```
+  warning-а нет
+- далее при оставшемся probe-тесте меняю unit/CMakeLists.txt - оставляю только post-build вариант. реконфиг и смотрю 
+  ```
+  ninja -C build/coverage -t commands coverage_union_test | grep 'GoogleTestAddTests.cmake'
+
+  : && /usr/bin/c++ -O0 -g -DNDEBUG --coverage --coverage -Wl,--dependency-file=tests/unit/CMakeFiles/coverage_union_test.dir/link.d tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.o -o tests/unit/coverage_union_test  tools/coverage_union/libcoverage_union_lib.a  vcpkg_installed/x64-linux/lib/manual-link/libgtest_main.a  vcpkg_installed/x64-linux/lib/libgtest.a && cd /home/karavai/test/inobitec_study/build/coverage/tests/unit && /usr/bin/cmake -D TEST_TARGET=coverage_union_test -D TEST_EXECUTABLE=/home/karavai/test/inobitec_study/build/coverage/tests/unit/coverage_union_test -D TEST_EXECUTOR= -D TEST_WORKING_DIR=/home/karavai/test/inobitec_study/build/coverage/tests/unit -D TEST_EXTRA_ARGS= -D TEST_PROPERTIES= -D TEST_PREFIX=coverage_union_test/ -D TEST_SUFFIX= -D TEST_FILTER= -D NO_PRETTY_TYPES=FALSE -D NO_PRETTY_VALUES=TRUE -D TEST_LIST=coverage_union_test_TESTS -D CTEST_FILE=/home/karavai/test/inobitec_study/build/coverage/tests/unit/coverage_union_test[1]_tests.cmake -D TEST_DISCOVERY_TIMEOUT=5 -D TEST_DISCOVERY_EXTRA_ARGS= -D TEST_XML_OUTPUT_DIR= -P /usr/share/cmake-4.2/Modules/GoogleTestAddTests.cmake
+  ```
+  удаляю .exe `rm -f build/coverage/tests/unit/coverage_union_test` и собираю только тест. цель 
+  ```
+  cmake --build build/coverage --target coverage_union_test
+  [1/1] Linking CXX executable tests/unit/coverage_union_test
+  libgcov profiling error:/home/karavai/test/inobitec_study/build/coverage/tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.gcda:overwriting an existing profile data with a different checksum
+  ```
+- в tests/unit/CMakeLists.txt возвращаю DISCOVERY_MODE PRE_TEST, удаляю TEST(DoctypeProbe, Temp), делаю реконфиг. делаю проверку, что нет вывода как при POST_BUILD `ninja -C build/coverage -t commands coverage_union_test | grep 'GoogleTestAddTests.cmake'` - пусто. 
+- полный прогон на виртуалке
+  ```
+  cmake --build build/coverage --target coverage
+  [1/3] Building CXX object tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.o
+  [2/3] Linking CXX executable tests/unit/coverage_union_test
+  [3/3] Collecting code coverage
+  Test project /home/karavai/test/inobitec_study/build/coverage
+  ...
+  100% tests passed, 0 tests failed out of 676
+  Total Test time (real) =   3.56 sec
+  ...
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ```
+- Linux-негативы
+  1. tests/unit/parse_int32.cpp {"5", 5->6}. ожидаемо отчёт будет, но будет и вывод о красном тесте
+    ```
+    cmake --build build/coverage --target coverage
+    ...
+    FAILED: [code=1] CMakeFiles/coverage /home/karavai/test/inobitec_study/build/coverage/CMakeFiles/coverage
+    ...
+            Start  63: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+  63/676 Test  #63: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ................................***Failed    0.00 sec
+  Running main() from /home/karavai/dev/vcpkg/buildtrees/gtest/src/v1.18.0-e6987f02b9.clean/googletest/src/gtest_main.cc
+  Note: Google Test filter = OkCases/ParseInt32Ok.Parses/0
+  ...
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  CMake Error at /home/karavai/test/inobitec_study/cmake/coverage.cmake:178 (message):
+    tests exited with code 8
+    reports were still written to:
+    /home/karavai/test/inobitec_study/build/coverage/reports/coverage.cobertura.xml
+    /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ninja: build stopped: subcommand failed.
+    ```
+  откатываю 6 на 5. снова прогон
+  ```
+  [1/3] Building CXX object tests/unit/CMakeFiles/parse_int32_cpp.dir/parse_int32.cpp.o
+  [2/3] Linking CXX executable tests/unit/parse_int32_cpp
+  [3/3] Collecting code coverage
+  ...
+    t3_bbox_c/main.c: 43, 44, 120, 121, 122, 123
+    t4_filter_c/main.c: 94, 95, 96, 97, 165, 166
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ```
+  2. coverage.cmake (COMMAND "${GCOVR_EXE}"...) сужаю фильтр до t1-3, reconfig и ожидаю t4 в missing sources
+    ```
+    missing product sources:
+  /home/karavai/test/inobitec_study/t4_filter_c/main.c
+  /home/karavai/test/inobitec_study/t4_filter_cpp/main.cpp
+  files: 12/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  CMake Error at /home/karavai/test/inobitec_study/cmake/coverage.cmake:178 (message):
+    coverage union report exited with code 65
+    reports were still written to:
+    /home/karavai/test/inobitec_study/build/coverage/reports/coverage.cobertura.xml
+    /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ninja: build stopped: subcommand failed.
+    ```
+    откатываю фильтр на 1-4 и перезапускаю
+    ```
+    ...
+    100% tests passed, 0 tests failed out of 676
+    Total Test time (real) =   3.13 sec
+    -- coverage report (cobertura): /home/karavai/test/inobitec_study/build/coverage/reports/coverage.cobertura.xml
+    coverage union (line-based, Cobertura)
+    common/cli.c                   13/13     100.00%
+    common/cli.cpp                 13/13     100.00%
+    common/geometry.c              49/50      98.00%
+    common/geometry.cpp            52/53      98.11%
+    common/string_utils.c          85/88      96.59%
+    common/string_utils.cpp        71/71     100.00%
+    t1_dist_matrix_c/main.c        38/38     100.00%
+    t1_dist_matrix_cpp/main.cpp    41/41     100.00%
+    t2_passport_c/main.c           55/55     100.00%
+    t2_passport_cpp/main.cpp       42/42     100.00%
+    t3_bbox_c/main.c               92/98      93.88%
+    t3_bbox_cpp/main.cpp           58/58     100.00%
+    t4_filter_c/main.c             83/89      93.26%
+    t4_filter_cpp/main.cpp         70/70     100.00%
+    TOTAL                         762/779     97.82%
+
+    uncovered lines:
+      common/geometry.c: 74
+      common/geometry.cpp: 85
+      common/string_utils.c: 27, 28, 29
+      t3_bbox_c/main.c: 43, 44, 120, 121, 122, 123
+      t4_filter_c/main.c: 94, 95, 96, 97, 165, 166
+    files: 14/14 expected
+    -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+    ```
+    3. негатив на gcovr failed - запуск с несуществующим gcovr. делаю через скрипт sandbox/coverage_probe/neg3_gcovr_fail.sh, предварительно говорю ии его создать. запуск
+    ```
+    bash .../neg3_gcovr_fail.sh
+    ...
+    100% tests passed, 0 tests failed out of 676
+
+    Total Test time (real) =   3.39 sec
+    CMake Error at cmake/coverage.cmake:115 (message):
+      gcovr failed (exit code no such file or directory)
+
+
+    gcovr-failure rc=1
+    OK: expected non-zero rc
+    OK: cobertura report not created
+    ```
+    4. создание лишнего .gcda в build/coverage и проверка, что он будет удалён (т.к. он должен быть воспринят, как старый). делаю по аналогии с тертьим негативом
+    ```
+    bash .../neg4_stale_gcda.sh
+    ...
+    uncovered lines:
+    common/geometry.c: 74
+    common/geometry.cpp: 85
+    common/string_utils.c: 27, 28, 29
+    t3_bbox_c/main.c: 43, 44, 120, 121, 122, 123
+    t4_filter_c/main.c: 94, 95, 96, 97, 165, 166
+    files: 14/14 expected
+    -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/probe/neg_stale/coverage_summary.txt
+    stale-gcda rc=0
+    OK: stale .gcda removed
+    OK: summary reports 14/14 expected
+    ```
+- позитивный контроль после негативного на вм
+  ```
+  [1/1] Collecting code coverage
+  Test project /home/karavai/test/inobitec_study/build/coverage
+  ...
+    t3_bbox_c/main.c: 43, 44, 120, 121, 122, 123
+    t4_filter_c/main.c: 94, 95, 96, 97, 165, 166
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ```
+- контроль debug, release под виндой
+  ```
+  # reconfig + rebuild дебага и релиза
+  ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 676
+  Total Test time (real) = 109.00 sec
+
+  ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 676
+  Total Test time (real) =  32.11 sec
+  ```
+  и на вм-ке
+  ```
+  # reconfig + rebuild дебага и релиза
+  ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 680
+  Total Test time (real) =   9.51 sec
+
+  ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 680
+  Total Test time (real) =   2.83 sec
+  ```
+- прогоны свежих клонов. на винде
+  ```
+  cmake --preset debug
+  cmake --preset release
+  cmake --preset coverage
+
+  D:\test1\inobitec_study>cmake --build build/debug
+  [96/96] Linking CXX executable tests\e2e\t4_e2e.exe
+
+  D:\test1\inobitec_study>cmake --build build/release
+  [96/96] Linking CXX executable tests\unit\coverage_union_test.exe
+
+  D:\test1\inobitec_study>cmake --build build/coverage --target coverage
+  [1/99] Building C object common\CMakeFiles\common_c_shared.dir\geometry.c.obj
+  ...
+  [98/99] Linking CXX executable tests\unit\coverage_union_test.exe
+  [99/99] Collecting code coverage
+  SessionId: f76581c3-98cd-4787-99e6-222cd83c71cd
+  Test project D:/test1/inobitec_study/build/coverage
+  ...
+         Start 672: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  672/672 Test #672: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ............................   Passed    0.09 sec
+
+  100% tests passed, 0 tests failed out of 672
+  Total Test time (real) =  71.34 sec
+  ...
+  t4_c.exe                 94/106     88.68%
+  t4_cpp.exe               96/125     76.80%
+  files: 14/14 expected
+  modules: 10/10 expected
+  -- coverage union report: D:/test1/inobitec_study/build/coverage/reports/coverage_summary.txt
+
+  D:\test1\inobitec_study>ctest --preset full
+  Test project D:/test1/inobitec_study/build/debug
+  ...
+          Start 676: e2e/runner/E2ERunner.MissingErrorDir
+  676/676 Test #676: e2e/runner/E2ERunner.MissingErrorDir .........................................   Passed    0.02 sec
+
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) = 103.86 sec
+
+  D:\test1\inobitec_study>ctest --preset full-release
+  Test project D:/test1/inobitec_study/build/release
+        Start   1: format-check
+  1/676 Test   #1: format-check .................................................................   Passed    1.06 sec
+  ...
+          Start 676: e2e/runner/E2ERunner.MissingErrorDir
+  676/676 Test #676: e2e/runner/E2ERunner.MissingErrorDir .........................................   Passed    0.02 sec
+
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) =  36.10 sec
+  ```
+  на вм
+  ```
+  cmake --preset debug
+  cmake --preset release
+  cmake --preset coverage
+
+  cmake --build build/debug
+  [1/92] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o
+  ...
+  [92/92] Linking CXX executable tests/e2e/e2e_runner_test
+
+  cmake --build build/release
+  [1/92] Building C object common/CMakeFiles/common_c_static.dir/string_utils.c.o
+  ...
+  [92/92] Linking CXX executable tests/unit/coverage_union_test
+
+  cmake --build build/coverage --target coverage
+  [1/95] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o
+  ...
+  [95/95] Collecting code coverage
+  Test project /home/karavai/test1/inobitec_study/build/coverage
+          Start   1: parse_point_cpp/OkCases/ParsePointOk.Parses/0
+    1/676 Test   #1: parse_point_cpp/OkCases/ParsePointOk.Parses/0 ................................   Passed    0.00 sec
+  ...
+          Start 676: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  676/676 Test #676: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ............................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) =   3.56 sec
+  -- coverage report (cobertura): /home/karavai/test1/inobitec_study/build/coverage/reports/coverage.cobertura.xml
+  coverage union (line-based, Cobertura)
+  common/cli.c                   13/13     100.00%
+  common/cli.cpp                 13/13     100.00%
+  common/geometry.c              49/50      98.00%
+  common/geometry.cpp            52/53      98.11%
+  common/string_utils.c          85/88      96.59%
+  common/string_utils.cpp        71/71     100.00%
+  t1_dist_matrix_c/main.c        38/38     100.00%
+  t1_dist_matrix_cpp/main.cpp    41/41     100.00%
+  t2_passport_c/main.c           55/55     100.00%
+  t2_passport_cpp/main.cpp       42/42     100.00%
+  t3_bbox_c/main.c               92/98      93.88%
+  t3_bbox_cpp/main.cpp           58/58     100.00%
+  t4_filter_c/main.c             83/89      93.26%
+  t4_filter_cpp/main.cpp         70/70     100.00%
+  TOTAL                         762/779     97.82%
+
+  uncovered lines:
+    common/geometry.c: 74
+    common/geometry.cpp: 85
+    common/string_utils.c: 27, 28, 29
+    t3_bbox_c/main.c: 43, 44, 120, 121, 122, 123
+    t4_filter_c/main.c: 94, 95, 96, 97, 165, 166
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test1/inobitec_study/build/coverage/reports/coverage_summary.txt
+
+  ctest --preset full
+  Test project /home/karavai/test1/inobitec_study/build/debug
+        Start   1: format-check
+  1/680 Test   #1: format-check .................................................................   Passed    0.49 sec
+  ...
+          Start 680: e2e/runner/E2ERunner.MissingErrorDir
+  680/680 Test #680: e2e/runner/E2ERunner.MissingErrorDir .........................................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 680
+
+  Total Test time (real) =   9.75 sec
+
+  ctest --preset full-release
+  Test project /home/karavai/test1/inobitec_study/build/release
+        Start   1: format-check
+  1/680 Test   #1: format-check .................................................................   Passed    0.49 sec
+  ...
+        Start 680: e2e/runner/E2ERunner.MissingErrorDir
+  680/680 Test #680: e2e/runner/E2ERunner.MissingErrorDir .........................................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 680
+
+  Total Test time (real) =   2.88 sec
+  ```
+  даю ии проверить все логи. противоречий нет.
+- ии советует поднять версию, т.к. coverage этап завершается. также, ии предлагает переименовать coverage.settings.xml в coverage.msvc.settings.xml, чтобы по названию было понятно, что это именно msvc-шная часть. 
+  переименовываю `git mv cmake/coverage.settings.xml cmake/coverage.msvc.settings.xml` и в CMakeLists.txt также переименовываю "-DSETTINGS_FILE=${CMAKE_SOURCE_DIR}/cmake/coverage.msvc.settings.xml". в ридми переименовываю coverage.settings.xml в coverage.msvc.settings.xml
+- в CMakeLists.txt поднимаю версию на project(inobitec_stud VERSION 0.3.0 ...) и в vcpkg.json также поднимаю до 0.3.0
+- все конфиги/сборки/тесты на винде
+  ```
+  cmake --preset debug
+  .\build\debug\t1_dist_matrix_c\t1_c.exe --version
+  0.3.0
+  cmake --preset release
+  cmake --preset coverage
+  cmake --build build/debug
+  cmake --build build/release
+  cmake --build build/coverage --target coverage
+  ...
+  files: 14/14 expected
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+
+  ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 676
+  Total Test time (real) =  92.60 sec
+
+  ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 676
+  Total Test time (real) =  29.21 sec
+  ```
 
 *Что не получилось*
 - когда делала тест на то изначально в hits было 18446744073709551616 тк я копировала с прошлого теста. и тогда не было проверки на < перед >, и итог получался такой:

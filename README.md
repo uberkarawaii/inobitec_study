@@ -69,7 +69,7 @@
 
     после формирования отчётов .cobertura.xml, .xml запускает COVERAGE_UNION_EXE, который выдаёт summary-отчёт: line-метрика по исходникам из .cobertura.xml, block-метрика по модулям из native XML, а также списки отсутствующих исходников и модулей из манифестов
 
-  - **coverage.settings.xml** - для фильтрации модулей: `t[1-4]_*/<цель>.exe`, `common_*_shared.dll` и `tests/unit/*.exe` (т.к. там внутри статически встроены библиотеки common); исключаются (не надо инструментировать) gtest/boost/vcpkg. и есть инструментация потомков (CollectFromChildProcesses=True) для e2e тестов
+  - **coverage.msvc.settings.xml** - windows-only, для фильтрации модулей: `t[1-4]_*/<цель>.exe`, `common_*_shared.dll` и `tests/unit/*.exe` (т.к. там внутри статически встроены библиотеки common); исключаются (не надо инструментировать) gtest/boost/vcpkg. и есть инструментация потомков (CollectFromChildProcesses=True) для e2e тестов
 - /common - папка с программами обшего назначения 
   - заголовки с кодами ошибок и кодами парсинга чисел - `parse_codes.*, exit_codes.*` 
   - библиотечные программы `geometry.*, string_utils.*`
@@ -132,6 +132,13 @@ vs_BuildTools.exe --add Microsoft.VisualStudio.Component.TestTools.BuildTools   
    - clang-format (format-check);
    - cdb / Debugging Tools for Windows (отладка);
    - FAR (файловый менеджер).
+6. Под линуксом требуется установка gcovr (gcov идёт с GCC): 
+  ```
+  sudo apt install pipx
+  pipx install gcovr==8.8
+  pipx ensurepath
+  # после ensurepath — перезапустить shell или выполнить: source ~/.bashrc
+  ```
 
 Проверка:
 ```
@@ -139,6 +146,13 @@ where cl
 Microsoft.CodeCoverage.Console --version
 git --version
 ```
+Linux:
+```
+command -v gcovr      # ожидаемо: /home/<user>/.local/bin/gcovr
+gcovr --version       # ожидаемо: gcovr 8.8
+gcov --version        # версия должна совпадать с gcc/g++
+```
+Если command -v gcovr ничего не вывел - выполнить source ~/.bashrc или добавить ~/.local/bin в PATH.
 
 ### Версии инструментов
 | инструмент | минималка/источник по документации | проверено на |
@@ -153,9 +167,11 @@ git --version
 | vcpkg-tool | минималки нет | 2026-07-27 (release tag из scripts/vcpkg-tool-metadata.txt) |
 | git | любая 2.x и выше | 2.54 / 2.53 |
 | Microsoft.CodeCoverage.Console | 18.0 | 18.7 |
+| gcovr | 8.5 | 8.8 |
 Минималка компиляторов задана самой жёсткой используемой фичей: std::print/println (GCC 14, MSVC 19.37). 
 Точка истины минималок и версий, на которых было протестировано, - `cmake/toolchain_versions.cmake`. 
-*coverage в build tools - опциональный компонент, содержащийся в Microsoft.VisualStudio.Component.TestTools.BuildTools*
+- *coverage в build tools - опциональный компонент, содержащийся в Microsoft.VisualStudio.Component.TestTools.BuildTools*; 
+- *gcov идёт в составе GCC*
 
 При версии инструмента, строго ниже минимума, будет `FATAL_ERROR` - конфиг остановится; при версии >= минимума, но не входящей в список проверенных версий, будет `WARNING` - такая версия легитимна, но практически на ней не проверяли; при версии из списка проверенных *_TESTED, будет выведено `STATUS` - информация об этом. 
 
@@ -292,13 +308,19 @@ ctest --preset e2e-release # release e2e tests
 ```
 
 ### Покрытие
-Покрытие обеспечивается инструментом Microsoft.CodeCoverage.Console, который инструментирует код в runtime. Под билдом coverage запускаются тесты (e2e, unit) - при падении тестов отчёты будут сформированы, только потом FATAL ERROR. В начале прогона все старые отчёты удаляются, на их месте появляются новые. Инструментируется продуктовый код (в т.ч. из common, а также unit-тесты, где common-код вшит статически), потому в coverage-прогоне исключаются format-check/e2e/runner - они не являются продуктом.
+Покрытие обеспечивается разными инструментами в зависимости от ОС: на Windows — Microsoft.CodeCoverage.Console (динамическое инструментирование, line + block), на Linux — компиляторное инструментирование GCC (--coverage → .gcno/.gcda) и gcovr для построения Cobertura (line only). Под билдом coverage запускаются тесты (e2e, unit) - при падении тестов отчёты будут сформированы, только потом FATAL ERROR. В начале прогона все старые отчёты удаляются, на их месте появляются новые. 
 
-Человекочитаемым и достоверным отчётом считается артефакт build/coverage/reports/coverage_summary.txt, который также выводится в консоль. В нём имеются след. метрики по задачам t1-t4 и common_*_shared.dll:
+Для устранения конфликта старых .gcda с новыми .gcno вводится DISCOVERY_MODE PRE_TEST во время Coverage-сборки. Так, ctest запускает discovery уже после того, как coverage.cmake удалил старые .gcda (при post build же запускался instrumented exe до удаления старых .gcda).
+
+За фильтрацию файлов, которые попадут под инструментацию, под виндоус отвечает coverage.msvc.settings.xml. А под линуксом фильтры находятся в coverage.cmake при вызове gcovr.
+
+Инструментируется продуктовый код (в т.ч. из common, а также unit-тесты, где common-код вшит статически), потому в coverage-прогоне исключаются format-check/e2e/runner - они не являются продуктом.
+
+Человекочитаемым и достоверным отчётом считается артефакт build/coverage/reports/coverage_summary.txt, который также выводится в консоль. В нём имеются след. метрики по задачам t1-t4 и common_*_shared.dll/.so:
   - line-метрика — union по файл/строка; 
-  - block-метрика — per-module, без TOTAL;
+  - (windows-only) block-метрика — per-module, без TOTAL;
   - files: N/M expected ... missing product sources;
-  - modules: N/M expected ... missing product modules;
+  - (windows-only) modules : N/M expected ... missing product modules;
 
 Как собрать coverage-build
 ```
@@ -306,9 +328,9 @@ cmake --preset coverage # config
 cmake --build build/coverage --target coverage # build, под которым будут запущены unit и e2e тесты
 ```
 Артефакты (что появится при coverage-build). Появляются в `build/coverage/reports/`
-- .coverage (сырой, бинарь, нечитаемый)
+- (windows-only артефакт) .coverage (сырой, бинарь, нечитаемый)
 - .cobertura.xml (переносимый, читаемый, по нему можно смотреть line-rate). см. шапку данного раздела, рекомендуется смотреть в coverage_summary.txt. там производится объединение по файл/строка из .cobertura.xml, который даёт верную картину в отличие от cobertura
-- .xml (непереносимый, читаемый, нативный: block/partial). в native xml каждая задача — отдельный модуль (t1_c.exe, t1_cpp.exe, …), поэтому block-счётчики по модулю осмысленны. в coverage_summary.txt block-метрика присутствует - после line-метрики
+- (windows-only) .xml (непереносимый, читаемый, нативный: block/partial). в native xml каждая задача — отдельный модуль (t1_c.exe, t1_cpp.exe, …), поэтому block-счётчики по модулю осмысленны. в coverage_summary.txt block-метрика присутствует - после line-метрики
 
 ### Версионирование
 Точка истины - CMakeLists.txt, project(inobitec_stud VERSION X.X.X ...); vcpkg.json["version"] не влияет на версию проекта, т.к. мой проект - не пакет (по крайней мере на данном этапе). Также, об этом сказано в разделе **Известные ограничения проекта**
@@ -372,7 +394,7 @@ build\<cfg>\t1_dist_matrix_c\t1_c.exe --version
 - **cmake/toolchain_versions.cmake - точка истины версий, с README "версии инструментов" синхронизируется вручную**
 - **boostproc: v1 выбран в рамках указаний курса.** документация (https://www.boost.org/doc/libs/latest/libs/process/doc/html/index.html раздел Version 2) прямо говорит: "Version 2 is now the default. In order to discourage usage of the deprecated v1 ..." - v1 считается устаревшей. при необходимости перехода с устаревшей v1 на актуальную v2, перенос будет сделан
 - **особенность CTest в части записи LastTestsFailed**. LastTestsFailed.log - это последний непустой набор падений, не обязательно связанный с текущим состоянием. т.к. при этом текущее состояние может быть зелёным
-- **на данный момент Coverage присутствует только под Windows**. далее будет сделана и linux-часть
+- **block Windows-only**. под линуксом отсутствует block-метрика, тк gcovr не даёт нативного xml, в отличие от Microsoft.CodeCoverage.Console
 - **отсутствие branch-метрики у инструментов**. у cobertura она номинальная; branch-метрики нет; line-разбор построчный, block-разбор — по модулям 
 - **особенность block-метрики**. native XML даёт block-счётчики только на уровне модуля/функции, без идентичности блоков между модулями. Уникальные OUTPUT_NAME позволяют считать per-module метрику, но не per-file union: один common-файл компилируется в несколько модулей, и нельзя понять, какие именно блоки покрыты в каждом. Поэтому block-таблица — per-module, без TOTAL.
 - **OOM-ветки не исполняются без инъекции аллокатора**. т.е. ветки типа `if (!points) ... # где points был struct Point* points = malloc(sizeof(struct Point)), и это защита от неудачного выделения памяти`. т.к. инъекция аллокатора является продвинутой практикой, то этот момент пока не затрагивается. ветки остаются защитными, и непокрыты осознанно
