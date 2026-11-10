@@ -10348,6 +10348,170 @@ Total Test time (real) =   9.37 sec
     -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
     ```
 - далее позитив. тест на vm
+  ```
+  cmake --preset coverage
+  ...
+  -- GTest 1.18.0 is one of tested 1.18.0
+  -- Boost 1.92.0 is one of tested 1.92.0
+  -- Configuring done (1.9s)
+  -- Generating done (0.0s)
+  -- Build files have been written to: /home/karavai/test/inobitec_study/build/coverage
+
+  cmake --build build/debug --target coverage
+  [1/95] Building C object common/CMakeFiles/common_c_static.dir/geometry.c.o
+  [2/95] Building C object common/CMakeFiles/common_c_static.dir/string_utils.c.o
+  ...
+  Total Test time (real) =   3.19 sec
+  -- coverage report (cobertura): /home/karavai/test/inobitec_study/build/coverage/reports/coverage.cobertura.xml
+  parse error at byte 39: unsupported markup
+  CMake Error at /home/karavai/test/inobitec_study/cmake/coverage.cmake:178 (message):
+    coverage union report exited with code 65
+  ```
+  в линуксовом coberura.xml есть `<!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/e5eea8679ebce047ec6ccdfdbf6cf2c14b376875/cobertura/src/site/htdocs/xml/coverage-04.dtd'>` второй строкой. а мой парсер doctype считает невалидным синтаксисом. спрашиваю у ии, это та причина ex-code=65 и что сделать с парсером? видимо, поддерживать DOCTYPE? да, это из-за DOCTYPE и предположение что DOCTYPE в cobertura нет было верным только под виндой. и да, ии согласен что его надо поддерживать - "Поддержать DOCTYPE в парсере — это правильнее, чем вырезать его в coverage.cmake: DOCTYPE — легальный пролог XML, и TagReader должен его пропускать". 
+
+- coverage_union.cpp добавляю find_doctype_end перед TagReader::next и использую find_doctype_end при проверке кейса `<!DOCTYPE...>`
+- tests/unit/coverage_union_test.cpp - кейс с kXmlDoctype переношу в успешные и добавляю ему ParseOkCase. и делаю ещё один успешный кейс с subset внутри doctype. и один негатив. кейс с kXmlUnterminatedDoctype где у doctype незакрыта кавычка
+- сборка + прогон 
+  ```
+  cmake --build build/debug
+  ...
+  -- Configuring done (10.2s)
+  -- Generating done (0.2s)
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/debug
+
+  cmake --build build/debug --target format-check
+  [1/1] Checking clang-format of all C/C++ files
+  -- clang-format: file format is correct
+
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+        Start 320: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/19
+  56/83 Test #320: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/19 ....................***Failed    0.23 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(267): error: Value of: got.has_value()
+    Actual: true
+  Expected: false
+
+  [  FAILED  ] ErrCases/ParseCoberturaErr.Rejects/19, where GetParam() = xml="
+  <!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/.../coverage-04.dtd'
+  <coverage>
+    <class filename="C:\src\a.c">
+        <lines><line number="2" hits="2" /></lines>
+    </class>
+  </coverage>", want=0 (1 ms)
+  [----------] 1 test from ErrCases/ParseCoberturaErr (1 ms total)
+
+  [----------] Global test environment tear-down
+  [==========] 1 test from 1 test suite ran. (2 ms total)
+  [  PASSED  ] 0 tests.
+  [  FAILED  ] 1 test, listed below:
+  [  FAILED  ] ErrCases/ParseCoberturaErr.Rejects/19, where GetParam() = xml="
+  <!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/.../coverage-04.dtd'
+  <coverage>
+    <class filename="C:\src\a.c">
+        <lines><line number="2" hits="2" /></lines>
+    </class>
+  </coverage>", want=0
+
+  1 FAILED TEST
+  ...
+  99% tests passed, 1 tests failed out of 83
+
+  Total Test time (real) =  14.92 sec
+
+  The following tests FAILED:
+    320 - coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/19 (Failed)
+  Errors while running CTest
+  ```
+  плохо с тестом kXmlUnterminatedDoctype. возможно я неверно написала сам литерал? вопрос к ии. нет, сам литерал - ок. проблема с find_doctype_end. тк имеем ` kXmlUnterminatedDoctype = R"xml(<!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/.../coverage-04.dtd' <coverage> ...`, то след. > будет на <coverage>. и find_doctype_end воспримет именно эту > как закрывающую у Doctype. и всё пройдёт без проблем и я думаю это видно в `...error: Value of: got.has_value()  Actual: true  Expected: false` - actual получился true. надо править find_doctype_end - "считать < вне кавычек и вне внутреннего subset признаком незакрытого DOCTYPE" - то есть не сразу искать > а проверять есть или нет < перед >. добавляю такую проверку в find_doctype_end
+- ребилд и запуск тестов
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [4/4] Linking CXX executable tests\unit\coverage_union_test.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 83
+  Total Test time (real) =  13.89 sec
+  ```
+- точечный негатив на проверку лишней < не в сабсете, перед >. в find_doctype_end комментирую вновь добавленный `if (c == '<' && !in_subset) return std::string_view::npos;`. 
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [3/3] Linking CXX executable tests\unit\coverage_union_test.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "ParseCoberturaErr" --output-on-failure
+  ...
+  Start 320: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/19
+  20/20 Test #320: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/19 ...***Failed    0.13 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(267): error: Value of: got.has_value()
+    Actual: true
+  Expected: false
+
+  [  FAILED  ] ErrCases/ParseCoberturaErr.Rejects/19, where GetParam() = xml="
+  <!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/.../coverage-04.dtd'
+  <coverage>
+    <class filename="C:\src\a.c">
+        <lines><line number="2" hits="2" /></lines>
+    </class>
+  </coverage>", want=0 (3 ms)
+  ...
+  <!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/.../coverage-04.dtd'
+  <coverage>
+    <class filename="C:\src\a.c">
+        <lines><line number="2" hits="2" /></lines>
+    </class>
+  </coverage>", want=0
+
+  1 FAILED TEST
+
+
+  95% tests passed, 1 tests failed out of 20
+
+  Total Test time (real) =   3.37 sec
+
+  The following tests FAILED:
+    320 - coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/19 (Failed)
+  Errors while running CTest
+  ```
+  возвращаю код назад, пересборка и такой же прогон:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [3/3] Linking CXX executable tests\unit\coverage_union_test.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 83
+
+  Total Test time (real) =  14.03 sec
+  ```
+- проверка release-build
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/release
+  ...
+  -- Build files have been written to: C:/Users/User/Desktop/inobitec_stud/build/release
+
+  [6/7] Linking CXX executable tests\unit\coverage_union_test.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/release -R coverage_union --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 83
+  Total Test time (real) =   3.92 sec
+  ```
+- прогон на линуксе. теперь доктайп не должен восприниматься как неподдерживаемая разметка
+
+*Что не получилось*
+- когда делала тест на то изначально в hits было 18446744073709551616 тк я копировала с прошлого теста. и тогда не было проверки на < перед >, и итог получался такой:
+  ```
+  constexpr std::string_view kXmlUnterminatedDoctype = R"xml(
+  <!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/.../coverage-04.dtd'
+  <coverage>
+    <class filename="C:\src\a.c">
+        <lines><line number="2" hits="18446744073709551616" /></lines>
+    </class>
+  </coverage>)xml";
+  ```
+  и падение было бы с malformed. только по причине hits=18446744073709551616, а не незакрытой скобки. то есть по текущим тестам сложно понять причину падения, там везде malformed и всё. нужно зафиксировать/исправить в будущем
 
 ## 8. Диалоги с DeepSeek
 

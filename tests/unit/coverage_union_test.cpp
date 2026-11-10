@@ -164,6 +164,25 @@ constexpr std::string_view kXmlBOM = "\xEF\xBB\xBF"
   </class>
 </coverage>)xml";
 
+constexpr std::string_view kXmlDoctype = R"xml(<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/.../coverage-04.dtd'>
+<coverage>
+  <class filename="C:\src\a.c">
+      <lines><line number="5" hits="2" /></lines>
+  </class>
+</coverage>)xml";
+
+constexpr std::string_view kXmlDoctypeSubset = R"xml(<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE coverage [
+  <!ELEMENT coverage ANY>
+  <!ENTITY x "y">
+]>
+<coverage>
+  <class filename="C:\src\a.c">
+      <lines><line number="5" hits="2" /></lines>
+  </class>
+</coverage>)xml";
+
 // === удачные кейсы, и их инстанциация ===
 INSTANTIATE_TEST_SUITE_P(OkCases, ParseCoberturaOk,
                          ::testing::Values(
@@ -217,7 +236,15 @@ INSTANTIATE_TEST_SUITE_P(OkCases, ParseCoberturaOk,
                                          false,
                                          {
                                              {"C:/src/a.c", R"(C:\src\a.c)", {{2, 5}}},
-                                         }}));
+                                         }},
+                             // 9. doctype
+                             ParseOkCase{kXmlDoctype,
+                                         false,
+                                         {
+                                             {"C:/src/a.c", R"(C:\src\a.c)", {{5, 2}}},
+                                         }},
+                             // 10. doctype с subset
+                             ParseOkCase{kXmlDoctypeSubset, false, {{"C:/src/a.c", R"(C:\src\a.c)", {{5, 2}}}}}));
 
 // ---------- парсер: ошибки ----------
 
@@ -279,14 +306,6 @@ constexpr std::string_view kXmlLineOutsideClass = R"xml(<coverage>
 constexpr std::string_view kXmlUnclosedComment = R"xml(<coverage>
   <class filename="C:\src\a.c">
       <!-- an unclosed comment
-      <lines><line number="5" hits="2" /></lines>
-  </class>
-</coverage>)xml";
-
-constexpr std::string_view kXmlDoctype = R"xml(<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE>
-<coverage>
-  <class filename="C:\src\a.c">
       <lines><line number="5" hits="2" /></lines>
   </class>
 </coverage>)xml";
@@ -359,6 +378,14 @@ constexpr std::string_view kXmlLineHitsTooMuch = R"xml(<coverage>
   </class>
 </coverage>)xml";
 
+constexpr std::string_view kXmlUnterminatedDoctype = R"xml(
+<!DOCTYPE coverage SYSTEM 'https://github.com/cobertura/cobertura/blob/.../coverage-04.dtd'
+<coverage>
+  <class filename="C:\src\a.c">
+      <lines><line number="2" hits="2" /></lines>
+  </class>
+</coverage>)xml";
+
 // === ошибочные кейсы и их инстанциация ===
 INSTANTIATE_TEST_SUITE_P(ErrCases, ParseCoberturaErr,
                          ::testing::Values(
@@ -378,8 +405,6 @@ INSTANTIATE_TEST_SUITE_P(ErrCases, ParseCoberturaErr,
                              ParseErrCase{kXmlLineOutsideClass, cov::ParseReason::malformed},
                              // malformed: незакрытый комментарий / <?...?> / тег
                              ParseErrCase{kXmlUnclosedComment, cov::ParseReason::malformed},
-                             // malformed: DOCTYPE
-                             ParseErrCase{kXmlDoctype, cov::ParseReason::malformed},
                              // malformed: CDATA
                              ParseErrCase{kXmlCdata, cov::ParseReason::malformed},
                              // malformed: <class> без filename
@@ -401,7 +426,9 @@ INSTANTIATE_TEST_SUITE_P(ErrCases, ParseCoberturaErr,
                              // malformed: line с hits < 0
                              ParseErrCase{kXmlLineHitsNegative, cov::ParseReason::malformed},
                              // malformed: line с hits > UINT64_MAX
-                             ParseErrCase{kXmlLineHitsTooMuch, cov::ParseReason::malformed}));
+                             ParseErrCase{kXmlLineHitsTooMuch, cov::ParseReason::malformed},
+                             // незакрытый doctype
+                             ParseErrCase{kXmlUnterminatedDoctype, cov::ParseReason::malformed}));
 
 // ---------- summarize ----------
 

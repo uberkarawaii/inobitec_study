@@ -55,6 +55,39 @@ std::size_t find_tag_end(std::string_view s, std::size_t start) {
     return std::string_view::npos;
 }
 
+// ищет '>' конца <!DOCTYPE ...>; учитывает кавычки и внутренний subset [...]
+std::size_t find_doctype_end(std::string_view xml, std::size_t start) {
+    bool in_subset = false;
+    char quote = '\0';
+
+    for (std::size_t i = start + 9; i < xml.size(); ++i) { // 9 = len("<!DOCTYPE")
+        const char c = xml[i];
+        if (quote != '\0') {
+            if (c == quote)
+                quote = '\0';
+            continue;
+        }
+        if (c == '"' || c == '\'') {
+            quote = c;
+            continue;
+        }
+        if (c == '[') {
+            in_subset = true;
+            continue;
+        }
+        if (c == ']') {
+            in_subset = false;
+            continue;
+        }
+        if (c == '>' && !in_subset)
+            return i;
+
+        if (c == '<' && !in_subset)
+            return std::string_view::npos;
+    }
+    return std::string_view::npos;
+}
+
 struct Tag {
     std::string_view name{}; // "class", "line", "package", ...
     // контракт - Tag::text это весь тег, включая <...>
@@ -85,7 +118,7 @@ private:
     std::size_t pos_ = 0;
 };
 
-// поиск следующего тега, пропуск комментариев и деклараций. падение на CDATA, DOCTYPE -
+// поиск следующего тега, пропуск комментариев, <?...?> и <!DOCTYPE ...>. падение на CDATA -
 // не поддерживаем этот синтаксис. 1) там внутри мб < или > 2) .cobertura.xml не имеет такого синтаксиса
 // next() не проверяет, есть ли у того же <class> закрывающий </class>. парный закрывающий ищет автомат парсера
 std::expected<bool, ParseError> TagReader::next(Tag& out) {
@@ -97,7 +130,7 @@ std::expected<bool, ParseError> TagReader::next(Tag& out) {
         // сдвигаемся на <
         pos_ = tag_open_angle;
 
-        // что именно находится за < ? comment/declaration -> пропускаем
+        // что именно находится за < ? comment/declaration/DOCTYPE -> пропускаем
         if (xml_.substr(pos_, 4) == "<!--") {
             // ищем закрытие комментария. если его нет - "плохой формат"
             const auto comment_end = xml_.find("-->", pos_ + std::string_view("<!--").size());
@@ -117,7 +150,17 @@ std::expected<bool, ParseError> TagReader::next(Tag& out) {
             pos_ = declaration_end + std::string_view("?>").size();
             continue;
         }
-        // если <!DOCTYPE.../<![CDATA... - падаем. т.к. не поддерживаем
+
+        // если <!DOCTYPE..., пропускаем. т.к. gcovr генерит с DOCTYPE
+        if (xml_.substr(pos_, 9) == "<!DOCTYPE") {
+            const auto doctype_end = find_doctype_end(xml_, pos_);
+            if (doctype_end == std::string_view::npos)
+                return std::unexpected(make_error(ParseReason::malformed, pos_, "unterminated doctype"));
+            pos_ = doctype_end + 1;
+            continue;
+        }
+
+        // если <![CDATA... - падаем. т.к. не поддерживаем
         if (xml_.substr(pos_, 2) == "<!")
             return std::unexpected(make_error(ParseReason::malformed, pos_, "unsupported markup"));
 
