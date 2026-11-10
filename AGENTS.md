@@ -10499,6 +10499,55 @@ Total Test time (real) =   9.37 sec
   Total Test time (real) =   3.92 sec
   ```
 - прогон на линуксе. теперь доктайп не должен восприниматься как неподдерживаемая разметка
+  ```
+  cmake --build build/coverage --target coverage
+  ...
+  [4/6] Building CXX object tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.o
+  In file included from /home/karavai/test/inobitec_study/build/coverage/vcpkg_installed/x64-linux/include/gtest/gtest.h:68,
+                  from /home/karavai/test/inobitec_study/tests/unit/coverage_union_test.cpp:1:
+  /home/karavai/test/inobitec_study/tests/unit/coverage_union_test.cpp: In function ‘testing::internal::ParamGenerator<{anonymous}::MissingCase> {anonymous}::gtest_MissingCasesMissingExpectedCases_EvalGenerator_()’:
+  /home/karavai/test/inobitec_study/tests/unit/coverage_union_test.cpp:543:77: warning: missing initializer for member ‘{anonymous}::MissingCase::source_root’ [-Wmissing-field-initializers]
+    543 |                          ::testing::Values(MissingCase{{"c:/a.c"}, false, {}}, MissingCase{{"C:/A.C"}, true, {}},
+        |                                                                             ^
+  /home/karavai/test/inobitec_study/tests/unit/coverage_union_test.cpp:543:112: warning: missing initializer for member ‘{anonymous}::MissingCase::source_root’ [-Wmissing-field-initializers]
+  # etc.
+  ...
+            Start 676: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  676/676 Test #676: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ............................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) =   3.19 sec
+  -- coverage report (cobertura): /home/karavai/test/inobitec_study/build/coverage/reports/coverage.cobertura.xml
+  coverage union (line-based, Cobertura)
+  common/cli.c                   13/13     100.00%
+  common/cli.cpp                 13/13     100.00%
+  common/geometry.c              49/50      98.00%
+  common/geometry.cpp            52/53      98.11%
+  common/string_utils.c          85/88      96.59%
+  common/string_utils.cpp        71/71     100.00%
+  t1_dist_matrix_c/main.c        38/38     100.00%
+  t1_dist_matrix_cpp/main.cpp    41/41     100.00%
+  t2_passport_c/main.c           55/55     100.00%
+  t2_passport_cpp/main.cpp       42/42     100.00%
+  t3_bbox_c/main.c               92/98      93.88%
+  t3_bbox_cpp/main.cpp           58/58     100.00%
+  t4_filter_c/main.c             83/89      93.26%
+  t4_filter_cpp/main.cpp         70/70     100.00%
+  TOTAL                         762/779     97.82%
+
+  uncovered lines:
+    common/geometry.c: 74
+    common/geometry.cpp: 85
+    common/string_utils.c: 27, 28, 29
+    t3_bbox_c/main.c: 43, 44, 120, 121, 122, 123
+    t4_filter_c/main.c: 94, 95, 96, 97, 165, 166
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ```
+  файл coverage/reports/coverage_summary.txt валидный, содержит то же, что есть в stdout. несостыковка осталась в том, что в разных MissingCase-ах не передан пустой инициализатор source_root? мне кажется проблема в этом. ии говорит: проблема и в том, что нет {} при инициализации, и в том, что в TEST_P const auto got = cov::missing_expected(coverage, c.expected, c.fold_case) - то есть поле отсутствует, после c.fold_case ничего нет. советует его удалить. помню что ии сам и предлагал добавить это 4е поле. зачем ты предлагал его добавить? и почему этот момент виден только под линуксом?
+
+  "Поле в тестовой структуре я предлагал, чтобы через параметризованный тест прогнать кейсы «relative report + absolute expected + root». Но потом кейсы с root были написаны отдельными TEST, потому что фикстура coverage в TEST_P использует фиксированные абсолютные ключи (c:/a.c), и source_root на них не влияет", т.е. то, что хотели покрыть с помощью source_root в MissingExpected, уже покрыли через TEST. так что убираю source_root из MissingExpected и operator<<. 
 
 *Что не получилось*
 - когда делала тест на то изначально в hits было 18446744073709551616 тк я копировала с прошлого теста. и тогда не было проверки на < перед >, и итог получался такой:

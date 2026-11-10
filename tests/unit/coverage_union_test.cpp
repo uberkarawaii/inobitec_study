@@ -516,11 +516,10 @@ struct MissingCase {
     std::vector<std::string> expected;
     bool fold_case = false;
     std::vector<std::string> want_missing;
-    std::string source_root;
 };
 
 std::ostream& operator<<(std::ostream& os, const MissingCase& c) {
-    os << "fold_case=" << c.fold_case << ", source_root=" << c.source_root;
+    os << "fold_case=" << c.fold_case;
     return os;
 }
 
