@@ -9,7 +9,14 @@ function(add_unit_gtest target src lib)
   # увидит все кейсы и сделает их отдельными тестами, а не под-тестами в составе одной сущности
   # опред. префикс для фильтрации через пресеты, по имени
   # убирать GetParam() - разнящееся м-у сборками число - из имени теста
-  gtest_discover_tests(${target} TEST_PREFIX "${target}/" NO_PRETTY_VALUES)
+  if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+    # DISCOVERY_MODE PRE_TEST -> запуск discovery на этапе ctest, 
+    # во избежание проблемы с неудалёнными .gcda (они удаляются именно до ctest) 
+    gtest_discover_tests(${target} TEST_PREFIX "${target}/" NO_PRETTY_VALUES
+                       DISCOVERY_MODE PRE_TEST)
+  else()
+    gtest_discover_tests(${target} TEST_PREFIX "${target}/" NO_PRETTY_VALUES)
+  endif()
 endfunction()
 
 # на каждую тестируемую ф-ию - свой .exe; так с каждой стороны - на с, на с++

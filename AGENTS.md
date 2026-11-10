@@ -10548,6 +10548,31 @@ Total Test time (real) =   9.37 sec
   файл coverage/reports/coverage_summary.txt валидный, содержит то же, что есть в stdout. несостыковка осталась в том, что в разных MissingCase-ах не передан пустой инициализатор source_root? мне кажется проблема в этом. ии говорит: проблема и в том, что нет {} при инициализации, и в том, что в TEST_P const auto got = cov::missing_expected(coverage, c.expected, c.fold_case) - то есть поле отсутствует, после c.fold_case ничего нет. советует его удалить. помню что ии сам и предлагал добавить это 4е поле. зачем ты предлагал его добавить? и почему этот момент виден только под линуксом?
 
   "Поле в тестовой структуре я предлагал, чтобы через параметризованный тест прогнать кейсы «relative report + absolute expected + root». Но потом кейсы с root были написаны отдельными TEST, потому что фикстура coverage в TEST_P использует фиксированные абсолютные ключи (c:/a.c), и source_root на них не влияет", т.е. то, что хотели покрыть с помощью source_root в MissingExpected, уже покрыли через TEST. так что убираю source_root из MissingExpected и operator<<. 
+- перезапуск сборки с покрытием на vm
+  ```
+  cmake --build build/coverage --target coverage
+  [1/3] Building CXX object tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.o
+  [2/3] Linking CXX executable tests/unit/coverage_union_test
+  libgcov profiling error:/home/karavai/test/inobitec_study/build/coverage/tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.gcda:overwriting an existing profile data with a different checksum
+  [3/3] Collecting code coverage
+  ...
+
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) =   3.20 sec
+  -- coverage report (cobertura): /home/karavai/test/inobitec_study/build/coverage/reports/coverage.cobertura.xml
+  coverage union (line-based, Cobertura)
+  common/cli.c                   13/13     100.00%
+  ...
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ```
+  предупреждений нет, тк неиспользуемое поле удалено. но есть `libgcov profiling error` - ии пояснил, что это из-за времени удаления .gcda - удаление происходит позже .gcno. те во время сборки формируется новый gcno, а соотв. ему gcda пока старый. но перед ctest сработает coverage.cmake и удалит старые gcda, потому по сути всё происходит верно. 
+
+  сообщение безопасное и ни на что не влияет, но поселдую совету ии: "МНЕНИЕ, ВЫСОКИЙ лучше когда причина устраняется, а не маскируется, и изменение локализовано в тестовой обвязке."
+- меняю tests/unit/CMakeLists.txt, в add_unit_gtest делаю ветку при covearge-сборке и при не-coverage-сборке. при coverage будет добавляться DISCOVERY_MODE PRE_TEST при вызове gtest_discover_tests(...)
+
+  т.к. причина была именно в coverage_union_test --gtest_list_tests после линковки. и вот этот coverage_union_test является инструментированным и от него также появятся gcno/gcda до того, как было удаление gcda. а с DISCOVERY_MODE PRE_TEST то же самое получение списка тестов будет происходить во время ctest (он сам запускает discovery перед прогоном). и проблемы с gcda не будет тк к тому моменту старые gcda уже будут удалены. 
 
 *Что не получилось*
 - когда делала тест на то изначально в hits было 18446744073709551616 тк я копировала с прошлого теста. и тогда не было проверки на < перед >, и итог получался такой:
