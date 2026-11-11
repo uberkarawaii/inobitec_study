@@ -25,6 +25,21 @@ else()
   endif()
 endif()
 
+# RESULT_VARIABLE: число при запуске, строка ошибки - если процесс не удалось запустить
+function(describe_process_result result out_desc out_ok)
+  if("${result}" MATCHES "^-?[0-9]+$")
+    set(${out_desc} "exited with code ${result}" PARENT_SCOPE)
+    if("${result}" EQUAL 0)
+      set(${out_ok} TRUE PARENT_SCOPE)
+    else()
+      set(${out_ok} FALSE PARENT_SCOPE)
+    endif()
+  else()
+    set(${out_desc} "could not be started: ${result}" PARENT_SCOPE)
+    set(${out_ok} FALSE PARENT_SCOPE)
+  endif()
+endfunction()
+
 file(MAKE_DIRECTORY "${REPORT_DIR}")
 # старые отчёты удаляются в начале каждого прогона
 file(REMOVE "${REPORT_DIR}/coverage.coverage"
@@ -60,8 +75,11 @@ if(COVERAGE_BACKEND STREQUAL "msvc")
     COMMAND "${COVERAGE_EXE}" merge --nologo
           -o "${_cobertura_xml}" -f cobertura "${_raw}"
     RESULT_VARIABLE _merge_rc)
-  if(NOT _merge_rc EQUAL 0)
-    message(FATAL_ERROR "coverage merge (cobertura) failed (exit code ${_merge_rc})")
+
+  # вызов хелпера для обработки - это код или строка
+  describe_process_result("${_merge_rc}" _merge_desc _merge_ok)
+  if(NOT _merge_ok)
+    message(FATAL_ERROR "coverage merge (cobertura) ${_merge_desc}")
   endif()
 
   if(NOT EXISTS "${_cobertura_xml}")
@@ -73,8 +91,11 @@ if(COVERAGE_BACKEND STREQUAL "msvc")
     COMMAND "${COVERAGE_EXE}" merge --nologo
           -o "${_xml}" -f xml "${_raw}"
     RESULT_VARIABLE _merge_xml)
-  if(NOT _merge_xml EQUAL 0)
-    message(FATAL_ERROR "coverage merge (xml) failed (exit code ${_merge_xml})")
+
+  # вызов хелпера для обработки - это код или строка
+  describe_process_result("${_merge_xml}" _merge_xml_desc _merge_xml_desc_ok)
+  if(NOT _merge_xml_desc_ok)
+    message(FATAL_ERROR "coverage merge (xml) ${_merge_xml_desc}")
   endif()
 
   if(NOT EXISTS "${_xml}")
@@ -111,8 +132,10 @@ else() # gcovr
     WORKING_DIRECTORY "${SOURCE_DIR}"
     RESULT_VARIABLE _gcovr_rc)
 
-  if(NOT _gcovr_rc EQUAL 0)
-    message(FATAL_ERROR "gcovr failed (exit code ${_gcovr_rc})")
+  # вызов хелпера для обработки - это код или строка
+  describe_process_result("${_gcovr_rc}" _gcovr_desc _gcovr_ok)
+  if(NOT _gcovr_ok)
+    message(FATAL_ERROR "gcovr ${_gcovr_desc}")
   endif()
 
   if(NOT EXISTS "${_cobertura_xml}")
@@ -121,7 +144,8 @@ else() # gcovr
 
   message(STATUS "coverage report (cobertura): ${_cobertura_xml}")
 endif()
-
+# вызов хелпера - это код завершения или строка
+describe_process_result("${_collect_rc}" _collect_desc _collect_ok)
 
 # переменная-путь до отчёта 
 set(_summary "${REPORT_DIR}/coverage_summary.txt")
@@ -141,12 +165,14 @@ else()
             --output "${_summary}"
     RESULT_VARIABLE "_summary_rc")
 endif()
+# вызов хелпера - это код завершения или строка
+describe_process_result("${_summary_rc}" _summary_desc _summary_ok)
 
 # накапливаем ошибки в _failures и выводим их в конце (если хоть одна случилась)
 set(_failures "")
 # проверяем код завершения и если он != 0, то накапливаем информацию об этом
-if(NOT _summary_rc EQUAL 0)
-  string(APPEND _failures "coverage union report exited with code ${_summary_rc}\n")
+if(NOT _summary_ok)
+  string(APPEND _failures "coverage union report ${_summary_desc}\n")
 endif()
 
 # проверяем, что файл отчёта существует
@@ -157,11 +183,11 @@ else()
 endif()
 
 # или тесты красные, или инструментация удалась не полностью (некоторые процессы остались непокрыты)
-if(NOT _collect_rc EQUAL 0)
+if(NOT _collect_ok)
   if(COVERAGE_BACKEND STREQUAL "msvc")
-    string(APPEND _failures "coverage collection exited with code ${_collect_rc}\n")
+    string(APPEND _failures "coverage collection ${_collect_desc}\n")
   else()
-    string(APPEND _failures "tests exited with code ${_collect_rc}\n")
+    string(APPEND _failures "tests ${_collect_desc}\n")
   endif()
 endif()
 

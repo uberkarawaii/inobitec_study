@@ -251,10 +251,11 @@ INSTANTIATE_TEST_SUITE_P(OkCases, ParseCoberturaOk,
 struct ParseErrCase {
     std::string_view xml;
     cov::ParseReason want;
+    std::string_view want_what;
 };
 
 std::ostream& operator<<(std::ostream& os, const ParseErrCase& c) {
-    os << "xml=\"" << c.xml << "\", want=" << static_cast<int>(c.want);
+    os << "xml=\"" << c.xml << "\", want=" << static_cast<int>(c.want) << ", what=" << c.want_what;
     return os;
 }
 
@@ -266,8 +267,8 @@ TEST_P(ParseCoberturaErr, Rejects) {
     const auto got = cov::parse_cobertura(c.xml, false);
     ASSERT_FALSE(got.has_value());
     EXPECT_EQ(got.error().reason, c.want);
-    // проверка, что текст ошибки непустой
-    EXPECT_FALSE(got.error().what.empty());
+    // проверка, что текст ошибки равен ожидаемому
+    EXPECT_EQ(got.error().what, c.want_what);
     // и что указатель ошибки - в пределах
     EXPECT_LE(got.error().offset, c.xml.size());
 }
@@ -387,48 +388,51 @@ constexpr std::string_view kXmlUnterminatedDoctype = R"xml(
 </coverage>)xml";
 
 // === ошибочные кейсы и их инстанциация ===
-INSTANTIATE_TEST_SUITE_P(ErrCases, ParseCoberturaErr,
-                         ::testing::Values(
-                             // нет ни <class>, ни <line>
-                             ParseErrCase{kXmlNoClasses, cov::ParseReason::no_classes},
-                             // нет строк, только <class> без <line>
-                             ParseErrCase{kXmlNoLines, cov::ParseReason::no_lines},
-                             // кейс для проверки поведения parse_cobertura на пустой строке
-                             ParseErrCase{"", cov::ParseReason::no_classes},
-                             // malformed: nested <class>
-                             ParseErrCase{kXmlNestedClass, cov::ParseReason::malformed},
-                             // malformed: unclosed <class>
-                             ParseErrCase{kXmlUnclosedClass, cov::ParseReason::malformed},
-                             // malformed: </class> без открытого
-                             ParseErrCase{kXmlNotOpenedClass, cov::ParseReason::malformed},
-                             // malformed: <line> вне <class>
-                             ParseErrCase{kXmlLineOutsideClass, cov::ParseReason::malformed},
-                             // malformed: незакрытый комментарий / <?...?> / тег
-                             ParseErrCase{kXmlUnclosedComment, cov::ParseReason::malformed},
-                             // malformed: CDATA
-                             ParseErrCase{kXmlCdata, cov::ParseReason::malformed},
-                             // malformed: <class> без filename
-                             ParseErrCase{kXmlNoFilename, cov::ParseReason::malformed},
-                             // malformed: <class> с filename=""
-                             ParseErrCase{kXmlEmptyFilename, cov::ParseReason::malformed},
-                             // malformed: line без number
-                             ParseErrCase{kXmlLineWithoutNumber, cov::ParseReason::malformed},
-                             // malformed: line без hits
-                             ParseErrCase{kXmlLineWithoutHits, cov::ParseReason::malformed},
-                             // malformed: line где number нечисло
-                             ParseErrCase{kXmlLineNumberNotDigit, cov::ParseReason::malformed},
-                             // malformed: line где hits нечисло
-                             ParseErrCase{kXmlLineHitsNotDigit, cov::ParseReason::malformed},
-                             // malformed: line с number=0
-                             ParseErrCase{kXmlLineNumberZero, cov::ParseReason::malformed},
-                             // malformed: line с number>INT_MAX
-                             ParseErrCase{kXmlLineNumberTooMuch, cov::ParseReason::malformed},
-                             // malformed: line с hits < 0
-                             ParseErrCase{kXmlLineHitsNegative, cov::ParseReason::malformed},
-                             // malformed: line с hits > UINT64_MAX
-                             ParseErrCase{kXmlLineHitsTooMuch, cov::ParseReason::malformed},
-                             // незакрытый doctype
-                             ParseErrCase{kXmlUnterminatedDoctype, cov::ParseReason::malformed}));
+INSTANTIATE_TEST_SUITE_P(
+    ErrCases, ParseCoberturaErr,
+    ::testing::Values(
+        // нет ни <class>, ни <line>
+        ParseErrCase{kXmlNoClasses, cov::ParseReason::no_classes, "no <class> in report"},
+        // нет строк, только <class> без <line>
+        ParseErrCase{kXmlNoLines, cov::ParseReason::no_lines, "no <line> in report"},
+        // кейс для проверки поведения parse_cobertura на пустой строке
+        ParseErrCase{"", cov::ParseReason::no_classes, "no <class> in report"},
+        // malformed: nested <class>
+        ParseErrCase{kXmlNestedClass, cov::ParseReason::malformed, "nested <class>"},
+        // malformed: unclosed <class>
+        ParseErrCase{kXmlUnclosedClass, cov::ParseReason::malformed, "unclosed <class>"},
+        // malformed: </class> без открытого
+        ParseErrCase{kXmlNotOpenedClass, cov::ParseReason::malformed, "unexpected </class>"},
+        // malformed: <line> вне <class>
+        ParseErrCase{kXmlLineOutsideClass, cov::ParseReason::malformed, "<line> outside <class>"},
+        // malformed: незакрытый комментарий / <?...?> / тег
+        ParseErrCase{kXmlUnclosedComment, cov::ParseReason::malformed, "unterminated comment"},
+        // malformed: CDATA
+        ParseErrCase{kXmlCdata, cov::ParseReason::malformed, "unsupported markup"},
+        // malformed: <class> без filename
+        ParseErrCase{kXmlNoFilename, cov::ParseReason::malformed, "no filename"},
+        // malformed: <class> с filename=""
+        ParseErrCase{kXmlEmptyFilename, cov::ParseReason::malformed, "empty filename"},
+        // malformed: line без number
+        ParseErrCase{kXmlLineWithoutNumber, cov::ParseReason::malformed, "line without number/hits"},
+        // malformed: line без hits
+        ParseErrCase{kXmlLineWithoutHits, cov::ParseReason::malformed, "line without number/hits"},
+        // malformed: line где number нечисло
+        ParseErrCase{kXmlLineNumberNotDigit, cov::ParseReason::malformed, "bad number/hits"},
+        // malformed: line где hits нечисло
+        ParseErrCase{kXmlLineHitsNotDigit, cov::ParseReason::malformed, "bad number/hits"},
+        // malformed: line с number=0
+        ParseErrCase{kXmlLineNumberZero, cov::ParseReason::malformed,
+                     "line number is out of supported range [1; INT_MAX]"},
+        // malformed: line с number>INT_MAX
+        ParseErrCase{kXmlLineNumberTooMuch, cov::ParseReason::malformed,
+                     "line number is out of supported range [1; INT_MAX]"},
+        // malformed: line с hits < 0
+        ParseErrCase{kXmlLineHitsNegative, cov::ParseReason::malformed, "bad number/hits"},
+        // malformed: line с hits > UINT64_MAX
+        ParseErrCase{kXmlLineHitsTooMuch, cov::ParseReason::malformed, "bad number/hits"},
+        // незакрытый doctype
+        ParseErrCase{kXmlUnterminatedDoctype, cov::ParseReason::malformed, "unterminated doctype"}));
 
 // ---------- summarize ----------
 
@@ -614,11 +618,13 @@ struct NativeErrCase {
     std::string_view xml;
     bool fold_case = false;
     cov::ParseReason want;
+    std::string_view want_what;
 };
 
 // для печати в TEST_P при ошибке
 std::ostream& operator<<(std::ostream& os, const NativeErrCase& c) {
-    os << "xml=\"" << c.xml << "\", fold_case=" << c.fold_case << ", want=" << static_cast<int>(c.want);
+    os << "xml=\"" << c.xml << "\", fold_case=" << c.fold_case << ", want=" << static_cast<int>(c.want)
+       << ", what=" << c.want_what;
     return os;
 }
 
@@ -630,7 +636,7 @@ TEST_P(ParseNativeErr, Rejects) {
     const auto got = cov::parse_native_xml(c.xml, c.fold_case);
     ASSERT_FALSE(got.has_value());
     EXPECT_EQ(got.error().reason, c.want);
-    EXPECT_FALSE(got.error().what.empty());
+    EXPECT_EQ(got.error().what, c.want_what);
     EXPECT_LE(got.error().offset, c.xml.size());
 }
 
@@ -743,23 +749,27 @@ constexpr std::string_view kNativeSelfClosingThenClose = R"xml(<results><modules
   </module>
 </modules></results>)xml";
 
-INSTANTIATE_TEST_SUITE_P(NativeErrCases, ParseNativeErr,
-                         ::testing::Values(NativeErrCase{kNativeNoModules, false, cov::ParseReason::no_modules},
-                                           NativeErrCase{"", false, cov::ParseReason::no_modules},
-                                           NativeErrCase{kNativeUnclosedModule, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeUnexpectedClose, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeNestedModule, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeDuplicate, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeDuplicateCase, true, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeNoName, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeEmptyName, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeNoCovered, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeNoNotCovered, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeBadNumber, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeNegative, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeOverflow, false, cov::ParseReason::malformed},
-                                           NativeErrCase{kNativeSelfClosingThenClose, false,
-                                                         cov::ParseReason::malformed}));
+INSTANTIATE_TEST_SUITE_P(
+    NativeErrCases, ParseNativeErr,
+    ::testing::Values(
+        NativeErrCase{kNativeNoModules, false, cov::ParseReason::no_modules, "no <module> in report"},
+        NativeErrCase{"", false, cov::ParseReason::no_modules, "no <module> in report"},
+        NativeErrCase{kNativeUnclosedModule, false, cov::ParseReason::malformed, "unclosed <module>"},
+        NativeErrCase{kNativeUnexpectedClose, false, cov::ParseReason::malformed, "unexpected </module>"},
+        NativeErrCase{kNativeNestedModule, false, cov::ParseReason::malformed, "nested <module>"},
+        NativeErrCase{kNativeDuplicate, false, cov::ParseReason::malformed, "duplicate module name"},
+        NativeErrCase{kNativeDuplicateCase, true, cov::ParseReason::malformed, "duplicate module name"},
+        NativeErrCase{kNativeNoName, false, cov::ParseReason::malformed,
+                      "module without name/blocks_covered/blocks_not_covered"},
+        NativeErrCase{kNativeEmptyName, false, cov::ParseReason::malformed, "empty module name"},
+        NativeErrCase{kNativeNoCovered, false, cov::ParseReason::malformed,
+                      "module without name/blocks_covered/blocks_not_covered"},
+        NativeErrCase{kNativeNoNotCovered, false, cov::ParseReason::malformed,
+                      "module without name/blocks_covered/blocks_not_covered"},
+        NativeErrCase{kNativeBadNumber, false, cov::ParseReason::malformed, "bad blocks_covered/blocks_not_covered"},
+        NativeErrCase{kNativeNegative, false, cov::ParseReason::malformed, "bad blocks_covered/blocks_not_covered"},
+        NativeErrCase{kNativeOverflow, false, cov::ParseReason::malformed, "bad blocks_covered/blocks_not_covered"},
+        NativeErrCase{kNativeSelfClosingThenClose, false, cov::ParseReason::malformed, "unexpected </module>"}));
 
 // ---------- missing_modules ----------
 // проверяет: что всё ожидаемое на месте; что отсутствующее идёт в верном порядке

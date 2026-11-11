@@ -10956,7 +10956,79 @@ Total Test time (real) =   9.37 sec
   ```
   и падение было бы с malformed. только по причине hits=18446744073709551616, а не незакрытой скобки. то есть по текущим тестам сложно понять причину падения, там везде malformed и всё. нужно зафиксировать/исправить в будущем
 - "Диагностика gcovr failed (exit code no such file or directory) признана неточной, но не исправлена." - "лучше различать два случая: не удалось запустить gcovr '/no/such/gcovr': no such file or directory и gcovr завершился с кодом 2"
-- branch-метрика под линуксом - стоит / не стоит?
+- block-метрика под линуксом - стоит / не стоит?
+
+# 2026-11-11
+*Что сделано*
+- правка по "Что не получилось" со вчера. сейчас при "плохом" формает возвращается malformed, а плохим форматом считается и слишком большое число, и незакрытая скобка, и отсутствие class, etc. правка нужна для различия причины остановки парса. будет вводиться want_what в err-кейсах
+
+  tests/unit/coverage_union_test.cpp в struct ParseErrCase добавляю в конец поле what_want. и в operator<< также вывожу what_want. в TEST_P(ParseCoberturaErr, Rejects) меняю ожидание не-пустого текста ошибки на ожидание определённого текста. то же самое повторяю для NativeErrCase. говорю ии прописать тексты ожиданий при instantiate - тексты, которые кидает по std::expected coverage_union.cpp в случае ошибки. 
+- проверка:
+  ```
+  cmake --build build/debug
+  ...
+  [2/2] Linking CXX executable tests\unit\coverage_union_test.exe
+
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 83
+
+  Total Test time (real) =  13.77 sec
+  ```
+- негатив. контроль на то, что сравнение сообщений играет роль. меняю ожидание у kXmlEmptyFilename при инстанциации с empty filename на no filename. жду что только kXmlEmptyFilename упадёт
+  ```
+  cmake --build build/debug
+  [2/2] Linking CXX executable tests\unit\coverage_union_test.exe
+
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+        Start 311: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/10
+  47/83 Test #311: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/10 ....................***Failed    0.17 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(271): error: Expected equality of these values:
+    got.error().what
+      Which is: "empty filename"
+    c.want_what
+      Which is: "no filename"
+  ...
+  1 FAILED TEST
+  ...
+
+  99% tests passed, 1 tests failed out of 83
+  Total Test time (real) =  15.00 sec
+
+  The following tests FAILED:
+    311 - coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/10 (Failed)
+  Errors while running CTest
+  ```
+  меняю сообщение на верное, после чего
+  ```
+  cmake --build build/debug
+  [2/2] Linking CXX executable tests\unit\coverage_union_test.exe
+
+  ctest --test-dir build/debug -R coverage_union --output-on-failure
+  ...
+  100% tests passed, 0 tests failed out of 83
+  Total Test time (real) =  14.71 sec
+  ```
+- вторая правка - на то, чтобы различать rc и строку ошибки запуска. в cmake/coverage.cmake добавляю хелпер describe_process_result - различит строку/код. и добавляю его использование про запуске процессов
+- проверка
+  ```
+  cmake --build build/coverage --target coverage
+  [1/3] Building CXX object tests\unit\CMakeFiles\coverage_union_test.dir\coverage_union_test.cpp.obj
+  [2/3] Linking CXX executable tests\unit\coverage_union_test.exe
+  [3/3] Collecting code coverage
+  ...
+  100% tests passed, 0 tests failed out of 672
+  Total Test time (real) =  61.08 sec
+  ...
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+- проверка на вм. сначала негатив:
+  ```
+
+  ```
 
 ## 8. Диалоги с DeepSeek
 
