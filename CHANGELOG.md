@@ -2,6 +2,12 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 нумерация — [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Changed
+- в coverage_union_test.cpp в parse/native err-кейсы добавлена проверка конкретного сообщения парсера, а не просто проверка падения с malformed, как было ранее; там же в оба operator<< добавлена печать сообщения об ошибке
+### Fixed
+- исправлена диагностика execute_process - теперь разделяется на числовой rc и текстовое сообщение о сбое запуска. строка описания сбоя больше не выдаётся за exit code
+
 ## [0.3.0] - 2026-11-10
 ### Added
 - сборка под coverage с флагами, не противоречащими Microsoft.CodeCoverage.Console (/O2 /Ob1 /Zi, линкер /DEBUG)

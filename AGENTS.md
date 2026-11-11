@@ -10960,9 +10960,9 @@ Total Test time (real) =   9.37 sec
 
 # 2026-11-11
 *Что сделано*
-- правка по "Что не получилось" со вчера. сейчас при "плохом" формает возвращается malformed, а плохим форматом считается и слишком большое число, и незакрытая скобка, и отсутствие class, etc. правка нужна для различия причины остановки парса. будет вводиться want_what в err-кейсах
+- правка по "Что не получилось" со вчера. сейчас при "плохом" формате возвращается malformed, а плохим форматом считается и слишком большое число, и незакрытая скобка, и отсутствие class, etc. правка нужна для различия причины остановки парса. будет вводиться want_what в err-кейсах
 
-  tests/unit/coverage_union_test.cpp в struct ParseErrCase добавляю в конец поле what_want. и в operator<< также вывожу what_want. в TEST_P(ParseCoberturaErr, Rejects) меняю ожидание не-пустого текста ошибки на ожидание определённого текста. то же самое повторяю для NativeErrCase. говорю ии прописать тексты ожиданий при instantiate - тексты, которые кидает по std::expected coverage_union.cpp в случае ошибки. 
+  tests/unit/coverage_union_test.cpp в struct ParseErrCase добавляю в конец поле want_what. и в operator<< также вывожу want_what. в TEST_P(ParseCoberturaErr, Rejects) меняю ожидание не-пустого текста ошибки на ожидание определённого текста. то же самое повторяю для NativeErrCase. говорю ии прописать тексты ожиданий при instantiate - тексты, которые кидает по std::expected coverage_union.cpp в случае ошибки. 
 - проверка:
   ```
   cmake --build build/debug
@@ -11011,7 +11011,7 @@ Total Test time (real) =   9.37 sec
   100% tests passed, 0 tests failed out of 83
   Total Test time (real) =  14.71 sec
   ```
-- вторая правка - на то, чтобы различать rc и строку ошибки запуска. в cmake/coverage.cmake добавляю хелпер describe_process_result - различит строку/код. и добавляю его использование про запуске процессов
+- вторая правка - на то, чтобы различать rc и строку ошибки запуска. в cmake/coverage.cmake добавляю хелпер describe_process_result - различит строку/код. и добавляю его использование при запуске процессов
 - проверка
   ```
   cmake --build build/coverage --target coverage
@@ -11025,10 +11025,180 @@ Total Test time (real) =   9.37 sec
   modules: 10/10 expected
   -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
   ```
-- проверка на вм. сначала негатив:
+- проверка на вм. сначала негатив - tests/unit/parse_int32.cpp меняю в первом кейсе ожидание на 6.
   ```
+  cmake --build build/coverage --target coverage
+  [1/5] Building CXX object tests/unit/CMakeFiles/parse_int32_cpp.dir/parse_int32.cpp.o
+  [2/5] Linking CXX executable tests/unit/parse_int32_cpp
+  [3/5] Building CXX object tests/unit/CMakeFiles/coverage_union_test.dir/coverage_union_test.cpp.o
+  [4/5] Linking CXX executable tests/unit/coverage_union_test
+  [5/5] Collecting code coverage
+  FAILED: [code=1] CMakeFiles/coverage...
+  ...
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  CMake Error at /home/karavai/test/inobitec_study/cmake/coverage.cmake:204 (message):
+    tests exited with code 8
+    ...
+  ```
+  код выхода 8, значит цепочка с новым describe_process_result не нарушена. откатываю ожидание на 5 и снова прогон
+  ```
+  cmake --build build/coverage --target coverage
+  [1/3] Building CXX object tests/unit/CMakeFiles/parse_int32_cpp.dir/parse_int32.cpp.o
+  [2/3] Linking CXX executable tests/unit/parse_int32_cpp
+  [3/3] Collecting code coverage
+  ...
+    common/string_utils.c: 27, 28, 29
+    t3_bbox_c/main.c: 43, 44, 120, 121, 122, 123
+    t4_filter_c/main.c: 94, 95, 96, 97, 165, 166
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ```
+- негативы на то, что при сбое gcovr реально ловятся разные вариации - rc может быть и строкой, и кодом (числом). 
 
+  первый негатив - с /no/such/gcovr в качестве gcovr. такого файла просто нет - должны получить строку и "No such file or directory". пользуюсь баш-скриптом
   ```
+  REPO="$HOME/test/inobitec_study"
+  BUILD="$REPO/build/coverage"
+  PROBE="$BUILD/probe/neg_gcovr"
+  rm -rf "$PROBE"; mkdir -p "$PROBE/empty"
+
+  cmake \
+    -DCOVERAGE_BACKEND=gcovr \
+    -DCTEST_EXE="$(command -v ctest)" \
+    -DBUILD_DIR="$PROBE/empty" \
+    -DSOURCE_DIR="$REPO" \
+    -DREPORT_DIR="$PROBE" \
+    -DCOVERAGE_UNION_EXE="$BUILD/tools/coverage_union/coverage_union" \
+    -DEXPECTED_SOURCES="$BUILD/coverage_expected_sources.txt" \
+    -DGCOVR_EXE="/no/such/gcovr" \
+    -P "$REPO/cmake/coverage.cmake"
+  echo "rc=$?"
+  ```
+  запускаю скрипт, получаю
+  ```
+  Test project /home/karavai/test/inobitec_study/build/coverage/probe/neg_gcovr/empty
+  No tests were found!!!
+  Errors while running CTest
+  CMake Error at cmake/coverage.cmake:138 (message):
+    gcovr could not be started: no such file or directory
+
+
+  rc=1
+  ```
+- негатив с -DGCOVR_EXE="/bin/false". ожидаю именно код и код=1. тк false существует, но вернёт код 1. результат:
+  ```
+  Test project /home/karavai/test/inobitec_study/build/coverage/probe/neg_gcovr/empty
+  No tests were found!!!
+  Errors while running CTest
+  CMake Error at cmake/coverage.cmake:138 (message):
+    gcovr exited with code 1
+
+
+  rc=1
+  ```
+- полные регрессы build/release на обоих ос. винда:
+  ```
+  cmake --build build/debug
+  cmake --build build/release
+
+  ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) = 102.58 sec
+
+  ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) =  29.80 sec
+  ```
+  vm:
+  ```
+  cmake --build build/debug
+  cmake --build build/release
+
+  ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 680
+
+  Total Test time (real) =  10.24 sec
+
+  ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 680
+
+  Total Test time (real) =   3.56 sec
+  ```
+- на финальном промпте ии говорит о том, что печать "operator<< после косметики ни разу не наблюдалась" (была небольшая правка вывода по совету ии). для подтверждения делаю тот же откат: kXmlEmptyFilename "empty filename"->"no filename", жду падения именно этого теста и сообщения в верном формате:
+  ```
+  cmake --build build/coverage --target coverage
+  ...
+  [3/3] Collecting code coverage
+  FAILED: [code=1] CMakeFiles/coverage...
+  ...
+          Start 310: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/10
+  310/672 Test #310: coverage_union_test/ErrCases/ParseCoberturaErr.Rejects/10 ....................***Failed    0.23 sec
+  ...
+  C:\Users\User\Desktop\inobitec_stud\tests\unit\coverage_union_test.cpp(271): error: Expected equality of these values:
+    got.error().what
+      Which is: "empty filename"
+    c.want_what
+      Which is: "no filename"
+
+  [  FAILED  ] ErrCases/ParseCoberturaErr.Rejects/10, where GetParam() = xml="<coverage>
+    <class filename="">
+        <lines><line number="5" hits="2" /></lines>
+    </class>
+  </coverage>",** want=0, what=no filename** (0 ms)
+  [----------] 1 test from ErrCases/ParseCoberturaErr (0 ms total)
+
+  ...
+  [  FAILED  ] ErrCases/ParseCoberturaErr.Rejects/10, where GetParam() = xml="<coverage>
+    <class filename="">
+        <lines><line number="5" hits="2" /></lines>
+    </class>
+  </coverage>", **want=0, what=no filename**
+
+  1 FAILED TEST
+  ...
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  CMake Error at C:/Users/User/Desktop/inobitec_stud/cmake/coverage.cmake:204 (message):
+    coverage collection exited with code 8
+  ...
+  ```
+  откатываю сообщение на правильное, прогон:
+  ```
+  cmake --build build/coverage --target coverage
+  [1/3] Building CXX object tests\unit\CMakeFiles\coverage_union_test.dir\coverage_union_test.cpp.obj
+  [2/3] Linking CXX executable tests\unit\coverage_union_test.exe
+  [3/3] Collecting code coverage
+  SessionId: d0b424c7-5be6-4863-b547-2513e2fcb1d4
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+  ...
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+- также на финальном промпте ии советует зафиксировать решение по todo из моего вчерашнего "что не получилось": block-метрика под Linux пока не делается, т.к. она получима только из native XML от Microsoft.CodeCoverage.Console; gcovr native xml не предоставляет. и другой довод, про который рассказал ии, - если сделать блок-метрику по gcov unexecuted_block/partial, --decisions - то получится вообще третий показатель, несравнимый с тем, что имеем под виндоус. потому в линукс осознанно оставляю только line-метрику
+- также на финальном промпте ии предлагает эмпирически проверить, что TRUE EQUAL 0 всегда будет false - т.к. в cmake при сравнении булевого значения и числа всегда будет false, т.к. булево по логике cmake несравнимо с числом. проверка через скрипт sandbox/if_equal_probe.cmake. ожидаемый вывод "1 FIRED, 2 not fired, 3 FIRED, 4 not fired, 5 FIRED, 6 FIRED, 7 FIRED". реальный запуск
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake -P sandbox/if_equal_probe.cmake
+  --- 1. NOT TRUE EQUAL 0   (��������: FIRED) ---
+  FIRED
+  --- 2. NOT TRUE           (��������: not fired) ---
+  not fired
+  --- 3. NOT FALSE          (��������: FIRED) ---
+  FIRED
+  --- 4. NOT 0 EQUAL 0      (��������: not fired) ---
+  not fired
+  --- 5. NOT 5 EQUAL 0      (��������: FIRED) ---
+  FIRED
+  --- 6. NOT <string> EQUAL 0 (��������: FIRED; ��� ������� ������ ���) ---
+  FIRED
+  --- 7. NOT <undefined> (��������: FIRED - �������) ---
+  FIRED
+  ```
+  реальный прогон совпал с ожиданием, документация проверена эмпирически
 
 ## 8. Диалоги с DeepSeek
 
