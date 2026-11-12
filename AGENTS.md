@@ -11200,6 +11200,270 @@ Total Test time (real) =   9.37 sec
   ```
   реальный прогон совпал с ожиданием, документация проверена эмпирически
 
+# 2026-11-12
+*Что сделано*
+- **правка 1** (Твой e2e-раннер ждёт завершения запущенной программы. Что произойдёт с прогоном, если программа однажды не завершится вообще — зависнет по баге в своём коде? Кто, что и через какое время это заметит? Если ответ «ничего и никто» — реши, должно ли так быть, и если нет — где в цепочке (раннер, gtest, ctest) это лечится и чем каждая из степеней отличается.)
+
+  не по порядку, но я уверена, что так быть не должно. и имею предположение: родитель должен обработать зависание (скорее всего, завершить, других идей пока нет) дочерний процесс. потому что раз он запустил, то он и ответственен. понятно, что можно решить и на других слоях, но мне кажется, надо решать на "самом ближнем слое" - завершение родителем.
+
+  про то, "что произойдёт с прогоном если программа никогда не завершится по баге в своём коде" - не буду гадать или спрашивать у дипсики, попробую сэмулировать такую ситуацию. первое, что приходит на ум - где-то поменять while(condition) на while(true) так, чтобы остановки никогда не было. посмотрю, в каких задачах это возможно. или можно не менять в имеющемся, а добавить в имещеется этот while(true). в задаче t1_c делаю
+  ```
+  ...
+      for (int i = 0; i < N; ++i) {
+        points[i] = polygon_vertex(i, N);
+    }
+   
+    int ctr = 0;
+    while(1>0){
+        ++ctr;
+        --ctr;
+    }
+
+    for (int i = 0; i < N; ++i) {
+  ...
+  ```
+  1>0 чтобы без <stdbool.h>; форматирую, собираю только t1_c и запускаю один успешный тест для него
+  ```
+  c:\Users\User\Desktop\inobitec_stud>clang-format -i t1_dist_matrix_c\main.c
+
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --target t1_c
+  [2/2] Linking C executable t1_dist_matrix_c\t1_c.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "T1E2E.Matches/t1_c_norm" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+
+  ```
+  происходит ничего, потому что программа продолжается. в диспетчере задач ищу t1_c.exe и вижу:
+  | Имя | Состояние | ЦП (25%) | Память (53%) | Диск (1%) | Сеть (0%) | GPU (0%) | Ядро GPU | Энергопотребление | Тенденция энергопотребления |
+  | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+  | t1_c | | 24,0% | 38,0 МБ | 0 МБ/с | 0 Мбит/с | 0% | | Очень высокое | Низкий |
+  | t1_e2e | | 0% | 0,8 МБ | 0 МБ/с | 0 Мбит/с | 0% | | Очень низкое | Очень низкое |
+
+  у меня в проекте ничего не делалось, чтобы остановить "бесконечный" процесс, потому я не думаю, что что-то в моём проекте "заметит" это. возможно, в ОС есть компонент, который "убьёт" затянувшийся процесс. но через сколько и по какому критерю его "убьют", если вообще убьют, я не знаю. просто догадка, потом уточню у дипсики. но даже если такой компонент есть, понятно, что нельзя на него полагаться. потому что бесконечный процесс - зона ответственности того, кто его запустил. соотв., тот кто его запустил, должен определять "бесконечность" и разрешать её. завершаю и смотрю код выхода:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "T1E2E.Matches/t1_c_norm" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  ^C
+  c:\Users\User\Desktop\inobitec_stud>echo %errorlevel%
+  -1073741510
+  ```
+  программу прервали, потому не-нуль.
+- спрашиваю у дипсики (ответь только на поставленный вопрос) - если процесс идёт "бесконечно", в ОС есть инструмент, который его остановит? и почему если это не фоновый процесс и он затягивается бесконечно, то почему у него высокое энергопотребление и высокий нагруз на CPU?
+
+  от фоновости/не-фоновости не зависит, зависит от того, когда процесс "готов". и т.к. у меня просто while(1), то он "всегда готов" и планировщик всегда следующий квант CPU отдаёт для t1_c. потому он "съедает" 1из4 процессоров. 
+
+  про инструмент ОС, который "остановит" затянувшийся процесс. такого нет: ии говорит, что и под виндой, и под линуксом надо явно задавать время процесса, которое по дефолту не установлено. ну или через какой-то инструмент. главное - "внешние таймауты у того, кто запускает: у тебя это ctest (свойство TIMEOUT, TEST_DISCOVERY_TIMEOUT) и Ctrl+C в foreground". возможно, надо будет останавливать и на уровне ctest, а не родителем. в любом случае, не полагаться на механизмы ОС.
+- говорю ии про свой микро-эксперимент. говорю про предположение, что раннер должен остановить ребёнка. прошу его оценить мою теорию верно/неверно и рассазать альтернативы того, кто ещё может остановить процесс и какие есть особенности при остановке через разные инструменты. и как определяется "зависание" как таковое
+
+  "у add_e2e_test в tests/e2e/CMakeLists.txt нет TIMEOUT → действует дефолт CTest (1500 с, т.е. 25 минут)" - потолок был, просто я его не дождалась. всё равно хотелось бы завершать быстрее, нежели через 25минут.
+
+  - **остановка через ос (винда/posix)** - я думаю не стоит, т.к. тут нет нужды обращаться к API ОС. вопрос к ии - так ли это? ии: "Да, как принцип по умолчанию — верно МНЕНИЕ, ВЫСОКИЙ: бери самый верхний слой своей же цепочки, который умеет выразить требование (раннер → ctest → CMake), а к API ОС спускайся только когда этот слой не даёт нужной гарантии." тут нет речи про то, что "только ОС-уровень даст гарантию" - нет, гарантия будет и на более высоком уровне. так что ос-остановку не беру
+  - **консоль** - ручной вариант, не считаю за вариант возможного разрешения вообще
+  - **gtest** - deepseek: "[ФАКТ, ВЫСОКИЙ] в стандартном googletest нет per-test timeout. Не выдумывай его; если нужен — только своя обёртка" - в итоге остановка будет либо ранером, либо ctest-ом, либо смешанно, как я это вижу. тогда смысл выдумывать что-то через gtest? думаю, его нет
+  - **раннер (boost::process v1)** - покрывает: "всё дерево запуска, точное место, частичные out/err"; не покрывает: "зависание внутри самого gtest-кода теста"
+  - **ctest / discovery** - "TEST_DISCOVERY_TIMEOUT (у тебя уже 5 с по умолчанию)" - если тут есть значение по умолчанию, то дополнительно докручивать наверно не надо. но надо проверить.
+  - **ctest** - покрывает: "зависание любого теста, включая зависание самого тестового кода"; не покрывает: "дерево потомков, детальную диагностику". делается через `set_tests_properties(... TIMEOUT N)` либо `ctest --timeout`:
+    ```
+    c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "T1E2E.Matches/t1_c_norm" --output-on-failure --timeout 5
+    Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+        Start 363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+    1/1 Test #363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...***Timeout   5.03 sec
+    Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+    Note: Google Test filter = All/T1E2E.Matches/t1_c_norm
+    [==========] Running 1 test from 1 test suite.
+    [----------] Global test environment set-up.
+    [----------] 1 test from All/T1E2E
+    [ RUN      ] All/T1E2E.Matches/t1_c_norm
+
+
+    0% tests passed, 1 tests failed out of 1
+
+    Total Test time (real) =   5.09 sec
+
+    The following tests FAILED:
+            363 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm (Timeout)
+    Errors while running CTest
+    ```
+  
+  как я это понимаю, ctest закрывает то, что упускает boostproc, потому надо делать через оба пути
+- что предлагает ии:
+  """
+  Раннер: wait_for с бюджетом (например, 10 с) → terminate() → забрать out/err → вернуть отдельный признак «таймаут», а не подсовывать exit_code. В run_result это ложится естественно как std::error_code(std::errc::timed_out) — тогда exit_code не сравнивается вообще.
+  ctest: TIMEOUT как грубая страховка на случай зависания внутри самого gtest/раннера (то, чего раннер не видит). Дёшево: одна строка на тест.
+  Тест на сам механизм: отдельный helper-exe, который висит намеренно; тест проверяет, что раннер вернул timed_out и что процесса-сироты не осталось. Иначе таймаут — «код на доверии» (§ 4.9/4.10).
+  """
+
+  не вижу никаких противоречий пока что, так что соглашаюсь делать по предложенной им схеме.
+
+- для начала, микропрактика. "1. Добавить одному e2e-тесту TIMEOUT 5, вернуть бесконечный цикл в t1_c. 2. Прогнать, дождаться Timeout. 3. Сразу Get-Process t1_c — если процесс жив, ctest-слоя недостаточно; если мёртв — мой довод про сироту ослаблен."
+
+  проверка, что ничего нет с прошлых прогонов
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Process -Name t1_c,t1_e2e,ctest -ErrorAction SilentlyContinue |
+  >>   Select-Object Id, ProcessName, StartTime
+  PS C:\Users\User\Desktop\inobitec_stud>
+  ```
+  пусто. далее запускаю с --timeout 5 и смотрю, будет ли "зависание" сироты после таймаута - после того, как вижу завершение в native tools, иду в PS и спрашиваю про такой процесс:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "T1E2E.Matches/t1_c_norm" --output-on-failure --timeout 5
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+  ...
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =   5.09 sec
+
+  The following tests FAILED:
+          363 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm (Timeout)
+  Errors while running CTest
+
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Process -Name t1_c,t1_e2e -ErrorAction SilentlyContinue |
+  >>   Select-Object Id, ProcessName, StartTime, CPU
+  PS C:\Users\User\Desktop\inobitec_stud>
+  ```
+  всё, такого процесса нет. значит "сирота" не будет висеть, судя по всему. отдаю результат дипсику. он: "Результат: моя гипотеза снята ФАКТ, ВЫСОКИЙ — для этой машины и CMake 4.3 после --timeout 5 умерли оба процесса: t1_e2e (2600) и t1_c (11924). Значит, ctest погасил не только прямого ребёнка, но и внука...убивает через Job Object (Windows) / группу процессов (POSIX), а не голым TerminateProcess по одному PID. Механизм я не проверял по исходникам CMake — не утверждаю.... Windows-only проверка"
+
+  """
+  Что это меняет в решении
+  - ctest TIMEOUT — достаточная защита от сирот. Простая, одна строка, переносимая (после проверки на Linux).
+  - Таймаут в раннере по-прежнему оправдан, но по другой причине: не «чтобы не было сирот», а чтобы диагностика была человеческой — какой кейс завис, на каком exe, частичные out/err, и отличие «timeout» от «не сошёлся код». Плюс раннер видит больше, чем ctest.
+  """
+- ии говорит что надо "убедиться что это именно заслуга ctest, а не «ОС убивает детей»" путём того, что остановим родителя и увидим, что ребёнок ещё жив. deepseek напомнил, что "t1_c.exe зависит от clang_rt.asan_dynamic-x86_64.dll", потому в native tools: `c:\Users\User\Desktop\inobitec_stud>powershell` и исполняю команды
+  ```
+  # 0. фон: должно быть пусто
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Process -Name t1_c,t1_e2e -ErrorAction SilentlyContinue | Select-Object Id,ProcessName
+  PS C:\Users\User\Desktop\inobitec_stud>
+  # да, пусто
+
+  # 1. старт ТОЛЬКО раннера, без ctest
+  PS C:\Users\User\Desktop\inobitec_stud> $p = Start-Process -FilePath .\build\debug\tests\e2e\t1_e2e.exe `
+  >>      -ArgumentList '--gtest_filter=All/T1E2E.Matches/t1_c_norm' `
+  >>      -PassThru -NoNewWindow
+  >> Start-Sleep -Seconds 2
+  >>
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = All/T1E2E.Matches/t1_c_norm
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from All/T1E2E
+  [ RUN      ] All/T1E2E.Matches/t1_c_norm
+
+  # 2. цепочка: кто кого породил (ParentProcessId t1_c должен == $p.Id)
+  PS C:\Users\User\Desktop\inobitec_stud> Get-CimInstance Win32_Process -Filter "Name='t1_c.exe' OR Name='t1_e2e.exe'" |
+  >>   Select-Object ProcessId, ParentProcessId, Name
+
+  ProcessId ParentProcessId Name
+  --------- --------------- ----
+      7960            7824 t1_e2e.exe
+      11824            7960 t1_c.exe
+
+  # 3. убиваем ТОЛЬКО раннер, голым TerminateProcess (без Ctrl+C, без Job Object)
+  PS C:\Users\User\Desktop\inobitec_stud> Stop-Process -Id $p.Id -Force                               
+  >> Start-Sleep -Seconds 2
+  PS C:\Users\User\Desktop\inobitec_stud>
+
+  # 4. жив ли внук
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Process -Name t1_c -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, CPU
+
+   Id ProcessName        CPU
+   -- -----------        ---
+  11824 t1_c        156,765625
+
+  # 5. уборка
+  PS C:\Users\User\Desktop\inobitec_stud> Stop-Process -Name t1_c -Force -ErrorAction SilentlyContinue
+  PS C:\Users\User\Desktop\inobitec_stud>
+  ```
+  "внук" жив, а значит именно ctest обеспечивал его остановку, не другой механизм.
+
+- эксперимент с таймаутом и проверка, что внук тоже погашен, под линуксом. вписываю бесконечный цикл в t1_c, пересобираю именно его и запускаю единств. тест
+  ```
+  cmake --build build/debug --target t1_c
+  ...
+
+  ctest --test-dir build/debug -R "T1E2E.Matches/t1_c_norm" --output-on-failure
+  # такое же зависание
+
+  ctest --test-dir build/debug -R "T1E2E.Matches/t1_c_norm" --output-on-failure --timeout 5
+  Test project /home/karavai/test/inobitec_study/build/debug
+    Start 363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  1/1 Test #363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...***Timeout   5.01 sec
+  Running main() from /home/karavai/dev/vcpkg/buildtrees/gtest/src/v1.18.0-e6987f02b9.clean/googletest/src/gtest_main.cc
+  Note: Google Test filter = All/T1E2E.Matches/t1_c_norm
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from All/T1E2E
+  [ RUN      ] All/T1E2E.Matches/t1_c_norm
+
+
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =   5.03 sec
+
+  The following tests FAILED:
+    363 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm (Timeout)
+  Errors while running CTest
+
+  pgrep -a t1_c
+  # пусто
+  ```
+  под линуксом аналогичный результат.
+- после всех экспериментов можно сделать вывод, что механизм остановки в ctest работает вне зависимости от ОС и останавливает внуков. тут ии предлагает две стратегии: "Вариант 1 — только TIMEOUT в ctest" (особенности: "- работает вне зависимости от ОС, уже проверено двумя экспериментами; - ноль кода в раннере, ноль новых API; − прямой запуск exe без ctest не защищён.") и "Вариант 2 — раннер + ctest" (" wait_for→terminate()→ec = std::errc::timed_out, плюс helper-exe, который висит, и тест на механизм")
+
+  он советует: "Сейчас я бы взял вариант 1, а вариант 2 отложил с явным триггером: «e2e-раннер начали запускать вне ctest (CI, свой скрипт, ручная отладка как штатный сценарий)». Причина: тестовая обвязка и так сложная, а единственная реальная дыра — нештатный способ запуска. Это не «код на доверии»: свойство ctest мы проверили эмпирически на двух ОС, а не приняли на веру."
+
+  я тоже за вариант 1, по причине того, что я стремлюсь к "одной точке истины" в проекте и обеспечиваю корректность ровно в этом смысле. т.е., запуск тестов идёт строго через механизм ctest, не руками или как-то ещё. если пользователь захотел запустить руками, то я не ограничиваю, но предупреждаю, что могут быть последствия. потому что "ответственность" провекта находится именно там, где он явно это пообещал. а не во "всех возможных комбинациях". 
+  
+  согласна с триггером от дипсика: если когда-то осознанно появится запуск e2e раннера вне ctest, то я обязуюсь сделать гарантию и там. пока такого пути нет, то отвечаю ровно за запуск через ctest и только за него. про то, что не обязуюсь, запишу в "известные ограничения"
+- два момента, по которым прошу совет у ии: 1. каков оптимальный таймаут? 2. "Ставить TIMEOUT и на e2e_runner_test, или только на tN_e2e?"
+
+  по таймауту он советует 30 сек: "Обоснование по фактам: полный debug-suite у тебя ~676 тестов за 90–110 с, т.е. один e2e-кейс — 0,1–0,3 с. 30 с — это два порядка запаса: ловит зависание быстро и не флейкует под -j8/ASan/антивирусом. Ровно это и нужно: таймаут должен быть «потолком аварии», а не бюджетом производительности. Дефолтные 1500 с для этого бесполезны"
+
+  не слишком много, не 1500, и не слишком мало, чтобы не вырубить здоровый, но чуть более долгий процесс. конечно если у обычного процесса 0.1-0.3, то 30сек как по мне многовато. но это условный барьер, который в нынешнем случае ничего не затянет. так что ок, соглашаюсь
+
+  про то, на кого ставить таймауты - на задачи или на задачи + на gtest раннера? я думаю, чтобы наверняка, надо на всех ставить. ии: "да, но не по принципу «наверняка», а по двум конкретным причинам: 1. Цена — ноль: свойство срабатывает только при превышении, на нормальные прогоны не влияет; в рантайме ничего не стоит. 2. Класс отказа «тест не возвращается» не специфичен для запуска дочерних процессов: зависнуть может и обвязка. Если этого не случится — ты ничего не потеряла; если случится — не ждёшь 25 минут."
+
+  цена очень низкая, нулевая, сделать нетрудно. так что и на e2e_runner_test тоже будет таймаут
+- в tests/CMakeLists.txt добавляю константу set(TESTS_TIMEOUT 30). и в tests/e2e/CMakeLists.txt в обоих вызовах gtest_discover_tests добавляю PROPERTIES TIMEOUT ${TESTS_TIMEOUT}. реконфиг, ребилд, после чего негатив. контроль - запускаю тот же тест, при этом в t1_c остался бесконечный цикл:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "T1E2E.Matches/t1_c_norm" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  1/1 Test #363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...***Timeout  30.03 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = All/T1E2E.Matches/t1_c_norm
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from All/T1E2E
+  [ RUN      ] All/T1E2E.Matches/t1_c_norm
+
+
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =  30.21 sec
+
+  The following tests FAILED:
+          363 - e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm (Timeout)
+  Errors while running CTest
+  ```
+  через 30сек был остановлен, чего и хотелось.
+- убираю бесконечный цикл, пересобираю, запускаю тот же тест:
+  ```
+  c:\Users\User\Desktop\inobitec_stud>clang-format -i t1_dist_matrix_c\main.c
+
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug --target t1_c
+  [2/2] Linking C executable t1_dist_matrix_c\t1_c.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "T1E2E.Matches/t1_c_norm" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm
+  1/1 Test #363: e2e/t1_e2e/All/T1E2E.Matches/t1_c_norm ...   Passed    0.15 sec
+
+  100% tests passed, 0 tests failed out of 1
+
+  Total Test time (real) =   0.21 sec
+  ```
+
 ## 8. Диалоги с DeepSeek
 
 **Что:** полный машинный экспорт переписки с DeepSeek через OpenCode — JSON со всем содержимым сессии: реплики, рассуждения, **полный вызов каждого инструмента**, временные метки. **Без обработки, без выжимок, без редактуры, без ручной транскрипции** — обработка разрушает сигнал, который наставник в логе ищет.
