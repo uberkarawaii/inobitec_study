@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 ### Added
-- добавлен таймаут для e2e-тестов при их запуске через ctest. (set(TESTS_TIMEOUT 30) в tests/CMakeLists.txt + PROPERTIES TIMEOUT ${TESTS_TIMEOUT} в обоих gtest_discover_tests в tests/e2e/CMakeLists.txt)
+- добавлен таймаут для e2e-тестов и unit-тестов при их запуске через ctest. (set(TESTS_TIMEOUT 30) в корневом CMakeLists.txt + PROPERTIES TIMEOUT ${TESTS_TIMEOUT} во всех gtest_discover_tests в tests/e2e/CMakeLists.txt и в tests/unit/CMakeLists.txt, а также для format-check (регистрируется напрямую через add_test))
 ### Changed
 - в coverage_union_test.cpp в parse/native err-кейсы добавлена проверка конкретного сообщения парсера, а не просто проверка падения с malformed, как было ранее; там же в оба operator<< добавлена печать сообщения об ошибке
 ### Fixed

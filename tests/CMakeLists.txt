@@ -29,9 +29,6 @@ if(WIN32)
 endif()
 endfunction()
 
-# потолок длительности процесса одного теста
-set(TESTS_TIMEOUT 30)
-
 # юнит-тесты
 add_subdirectory(unit)
 

@@ -11463,6 +11463,312 @@ Total Test time (real) =   9.37 sec
 
   Total Test time (real) =   0.21 sec
   ```
+- регрессы на винде
+  ```
+  # reconfigs, rebuilds, ...
+
+  ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) =  29.76 sec
+
+  ctest --preset full
+  ...
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) = 100.29 sec
+
+  cmake --build build/coverage --target coverage
+  [1/1] Collecting code coverage
+  SessionId: a486c7dd-9dda-475b-a13b-98327f8524bd
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+  ...
+  100% tests passed, 0 tests failed out of 672
+
+  Total Test time (real) =  60.91 sec
+  ...
+  files: 14/14 expected
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
+  vm:
+  ```
+  # reconfigs, rebuilds, ...
+
+  ctest --preset full-release
+  Test project /home/karavai/test/inobitec_study/build/release
+  ...
+  100% tests passed, 0 tests failed out of 680
+
+  Total Test time (real) =   2.90 sec
+
+  ctest --preset full
+  Test project /home/karavai/test/inobitec_study/build/debug
+        Start   1: format-check
+  ...
+          Start 680: e2e/runner/E2ERunner.MissingErrorDir
+  680/680 Test #680: e2e/runner/E2ERunner.MissingErrorDir .........................................   Passed    0.00 sec
+
+  100% tests passed, 0 tests failed out of 680
+
+  Total Test time (real) =  10.18 sec
+
+  cmake --build build/coverage --target coverage
+  [1/8] Building C object CMakeFiles/t1_c.dir/t1_dist_matrix_c/main.c.o
+  [2/8] Linking C executable t1_dist_matrix_c/t1_c
+  [3/8] Linking CXX executable tests/e2e/e2e_runner_test
+  [4/8] Linking CXX executable tests/e2e/t2_e2e
+  [5/8] Linking CXX executable tests/e2e/t4_e2e
+  [6/8] Linking CXX executable tests/e2e/t1_e2e
+  [7/8] Linking CXX executable tests/e2e/t3_e2e
+  [8/8] Collecting code coverage
+  Test project /home/karavai/test/inobitec_study/build/coverage
+  ...
+  uncovered lines:
+  common/geometry.c: 74
+  common/geometry.cpp: 85
+  common/string_utils.c: 27, 28, 29
+  t3_bbox_c/main.c: 43, 44, 120, 121, 122, 123
+  t4_filter_c/main.c: 94, 95, 96, 97, 165, 166
+  files: 14/14 expected
+  -- coverage union report: /home/karavai/test/inobitec_study/build/coverage/reports/coverage_summary.txt
+  ```
+- ии: "МНЕНИЕ, НИЗКИЙ Открытое решение: tests/unit остались без TIMEOUT. Если это осознанно — стоит зафиксировать одной строкой в «Известных ограничениях» (иначе через месяц будет вопрос «почему тут есть, а тут нет»)." от меня вопрос: советуешь также поставить таймаут? сейчас думаю, да, в ф-ции тоже может быть такой же бесконечный цикл или типа того. да, ии советует так сделать по этой причине, +дёшево, +симметрия - так все тесты "защищены". в (tests/unit/CMakeLists.txt) в обоих gtest_discover_tests ставлю PROPERTIES TIMEOUT ${TESTS_TIMEOUT}. реконфиги и ребилды всего и проверка что подхвачен таймаут:
+  ```
+  PS C:\Users\User\Desktop\inobitec_stud> Select-String -LiteralPath "build/debug/tests/unit/parse_int32_cpp[1]_tests.cmake" -Pattern TIMEOUT
+
+  build\debug\tests\unit\parse_int32_cpp[1]_tests.cmake:2:set_tests_properties([=[parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0]=]  PROPERTIES DEF_SOURCE_LINE...
+  ...
+  PROPERTIES DEF_SOURCE_LINE [==[C:\Users\User\Desktop\inobitec_stud\tests\unit\parse_int32.cpp:45]==] WORKING_DIRECTORY C:/Users/User/Desktop/inobitec_stud/build/debug/tests/unit SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==] TIMEOUT 30)
+  ```
+  то же на release, но не на coverage, т.к. "У e2e в coverage режим остался POST_BUILD, поэтому там TIMEOUT виден сразу после сборки — отсюда и разница, которую ты заметила."
+- негатив. контроль - в unit тест gtest добавить зависание. `while(true)` ии не советует, говорит его выкинет опитимизатор на релизе. ок, без разницы что зависнет. в parse_int32.cpp в TEST_P(ParseInt32Ok, Parses) добавляю `std::this_thread::sleep_for(std::chrono::hours(1))` + `#include <chrono> #include <thread>`. собираю, запускаю один тест
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [2/2] Linking CXX executable tests\unit\parse_int32_cpp.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+  1/1 Test #64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ...***Timeout  30.02 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = OkCases/ParseInt32Ok.Parses/0
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from OkCases/ParseInt32Ok
+  [ RUN      ] OkCases/ParseInt32Ok.Parses/0
+
+
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =  30.29 sec
+
+  The following tests FAILED:
+          64 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 (Timeout)
+  Errors while running CTest
+  ```
+  то, что и ожидали. теперь убираю зависание и заголовки для него, пересборка, то же тест
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [2/2] Linking CXX executable tests\unit\parse_int32_cpp.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+  1/1 Test #64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ...   Passed    0.11 sec
+
+  100% tests passed, 0 tests failed out of 1
+
+  Total Test time (real) =   0.19 sec
+  ```
+
+# 2026-11-13
+- ии напомнил посмотреть, жив/не жив процесс на дебаге после таймаута; пересборка, зависание, в PS смотрю, есть ли такой процесс
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [2/2] Linking CXX executable tests\unit\parse_int32_cpp.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+  1/1 Test #64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ...***Timeout  30.03 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = OkCases/ParseInt32Ok.Parses/0
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from OkCases/ParseInt32Ok
+  [ RUN      ] OkCases/ParseInt32Ok.Parses/0
+
+
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =  30.41 sec
+
+  The following tests FAILED:
+          64 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 (Timeout)
+  Errors while running CTest
+
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Process -Name parse_int32_cpp -ErrorAction SilentlyContinue |
+  >>   Select-Object Id, ProcessName, StartTime, CPU
+  PS C:\Users\User\Desktop\inobitec_stud>
+  ```
+  такого процесса нет. также проверка на релизе
+  ```
+  # пересборка
+  ctest --test-dir build/release -R "parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0" --output-on-failure
+  ...
+  0% tests passed, 1 tests failed out of 1
+  Total Test time (real) = 101.71 sec
+  The following tests FAILED:
+          64 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 (Timeout)
+  Errors while running CTest
+
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Process -Name parse_int32_cpp -ErrorAction SilentlyContinue |
+  >>   Select-Object Id, ProcessName, StartTime, CPU
+  PS C:\Users\User\Desktop\inobitec_stud>
+  ```
+  почему-то не 30 сек. запускаю ещё раз
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/release -R "parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/release
+      Start 64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+  1/1 Test #64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ...***Timeout  30.03 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = OkCases/ParseInt32Ok.Parses/0
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from OkCases/ParseInt32Ok
+  [ RUN      ] OkCases/ParseInt32Ok.Parses/0
+
+
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =  30.09 sec
+
+  The following tests FAILED:
+          64 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 (Timeout)
+  Errors while running CTest
+
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Process -Name parse_int32_cpp -ErrorAction SilentlyContinue |
+  >>   Select-Object Id, ProcessName, StartTime, CPU
+  PS C:\Users\User\Desktop\inobitec_stud>
+  ```
+  к сожалению, теперь тот лог затёрт и не воспроизводится даже при --clean-first; таймаут каждый раз в пределах 30 с небольшим секунд. при этом, ии говорит "Никто не «нарушил»: TIMEOUT — это предел времени одного процесса теста, а Total Test time (real) — это wall-clock всей сессии ctest ... Гарантия, которую даёт свойство: «процесс теста не проживёт дольше 30 с», а не «сессия ctest уложится в 30 с»." - получается, процесс самого теста внутри спойоно мог идти около 30сек, а остальное уйти на "старт ctest и чтение сгенерированных *_tests.cmake и CreateProcess + загрузка DLL + первое сканирование exe антивирусом". получается, таймаут "обязуется" только за время одного теста.
+
+  проверка на coverage
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/coverage -R "parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+      Start 64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+  1/1 Test #64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ...***Timeout  30.03 sec
+  Running main() from D:\dev\vcpkg\buildtrees\gtest\src\v1.18.0-e6987f02b9.clean\googletest\src\gtest_main.cc
+  Note: Google Test filter = OkCases/ParseInt32Ok.Parses/0
+  [==========] Running 1 test from 1 test suite.
+  [----------] Global test environment set-up.
+  [----------] 1 test from OkCases/ParseInt32Ok
+  [ RUN      ] OkCases/ParseInt32Ok.Parses/0
+
+
+  0% tests passed, 1 tests failed out of 1
+
+  Total Test time (real) =  31.89 sec
+
+  The following tests FAILED:
+          64 - parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 (Timeout)
+  Errors while running CTest
+
+  PS C:\Users\User\Desktop\inobitec_stud> Get-Process -Name parse_int32_cpp -ErrorAction SilentlyContinue |
+  >>   Select-Object Id, ProcessName, StartTime, CPU
+  PS C:\Users\User\Desktop\inobitec_stud>
+  ```
+  ситуация похожая, но задержка, конечно, гораздо меньше. но всё же итог более 30сек. то есть, такое может происходить в рамках ctest и это не аномалия.
+- регресс
+  ```
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/debug
+  [2/2] Linking CXX executable tests\unit\parse_int32_cpp.exe
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --test-dir build/debug -R "parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0" --output-on-failure
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+      Start 64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0
+  1/1 Test #64: parse_int32_cpp/OkCases/ParseInt32Ok.Parses/0 ...   Passed    0.21 sec
+
+  100% tests passed, 0 tests failed out of 1
+
+  Total Test time (real) =   0.45 sec
+  ```
+  и по всем сборкам
+  ```
+  cmake --build build/coverage --target coverage
+  [1/1] Collecting code coverage
+  SessionId: 5eb520ea-808e-4567-a359-b2eacc54bc1b
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+  ...
+  100% tests passed, 0 tests failed out of 672
+
+  Total Test time (real) =  60.26 sec
+  ...
+  block coverage (native XML, per module; not a union):
+  common_c_shared.dll     136/185     73.51%
+  ...
+  t4_cpp.exe               96/125     76.80%
+  files: 14/14 expected
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+
+  ctest --preset full
+  Test project C:/Users/User/Desktop/inobitec_stud/build/debug
+        Start   1: format-check
+        ...
+          Start 676: e2e/runner/E2ERunner.MissingErrorDir
+  676/676 Test #676: e2e/runner/E2ERunner.MissingErrorDir .........................................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 676
+  Total Test time (real) =  93.93 sec
+
+  ctest --preset full-release
+  Test project C:/Users/User/Desktop/inobitec_stud/build/release
+        Start   1: format-check
+        ...
+          Start 676: e2e/runner/E2ERunner.MissingErrorDir
+  676/676 Test #676: e2e/runner/E2ERunner.MissingErrorDir .........................................   Passed    0.01 sec
+
+  100% tests passed, 0 tests failed out of 676
+  Total Test time (real) =  28.85 sec
+  ```
+- ии напомнил, что format-check - не под таймаутом. я не вижу особого смысла писать там таймаут, как бы, он может там быть, просто чтобы таймаут был во всех тестах. ии советует: "я бы не документировал, а закрыл — это дешевле, чем абзац в ограничениях.". ок, особых за или против такого решения не вижу, пусть таймаут будет и в format-check. переношу set(TESTS_TIMEOUT 30) в кроневой CMakeLists.txt и добавляю его также для format-check. и соотв. из tests/CMakeLists.txt определение этой константы убираю. провоцировать зависание не буду - тут таймер чисто формальный + есть аргумент от ии: "Поведение таймаута для format-check не провоцировалось — подтверждено только наличие свойства в сгенерированном файле. Для него это некритично (скрипт не порождает процессов), но фиксирую как непроверенное.". просто фиксирую, что для format-check зависание не проверялось.
+- регресс всего
+  ```
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset full
+  ...
+
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) = 124.18 sec
+
+  c:\Users\User\Desktop\inobitec_stud>ctest --preset full-release
+  ...
+  100% tests passed, 0 tests failed out of 676
+
+  Total Test time (real) =  27.27 sec
+
+  c:\Users\User\Desktop\inobitec_stud>cmake --build build/coverage --target coverage
+  [1/3] Building CXX object tests\unit\CMakeFiles\parse_int32_cpp.dir\parse_int32.cpp.obj
+  [2/3] Linking CXX executable tests\unit\parse_int32_cpp.exe
+  [3/3] Collecting code coverage
+  SessionId: de0d88cb-7fa2-4a89-be93-fec675a9273b
+  Test project C:/Users/User/Desktop/inobitec_stud/build/coverage
+  ...
+          Start 672: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra
+  672/672 Test #672: e2e/t4_e2e/All/T4E2E.Matches/t4_cpp_version_extra ............................   Passed    0.08 sec
+
+  100% tests passed, 0 tests failed out of 672
+
+  Total Test time (real) =  64.20 sec
+  ...
+  modules: 10/10 expected
+  -- coverage union report: C:/Users/User/Desktop/inobitec_stud/build/coverage/reports/coverage_summary.txt
+  ```
 
 ## 8. Диалоги с DeepSeek
 

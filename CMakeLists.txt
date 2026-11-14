@@ -450,10 +450,14 @@ add_custom_target(format-check
 
 # === TESTS ===
 enable_testing()
+# timeout-ограничение на тесты
+set(TESTS_TIMEOUT 30)
 # первый тест: проверка чистоты формата
 # если есть clang+format - проверка строгая, не-падение - только при чистом формате
 # иначе - warning и тесты
-add_test(NAME format-check COMMAND ${CMAKE_COMMAND} -DMODE=check ${FORMAT_COMMON}) 
+add_test(NAME format-check COMMAND ${CMAKE_COMMAND} -DMODE=check ${FORMAT_COMMON})
+# на format-check также ставится таймаут, для единообразия с остальными тестами
+set_tests_properties(format-check PROPERTIES TIMEOUT ${TESTS_TIMEOUT}) 
 
 # при coverage-build должны быть именно релиз.версии внешних библиотек, для совместимости с бинарниками задач
 if(CMAKE_BUILD_TYPE STREQUAL "Coverage")

@@ -13,9 +13,9 @@ function(add_unit_gtest target src lib)
     # DISCOVERY_MODE PRE_TEST -> запуск discovery на этапе ctest, 
     # во избежание проблемы с неудалёнными .gcda (они удаляются именно до ctest) 
     gtest_discover_tests(${target} TEST_PREFIX "${target}/" NO_PRETTY_VALUES
-                       DISCOVERY_MODE PRE_TEST)
+                       DISCOVERY_MODE PRE_TEST PROPERTIES TIMEOUT ${TESTS_TIMEOUT})
   else()
-    gtest_discover_tests(${target} TEST_PREFIX "${target}/" NO_PRETTY_VALUES)
+    gtest_discover_tests(${target} TEST_PREFIX "${target}/" NO_PRETTY_VALUES PROPERTIES TIMEOUT ${TESTS_TIMEOUT})
   endif()
 endfunction()
 
